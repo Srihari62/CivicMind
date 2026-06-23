@@ -28,11 +28,43 @@ export interface UserProfile {
  * Status phases of a reported civic issue.
  */
 export type ReportStatus =
-  | "submitted"       // Initial state upon submission
-  | "investigating"   // Assigned to department, undergoing verification
-  | "in_progress"     // Work team dispatched, actively resolving
-  | "resolved"        // Issue successfully addressed
-  | "rejected";       // Out of scope, duplicate, or spam
+  | "draft"
+  | "submitted"
+  | "investigating"
+  | "in_progress"
+  | "resolved"
+  | "rejected";
+
+export type AiStatus = "pending" | "processed" | "failed";
+export type VerificationStatus = "pending" | "verified" | "flagged" | "rejected";
+export type PriorityLevel = "critical" | "high" | "medium" | "low" | "unknown";
+
+export interface MediaAsset {
+  id: string;
+  type: "image" | "video";
+  url: string;
+  storagePath: string;
+  mimeType: string;
+  size: number;
+  uploadedAt: string;
+  thumbnailUrl?: string;
+  // Extended fields for AI/media processing metadata
+  width?: number;
+  height?: number;
+  duration?: number;
+  checksum?: string;
+}
+
+export interface ReportLocation {
+  latitude: number;
+  longitude: number;
+  formattedAddress: string;
+  city?: string;
+  district?: string;
+  state?: string;
+  country?: string;
+  postalCode?: string;
+}
 
 /**
  * Categories matching the classifier system options.
@@ -64,32 +96,45 @@ export interface LocationCoordinates {
  */
 export interface CivicReport {
   id: string;
-  title: string;
-  description: string;
-  category: IssueCategory;
-  urgency: UrgencyLevel;
-  location: LocationCoordinates;
   status: ReportStatus;
-  imageUrl?: string;
-  videoUrl?: string;
   
-  // Reporter association (null if submitted anonymously)
-  reporterId: string | null;
-  reporterName: string;
+  metadata: {
+    title: string;
+    description: string;
+    category: string;
+    createdBy: string;
+  };
   
-  // Municipal routing fields
-  assignedDepartment?: string;
-  assignedOfficerId?: string;
-  resolutionNotes?: string;
+  location: ReportLocation;
   
-  // AI analysis metadata (cache of orchestrator results)
-  aiClassificationConfidence?: number;
-  aiUrgencyReason?: string;
-  aiTags?: string[];
-  publicSafetyRisk?: boolean;
+  evidence: {
+    media: MediaAsset[];
+  };
+  
+  ai: {
+    status: AiStatus;
+    priority: PriorityLevel;
+    confidence?: number;
+    summary?: string;
+    classification?: string;
+  };
+  
+  verification: {
+    status: VerificationStatus;
+    requiredVotes: number;
+    receivedVotes: number;
+  };
 
-  createdAt: string;
-  updatedAt: string;
+  routing?: {
+    assignedDepartment?: string;
+    assignedOfficerId?: string;
+    resolutionNotes?: string;
+  };
+
+  timestamps: {
+    createdAt: string;
+    updatedAt: string;
+  };
 }
 
 /**

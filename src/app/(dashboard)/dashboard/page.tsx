@@ -9,6 +9,7 @@
 import { useAuth } from "@/providers/auth-provider";
 import { RouteGuard } from "@/features/auth/components/route-guard";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,9 @@ export default function CitizenDashboardPage() {
           <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
             <span className="font-bold text-primary">CivicMind</span>
             <div className="flex items-center gap-4">
+              <Link href="/reports/new">
+                <Button size="sm">Report Issue</Button>
+              </Link>
               <span className="text-xs text-muted-foreground font-medium">
                 {profile?.email} ({profile?.role})
               </span>
