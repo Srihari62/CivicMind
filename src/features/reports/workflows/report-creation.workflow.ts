@@ -15,7 +15,7 @@ export class ReportCreationWorkflow {
    * Executes the transaction flow to create and submit a report.
    * Flow: Generate Report ID -> Create Draft Report -> Upload Evidence -> Collect Metadata -> Submit Report -> Return ID
    * @param reportData - Nested report details (metadata and location)
-   * @param files - Files uploaded as evidence
+   * @param filesOrMedia - Files uploaded as evidence or pre-uploaded MediaAsset metadata
    * @param userId - Active user ID
    * @returns Generated report ID
    */
@@ -26,21 +26,42 @@ export class ReportCreationWorkflow {
         description: string;
         category: string;
         createdBy: string;
+        editedAfterAI?: boolean;
       };
       location: ReportLocation;
+      severity?: string;
+      aiAssistant?: {
+        generatedTitle: string;
+        generatedDescription: string;
+        generatedCategory: string;
+        generatedCategoryLabel?: string | null;
+        generatedSeverity: string;
+        confidence: number;
+        summary: string;
+        detectedObjects?: string[];
+        analyzedAt: string;
+        model: string;
+        promptVersion: string;
+        initialPriority: string;
+      } | null;
     },
-    files: File[],
+    filesOrMedia: File[] | MediaAsset[],
     userId: string
   ): Promise<string> {
     // 1. Generate Report ID
     const reportId = ReportRepository.generateReportId();
 
     try {
-      // 2. Upload Evidence first (no database write yet)
+      // 2. Resolve media assets (upload if raw Files, reuse if pre-uploaded assets)
       let mediaAssets: MediaAsset[] = [];
-      if (files.length > 0) {
-        const storageFolderPath = `reports/${reportId}/evidence`;
-        mediaAssets = await MediaService.uploadFiles(files, storageFolderPath, userId);
+      if (filesOrMedia.length > 0) {
+        const first = filesOrMedia[0];
+        if (typeof window !== "undefined" ? first instanceof File : (first.constructor && first.constructor.name === "File") || first instanceof File) {
+          const storageFolderPath = `reports/${reportId}/evidence`;
+          mediaAssets = await MediaService.uploadFiles(filesOrMedia as File[], storageFolderPath, userId);
+        } else {
+          mediaAssets = filesOrMedia as MediaAsset[];
+        }
       }
 
       // 3. Create Draft Report in database

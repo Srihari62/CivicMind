@@ -7,13 +7,13 @@
 
 import { ReportCreationWorkflow } from "../workflows/report-creation.workflow";
 import { ReportRepository } from "../repositories/report.repository";
-import { CivicReport, ReportLocation } from "@/types";
+import { CivicReport, ReportLocation, MediaAsset } from "@/types";
 
 export class ReportService {
   /**
    * Orchestrates the complete issue report creation workflow by invoking ReportCreationWorkflow.
    * @param reportData - Nested report details (metadata and location)
-   * @param files - Associated files to upload
+   * @param filesOrMedia - Associated files to upload or pre-uploaded MediaAsset metadata
    * @param userId - Authenticated user ID creating the report
    * @returns The generated report ID
    */
@@ -24,13 +24,29 @@ export class ReportService {
         description: string;
         category: string;
         createdBy: string;
+        editedAfterAI?: boolean;
       };
       location: ReportLocation;
+      severity?: string;
+      aiAssistant?: {
+        generatedTitle: string;
+        generatedDescription: string;
+        generatedCategory: string;
+        generatedCategoryLabel?: string | null;
+        generatedSeverity: string;
+        confidence: number;
+        summary: string;
+        detectedObjects?: string[];
+        analyzedAt: string;
+        model: string;
+        promptVersion: string;
+        initialPriority: string;
+      } | null;
     },
-    files: File[],
+    filesOrMedia: File[] | MediaAsset[],
     userId: string
   ): Promise<string> {
-    return await ReportCreationWorkflow.execute(reportData, files, userId);
+    return await ReportCreationWorkflow.execute(reportData, filesOrMedia, userId);
   }
 
   /**

@@ -160,7 +160,7 @@ export default function ReportDetailsPage() {
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-muted-foreground uppercase tracking-wider select-none font-semibold">Initial Urgency Priority</span>
                   <span className="font-medium capitalize text-xs bg-muted/60 px-1.5 py-0.5 rounded border border-border inline-block w-fit">
-                    {report.ai.priority}
+                    {report.ai.verification?.priority || "unknown"}
                   </span>
                 </div>
               </div>

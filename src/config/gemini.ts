@@ -17,10 +17,10 @@ const getApiKey = (): string | undefined => {
 
 export const geminiConfig = {
   apiKey: getApiKey(),
-  defaultModel: "gemini-2.5-flash",
+  defaultModel: "gemini-3.5-flash",
   models: {
-    FLASH: "gemini-2.5-flash",
-    PRO: "gemini-2.5-pro",
+    FLASH: "gemini-3.5-flash",
+    PRO: "gemini-3.5-pro",
   },
 } as const;
 

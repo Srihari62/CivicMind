@@ -103,6 +103,7 @@ export interface CivicReport {
     description: string;
     category: string;
     createdBy: string;
+    editedAfterAI?: boolean;
   };
   
   location: ReportLocation;
@@ -112,11 +113,30 @@ export interface CivicReport {
   };
   
   ai: {
-    status: AiStatus;
-    priority: PriorityLevel;
-    confidence?: number;
-    summary?: string;
-    classification?: string;
+    assistant?: {
+      generatedTitle: string;
+      generatedDescription: string;
+      generatedCategory: string;
+      generatedCategoryLabel?: string | null;
+      generatedSeverity: string;
+      confidence: number;
+      summary: string;
+      detectedObjects?: string[];
+      analyzedAt: string;
+      model: string;
+      promptVersion: string;
+      initialPriority: string;
+    } | null;
+    verification: {
+      status: string; // "pending" | "processed" | "failed"
+      fakeMediaProbability?: number | null;
+      duplicateProbability?: number | null;
+      priority?: PriorityLevel | null;
+      assignedDepartment?: string | null;
+      analyzedAt?: string | null;
+      verificationModel?: string | null;
+      verificationVersion?: string | null;
+    };
   };
   
   verification: {

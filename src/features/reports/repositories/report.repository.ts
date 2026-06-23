@@ -7,7 +7,7 @@
 import { collection, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db, COLLECTIONS } from "@/services/firebase/firestore";
 import { CivicReport, MediaAsset, ReportLocation } from "@/types";
-import { REPORT_STATUS, AI_STATUS, VERIFICATION_STATUS, PRIORITY } from "@/constants";
+import { REPORT_STATUS, VERIFICATION_STATUS } from "@/constants";
 
 export class ReportRepository {
   /**
@@ -32,8 +32,24 @@ export class ReportRepository {
         description: string;
         category: string;
         createdBy: string;
+        editedAfterAI?: boolean;
       };
       location: ReportLocation;
+      severity?: string;
+      aiAssistant?: {
+        generatedTitle: string;
+        generatedDescription: string;
+        generatedCategory: string;
+        generatedCategoryLabel?: string | null;
+        generatedSeverity: string;
+        confidence: number;
+        summary: string;
+        detectedObjects?: string[];
+        analyzedAt: string;
+        model: string;
+        promptVersion: string;
+        initialPriority: string;
+      } | null;
     }
   ): Promise<CivicReport> {
     const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
@@ -42,14 +58,26 @@ export class ReportRepository {
     const report: CivicReport = {
       id: reportId,
       status: REPORT_STATUS.DRAFT,
-      metadata: draftData.metadata,
+      metadata: {
+        ...draftData.metadata,
+        editedAfterAI: draftData.metadata.editedAfterAI ?? false,
+      },
       location: draftData.location,
       evidence: {
         media: [],
       },
       ai: {
-        status: AI_STATUS.PENDING,
-        priority: PRIORITY.UNKNOWN,
+        assistant: draftData.aiAssistant ?? null,
+        verification: {
+          status: "pending",
+          fakeMediaProbability: null,
+          duplicateProbability: null,
+          priority: null,
+          assignedDepartment: null,
+          analyzedAt: null,
+          verificationModel: null,
+          verificationVersion: null,
+        },
       },
       verification: {
         status: VERIFICATION_STATUS.PENDING,

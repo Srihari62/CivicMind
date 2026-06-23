@@ -19,6 +19,9 @@ export const reportFormSchema = z.object({
   category: z
     .string()
     .min(1, "Please select an issue category"),
+  severity: z
+    .string()
+    .min(1, "Please select a severity level"),
   location: z
     .string()
     .min(3, "Location description is required")
