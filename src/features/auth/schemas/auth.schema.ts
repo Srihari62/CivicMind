@@ -58,7 +58,6 @@ export const completeProfileSchema = z.object({
     .refine((val) => !val || /^\+?[1-9]\d{1,14}$/.test(val), {
       message: "Please enter a valid phone number (E.164 format)",
     }),
-  role: z.enum(["citizen", "officer"]),
 });
 
 export type CompleteProfileInput = z.infer<typeof completeProfileSchema>;

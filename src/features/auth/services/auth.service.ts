@@ -105,7 +105,6 @@ export class AuthService {
       await UserRepository.updateUserProfile(uid, {
         displayName: input.displayName,
         phoneNumber: input.phoneNumber,
-        role: input.role,
         isProfileComplete: true,
       });
     } catch (error) {

@@ -44,7 +44,8 @@ export function LoginForm() {
       const profile = await AuthService.getProfile(user.uid);
 
       if (profile && profile.isProfileComplete) {
-        router.push("/dashboard");
+        const redirectPath = profile.role === "admin" ? "/admin" : profile.role === "officer" ? "/officer" : "/dashboard";
+        router.push(redirectPath);
       } else {
         router.push("/complete-profile");
       }

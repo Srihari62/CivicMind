@@ -15,7 +15,6 @@ import { completeProfileSchema, CompleteProfileInput } from "../schemas/auth.sch
 import { AuthService } from "../services/auth.service";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/utils/cn";
 
 export function CompleteProfileForm() {
   const router = useRouter();
@@ -33,7 +32,6 @@ export function CompleteProfileForm() {
     defaultValues: {
       displayName: "",
       phoneNumber: "",
-      role: "citizen",
     },
   });
 
@@ -54,7 +52,8 @@ export function CompleteProfileForm() {
     if (!loading && !user) {
       router.push("/login");
     } else if (!loading && profile?.isProfileComplete) {
-      router.push("/dashboard");
+      const redirectPath = profile.role === "admin" ? "/admin" : profile.role === "officer" ? "/officer" : "/dashboard";
+      router.push(redirectPath);
     }
   }, [user, profile, loading, router]);
 
@@ -84,8 +83,9 @@ export function CompleteProfileForm() {
     try {
       await AuthService.completeProfile(user.uid, data);
       
-      // Force page refresh/reload context to pick up new profile fields, then route
-      window.location.href = "/dashboard";
+      const updatedProfile = await AuthService.getProfile(user.uid);
+      const redirectPath = updatedProfile?.role === "admin" ? "/admin" : updatedProfile?.role === "officer" ? "/officer" : "/dashboard";
+      window.location.href = redirectPath;
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : "Failed to update profile. Please try again.";
       setGlobalError(errorMsg);
@@ -117,28 +117,6 @@ export function CompleteProfileForm() {
         error={errors.phoneNumber?.message}
         {...register("phoneNumber")}
       />
-
-      <div className="flex flex-col gap-1.5 w-full">
-        <label className="text-xs font-medium text-muted-foreground select-none">
-          Select Your Role
-        </label>
-        <select
-          {...register("role")}
-          className={cn(
-            "w-full px-3.5 py-2.5 bg-background border border-border text-sm rounded-md transition-all duration-200 outline-none",
-            "text-foreground focus:border-primary focus:ring-1 focus:ring-primary",
-            errors.role ? "border-destructive focus:ring-destructive" : ""
-          )}
-        >
-          <option value="citizen">Citizen (Report and Track Issues)</option>
-          <option value="officer">Municipal Officer (Review and Dispatch Tasks)</option>
-        </select>
-        {errors.role && (
-          <span className="text-xs text-destructive font-medium mt-0.5" role="alert">
-            {errors.role.message}
-          </span>
-        )}
-      </div>
 
       <Button type="submit" isLoading={isLoading} className="w-full mt-2">
         Complete Registration
