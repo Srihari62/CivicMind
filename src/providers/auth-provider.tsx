@@ -1,7 +1,7 @@
 /**
  * @file src/providers/auth-provider.tsx
  * @description React Context Provider for Firebase Authentication.
- * Listens to authentication state changes, retrieves matching profiles from Firestore,
+ * Listens to authentication state changes, retrieves profiles via AuthService,
  * and exposes reactive session variables to client views.
  */
 
@@ -9,14 +9,14 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { User, onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
 import { auth } from "@/services/firebase/auth";
-import { db, COLLECTIONS } from "@/services/firebase/firestore";
-import { UserProfile, UserRole } from "@/types";
+import { AuthService } from "@/features/auth/services/auth.service";
+import { FirestoreUserProfile } from "@/features/auth/repositories/user.repository";
+import { UserRole } from "@/types";
 
 interface AuthContextType {
   user: User | null;
-  profile: UserProfile | null;
+  profile: FirestoreUserProfile | null;
   loading: boolean;
   role: UserRole | null;
 }
@@ -30,7 +30,7 @@ const AuthContext = createContext<AuthContextType>({
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<FirestoreUserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -40,18 +40,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (firebaseUser) {
         try {
-          // Retrieve matching citizen/official profile details from Firestore
-          const docRef = doc(db, COLLECTIONS.USERS, firebaseUser.uid);
-          const docSnap = await getDoc(docRef);
-
-          if (docSnap.exists()) {
-            setProfile(docSnap.data() as UserProfile);
-          } else {
-            // Fallback for newly registered users whose profiles are not written yet
-            setProfile(null);
-          }
+          // Retrieve profile details through the service layer
+          const userProfile = await AuthService.getProfile(firebaseUser.uid);
+          setProfile(userProfile);
         } catch (error) {
-          console.error("Auth Provider Error: Failed to fetch Firestore user profile:", error);
+          console.error("Auth Provider Error: Failed to fetch user profile via AuthService:", error);
           setProfile(null);
         }
       } else {
@@ -82,3 +75,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
  * Custom hook to consume the AuthContext safely.
  */
 export const useAuth = () => useContext(AuthContext);
+export default AuthProvider;
