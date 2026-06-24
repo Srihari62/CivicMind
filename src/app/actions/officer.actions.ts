@@ -180,18 +180,69 @@ export async function uploadProgressMediaAction(
 }
 
 /**
+ * Save officer notes.
+ */
+export async function saveOfficerNotesAction(
+  reportId: string,
+  officerId: string,
+  content: string
+): Promise<ActionResponse<void>> {
+  try {
+    await AssignmentService.saveOfficerNotes(reportId, officerId, content);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to save officer notes." };
+  }
+}
+
+/**
+ * Generate AI resolution summary.
+ */
+export async function generateAIResolutionSummaryAction(
+  title: string,
+  category: string,
+  notes: string,
+  beforeEvidence?: MediaAsset[],
+  afterEvidence?: MediaAsset[]
+): Promise<ActionResponse<{ summary: string; workCompleted: string; citizenExplanation: string }>> {
+  try {
+    const { AIResolutionAgent } = await import("@/ai/agents/ai-resolution.agent");
+    const agent = new AIResolutionAgent();
+    const result = await agent.analyze({
+      title,
+      category,
+      notes,
+      beforeEvidence,
+      afterEvidence,
+    });
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to generate AI resolution summary." };
+  }
+}
+
+/**
  * Resolve report.
  */
 export async function resolveReportAction(
   reportId: string,
   officerId: string,
   notes: string,
-  media: MediaAsset[],
-  category?: string,
-  proofPhotoUrl?: string
+  repairEvidence: { before: MediaAsset[]; after: MediaAsset[] },
+  duration: number,
+  aiSummary: { summary: string; workCompleted: string; citizenExplanation: string },
+  category?: string
 ): Promise<ActionResponse<void>> {
   try {
-    await AssignmentService.resolveReport(reportId, officerId, notes, media, category, proofPhotoUrl);
+    await AssignmentService.resolveReport(
+      reportId,
+      officerId,
+      notes,
+      repairEvidence,
+      duration,
+      aiSummary,
+      category
+    );
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to resolve report." };

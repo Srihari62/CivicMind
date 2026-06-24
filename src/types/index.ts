@@ -30,6 +30,7 @@ export interface UserProfile {
 export type ReportStatus =
   | "draft"
   | "submitted"
+  | "accepted"
   | "investigating"
   | "in_progress"
   | "resolved"
@@ -169,7 +170,27 @@ export interface CivicReport {
     category: string;
     proofPhotoUrl?: string;
     resolvedAt: string;
+    resolvedBy?: string;
+    duration?: number; // in hours or days
+    repairEvidence?: {
+      before: MediaAsset[];
+      after: MediaAsset[];
+    };
+    aiSummary?: {
+      summary: string;
+      workCompleted: string;
+      citizenExplanation: string;
+    } | null;
+    generatedAt?: string | null;
+    model?: string | null;
   } | null;
+
+  repairEvidence?: {
+    before: MediaAsset[];
+    after: MediaAsset[];
+  } | null;
+
+  officerNotes?: OfficerNote | null;
 
   timeline?: TimelineEvent[];
 
@@ -177,6 +198,12 @@ export interface CivicReport {
     createdAt: string;
     updatedAt: string;
   };
+}
+
+export interface OfficerNote {
+  content: string;
+  updatedAt: string;
+  history: { content: string; updatedAt: string }[];
 }
 
 /**

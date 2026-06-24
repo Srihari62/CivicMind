@@ -118,18 +118,22 @@ export class AssignmentService {
     const report = await ReportRepository.getReport(reportId);
     if (!report) throw new Error("Report not found");
 
-    // Transition status to investigating
+    if (report.status !== "submitted") {
+      throw new Error(`Invalid transition: Cannot accept assignment from status "${report.status}".`);
+    }
+
+    // Transition status to accepted
     const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
     await updateDoc(docRef, {
-      status: "investigating",
+      status: "accepted",
       "timestamps.updatedAt": new Date().toISOString(),
     });
 
-    await TimelineService.logEvent(reportId, officerId, "officer", "Officer Accepted");
+    await TimelineService.logEvent(reportId, officerId, "officer", "Accepted", "Officer accepted the case workload.");
     await NotificationService.notifyCitizenStatusChanged(
       report.metadata.createdBy,
       reportId,
-      "investigating"
+      "accepted"
     );
   }
 
@@ -143,6 +147,10 @@ export class AssignmentService {
   ): Promise<void> {
     const report = await ReportRepository.getReport(reportId);
     if (!report) throw new Error("Report not found");
+
+    if (report.status !== "submitted" && report.status !== "accepted") {
+      throw new Error(`Invalid transition: Cannot reject assignment from status "${report.status}".`);
+    }
 
     // Decrement workload
     await OfficerService.decrementCases(officerId);
@@ -172,6 +180,10 @@ export class AssignmentService {
     const report = await ReportRepository.getReport(reportId);
     if (!report) throw new Error("Report not found");
 
+    if (report.status !== "accepted" && report.status !== "investigating") {
+      throw new Error(`Invalid transition: Cannot start investigation from status "${report.status}".`);
+    }
+
     // Transition status to in_progress
     const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
     await updateDoc(docRef, {
@@ -179,7 +191,7 @@ export class AssignmentService {
       "timestamps.updatedAt": new Date().toISOString(),
     });
 
-    await TimelineService.logEvent(reportId, officerId, "officer", "Investigation Started");
+    await TimelineService.logEvent(reportId, officerId, "officer", "Investigation Started", "Officer started field investigation.");
     await NotificationService.notifyCitizenStatusChanged(
       report.metadata.createdBy,
       reportId,
@@ -222,6 +234,48 @@ export class AssignmentService {
   }
 
   /**
+   * Workflow Action: Officer saves case internal notes with history and autosave.
+   */
+  public static async saveOfficerNotes(
+    reportId: string,
+    officerId: string,
+    content: string
+  ): Promise<void> {
+    const report = await ReportRepository.getReport(reportId);
+    if (!report) throw new Error("Report not found");
+
+    const currentNotes = report.officerNotes || { content: "", updatedAt: new Date().toISOString(), history: [] };
+    const history = [...(currentNotes.history || [])];
+
+    if (currentNotes.content && currentNotes.content !== content) {
+      history.push({
+        content: currentNotes.content,
+        updatedAt: currentNotes.updatedAt,
+      });
+    }
+
+    const updatedNotes = {
+      content,
+      updatedAt: new Date().toISOString(),
+      history,
+    };
+
+    const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
+    await updateDoc(docRef, {
+      officerNotes: updatedNotes,
+      "timestamps.updatedAt": new Date().toISOString(),
+    });
+
+    await TimelineService.logEvent(
+      reportId,
+      officerId,
+      "officer",
+      "Notes Updated",
+      `Internal notes updated (${content.length} characters)`
+    );
+  }
+
+  /**
    * Workflow Action: Officer uploads progress media assets.
    */
   public static async uploadProgressMedia(
@@ -251,9 +305,10 @@ export class AssignmentService {
     reportId: string,
     officerId: string,
     notes: string,
-    media: MediaAsset[],
-    category?: string,
-    proofPhotoUrl?: string
+    repairEvidence: { before: MediaAsset[]; after: MediaAsset[] },
+    duration: number,
+    aiSummary: { summary: string; workCompleted: string; citizenExplanation: string },
+    category?: string
   ): Promise<void> {
     if (!notes || notes.trim().length === 0) {
       throw new Error("Resolution Notes must be provided to close this incident.");
@@ -262,16 +317,35 @@ export class AssignmentService {
     const report = await ReportRepository.getReport(reportId);
     if (!report) throw new Error("Report not found");
 
+    if (report.status !== "in_progress") {
+      throw new Error(`Invalid transition: Cannot resolve report from status "${report.status}".`);
+    }
+
     // Decrement workload
     await OfficerService.decrementCases(officerId);
 
     // Save resolution payload
-    await ReportRepository.updateResolution(reportId, {
+    const resolvedAtStr = new Date().toISOString();
+    const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
+    await updateDoc(docRef, {
+      status: "resolved",
       resolvedBy: officerId,
+      resolvedAt: resolvedAtStr,
       resolutionNotes: notes,
-      resolutionMedia: media || [],
-      category,
-      proofPhotoUrl,
+      repairEvidence,
+      resolution: {
+        notes,
+        category: category || "completed",
+        proofPhotoUrl: repairEvidence.after?.[0]?.url || "",
+        resolvedAt: resolvedAtStr,
+        resolvedBy: officerId,
+        duration,
+        repairEvidence,
+        aiSummary,
+        generatedAt: resolvedAtStr,
+        model: "gemini-3.1-flash-lite",
+      },
+      "timestamps.updatedAt": resolvedAtStr,
     });
 
     await TimelineService.logEvent(reportId, officerId, "officer", "Resolved", notes);
