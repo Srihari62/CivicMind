@@ -123,11 +123,17 @@ export class AssignmentService {
     }
 
     // Transition status to accepted
-    const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
-    await updateDoc(docRef, {
+    const updates = {
       status: "accepted",
       "timestamps.updatedAt": new Date().toISOString(),
-    });
+    };
+    if (typeof window === "undefined") {
+      const { safeDb } = await import("@/services/firebase/admin");
+      await safeDb.updateReport(reportId, updates);
+    } else {
+      const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
+      await updateDoc(docRef, updates);
+    }
 
     await TimelineService.logEvent(reportId, officerId, "officer", "Accepted", "Officer accepted the case workload.");
     await NotificationService.notifyCitizenStatusChanged(
@@ -185,11 +191,17 @@ export class AssignmentService {
     }
 
     // Transition status to in_progress
-    const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
-    await updateDoc(docRef, {
+    const updates = {
       status: "in_progress",
       "timestamps.updatedAt": new Date().toISOString(),
-    });
+    };
+    if (typeof window === "undefined") {
+      const { safeDb } = await import("@/services/firebase/admin");
+      await safeDb.updateReport(reportId, updates);
+    } else {
+      const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
+      await updateDoc(docRef, updates);
+    }
 
     await TimelineService.logEvent(reportId, officerId, "officer", "Investigation Started", "Officer started field investigation.");
     await NotificationService.notifyCitizenStatusChanged(
@@ -260,11 +272,17 @@ export class AssignmentService {
       history,
     };
 
-    const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
-    await updateDoc(docRef, {
+    const updates = {
       officerNotes: updatedNotes,
       "timestamps.updatedAt": new Date().toISOString(),
-    });
+    };
+    if (typeof window === "undefined") {
+      const { safeDb } = await import("@/services/firebase/admin");
+      await safeDb.updateReport(reportId, updates);
+    } else {
+      const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
+      await updateDoc(docRef, updates);
+    }
 
     await TimelineService.logEvent(
       reportId,
@@ -283,11 +301,28 @@ export class AssignmentService {
     officerId: string,
     media: MediaAsset[]
   ): Promise<void> {
-    const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
-    await updateDoc(docRef, {
-      "evidence.media": arrayUnion(...media),
-      "timestamps.updatedAt": new Date().toISOString(),
-    });
+    if (typeof window === "undefined") {
+      const { safeDb, adminDb, admin } = await import("@/services/firebase/admin");
+      const useAdmin = await safeDb.checkAdminSupport();
+      if (useAdmin && adminDb) {
+        await adminDb.collection("reports").doc(reportId).update({
+          "evidence.media": admin.firestore.FieldValue.arrayUnion(...media),
+          "timestamps.updatedAt": new Date().toISOString(),
+        });
+      } else {
+        const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
+        await updateDoc(docRef, {
+          "evidence.media": arrayUnion(...media),
+          "timestamps.updatedAt": new Date().toISOString(),
+        });
+      }
+    } else {
+      const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
+      await updateDoc(docRef, {
+        "evidence.media": arrayUnion(...media),
+        "timestamps.updatedAt": new Date().toISOString(),
+      });
+    }
 
     await TimelineService.logEvent(
       reportId,
@@ -326,8 +361,7 @@ export class AssignmentService {
 
     // Save resolution payload
     const resolvedAtStr = new Date().toISOString();
-    const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
-    await updateDoc(docRef, {
+    const updates = {
       status: "resolved",
       resolvedBy: officerId,
       resolvedAt: resolvedAtStr,
@@ -346,7 +380,20 @@ export class AssignmentService {
         model: "gemini-3.1-flash-lite",
       },
       "timestamps.updatedAt": resolvedAtStr,
-    });
+    };
+    if (typeof window === "undefined") {
+      const { safeDb, adminDb } = await import("@/services/firebase/admin");
+      const useAdmin = await safeDb.checkAdminSupport();
+      if (useAdmin && adminDb) {
+        await adminDb.collection("reports").doc(reportId).update(updates);
+      } else {
+        const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
+        await updateDoc(docRef, updates);
+      }
+    } else {
+      const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
+      await updateDoc(docRef, updates);
+    }
 
     await TimelineService.logEvent(reportId, officerId, "officer", "Resolved", notes);
     await NotificationService.notifyCitizenStatusChanged(

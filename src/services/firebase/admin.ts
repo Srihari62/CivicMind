@@ -1,4 +1,3 @@
-import "server-only";
 import * as admin from "firebase-admin";
 import { db as clientDb } from "./firestore";
 import {
@@ -182,6 +181,45 @@ To run the server-side AI Verification Pipeline locally:
       await cUpdateDoc(docRef, {
         activeCases: cIncrement(1),
       });
+    }
+  },
+
+  async decrementOfficerCases(officerId: string): Promise<void> {
+    const useAdmin = await this.checkAdminSupport();
+    if (useAdmin && adminDb) {
+      await adminDb.collection("users").doc(officerId).update({
+        activeCases: admin.firestore.FieldValue.increment(-1),
+      });
+    } else {
+      const docRef = cDoc(clientDb, "users", officerId);
+      await cUpdateDoc(docRef, {
+        activeCases: cIncrement(-1),
+      });
+    }
+  },
+
+  async getUserProfile(uid: string): Promise<FirestoreUserProfile | null> {
+    const useAdmin = await this.checkAdminSupport();
+    if (useAdmin && adminDb) {
+      const docSnap = await adminDb.collection("users").doc(uid).get();
+      return docSnap.exists ? (docSnap.data() as FirestoreUserProfile) : null;
+    } else {
+      const docRef = cDoc(clientDb, "users", uid);
+      const docSnap = await cGetDoc(docRef);
+      return docSnap.exists() ? (docSnap.data() as FirestoreUserProfile) : null;
+    }
+  },
+
+  async updateUserProfile(
+    uid: string,
+    updates: Record<string, unknown>
+  ): Promise<void> {
+    const useAdmin = await this.checkAdminSupport();
+    if (useAdmin && adminDb) {
+      await adminDb.collection("users").doc(uid).update(updates);
+    } else {
+      const docRef = cDoc(clientDb, "users", uid);
+      await cUpdateDoc(docRef, updates);
     }
   },
 };

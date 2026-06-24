@@ -29,6 +29,10 @@ export class UserRepository {
    * @returns User profile document or null if not found
    */
   public static async getUserProfile(uid: string): Promise<FirestoreUserProfile | null> {
+    if (typeof window === "undefined") {
+      const { safeDb } = await import("@/services/firebase/admin");
+      return await safeDb.getUserProfile(uid);
+    }
     const docRef = doc(db, COLLECTIONS.USERS, uid);
     const docSnap = await getDoc(docRef);
     
@@ -69,14 +73,17 @@ export class UserRepository {
     uid: string,
     updates: Partial<Omit<FirestoreUserProfile, "uid" | "createdAt">>
   ): Promise<void> {
-    const docRef = doc(db, COLLECTIONS.USERS, uid);
     const now = new Date().toISOString();
-    
     const data = {
       ...updates,
       updatedAt: now,
     };
-    
+    if (typeof window === "undefined") {
+      const { safeDb } = await import("@/services/firebase/admin");
+      await safeDb.updateUserProfile(uid, data);
+      return;
+    }
+    const docRef = doc(db, COLLECTIONS.USERS, uid);
     await updateDoc(docRef, data);
   }
 
@@ -135,6 +142,11 @@ export class UserRepository {
    * @param uid - Officer UID
    */
   public static async incrementActiveCases(uid: string): Promise<void> {
+    if (typeof window === "undefined") {
+      const { safeDb } = await import("@/services/firebase/admin");
+      await safeDb.incrementOfficerCases(uid);
+      return;
+    }
     const docRef = doc(db, COLLECTIONS.USERS, uid);
     await updateDoc(docRef, {
       activeCases: increment(1),
@@ -147,6 +159,11 @@ export class UserRepository {
    * @param uid - Officer UID
    */
   public static async decrementActiveCases(uid: string): Promise<void> {
+    if (typeof window === "undefined") {
+      const { safeDb } = await import("@/services/firebase/admin");
+      await safeDb.decrementOfficerCases(uid);
+      return;
+    }
     const docRef = doc(db, COLLECTIONS.USERS, uid);
     await updateDoc(docRef, {
       activeCases: increment(-1),

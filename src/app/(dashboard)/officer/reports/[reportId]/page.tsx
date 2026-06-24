@@ -8,7 +8,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { RouteGuard } from "@/features/auth/components/route-guard";
 import { useAuth } from "@/providers/auth-provider";
 import { ReportService } from "@/features/reports/services/report.service";
@@ -38,8 +37,9 @@ import {
   Lock,
 } from "lucide-react";
 
-// Dynamically import Leaflet Map to avoid SSR errors
-const LeafletMap = dynamic(() => import("@/components/ui/leaflet-map"), {
+import dynamic from "next/dynamic";
+
+const MapViewer = dynamic(() => import("@/components/maps/MapViewer"), {
   ssr: false,
   loading: () => (
     <div className="h-[320px] bg-slate-950/45 animate-pulse rounded-2xl flex items-center justify-center border border-slate-800">
@@ -617,15 +617,14 @@ export default function OfficerReportDetailsPage() {
                   <h3 className="text-xs font-bold text-slate-405 uppercase tracking-wider">
                     Geospatial Location
                   </h3>
-                  <LeafletMap
+                  <MapViewer
                     latitude={report.location.latitude}
                     longitude={report.location.longitude}
                     title={report.metadata.title}
                     category={report.metadata.category}
+                    severity={report.ai.assistant?.severity || "medium"}
+                    address={report.location.formattedAddress}
                   />
-                  <div className="text-xs text-slate-500 px-1 select-all">
-                    Address: {report.location.formattedAddress}
-                  </div>
                 </div>
 
                 {/* Workflow Actions panel */}

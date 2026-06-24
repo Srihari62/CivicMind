@@ -14,7 +14,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/auth-provider";
 import { reportFormSchema, ReportFormInput } from "../schemas/report.schema";
 import { ReportService } from "../services/report.service";
-import { LocationService } from "@/services/maps/location.service";
 import { MediaService } from "@/features/media/services/media.service";
 import { analyzeReportEvidence, startReportVerification } from "@/app/actions/ai.actions";
 import { MediaAsset } from "@/types";
@@ -31,8 +30,17 @@ import {
 } from "@/constants";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import dynamic from "next/dynamic";
 
-
+const MapPicker = dynamic(() => import("@/components/maps/MapPicker"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[360px] bg-slate-950/45 animate-pulse rounded-2xl flex items-center justify-center border border-slate-800">
+      <span className="text-xs text-slate-500">Initializing mapping engine...</span>
+    </div>
+  ),
+});
+import { ReportLocation } from "@/types";
 
 export function ReportForm() {
   const router = useRouter();
@@ -43,7 +51,6 @@ export function ReportForm() {
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [globalError, setGlobalError] = useState<string | null>(null);
 
-  const [isLocating, setIsLocating] = useState<boolean>(false);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
@@ -52,6 +59,7 @@ export function ReportForm() {
   const [aiConfidence, setAiConfidence] = useState<number | null>(null);
   const [aiMessage, setAiMessage] = useState<string | null>(null);
   const [aiAnalysisResult, setAiAnalysisResult] = useState<EvidenceAnalysisResult | null>(null);
+  const [resolvedLocation, setResolvedLocation] = useState<ReportLocation | null>(null);
 
   const {
     register,
@@ -71,27 +79,6 @@ export function ReportForm() {
       longitude: 0,
     },
   });
-
-  /**
-   * Fetches GPS coordinates and sets form fields.
-   */
-  const handleGetLocation = async () => {
-    setIsLocating(true);
-    setGlobalError(null);
-    try {
-      const coords = await LocationService.getCurrentLocation();
-      setValue("latitude", coords.latitude);
-      setValue("longitude", coords.longitude);
-      if (coords.address) {
-        setValue("location", coords.address);
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to retrieve GPS location.";
-      setGlobalError(msg);
-    } finally {
-      setIsLocating(false);
-    }
-  };
 
   /**
    * Validates, uploads, and triggers AI analysis immediately.
@@ -264,6 +251,14 @@ export function ReportForm() {
           latitude: data.latitude,
           longitude: data.longitude,
           formattedAddress: data.location,
+          placeId: resolvedLocation?.placeId || "",
+          locality: resolvedLocation?.locality || "",
+          subLocality: resolvedLocation?.subLocality || "",
+          city: resolvedLocation?.city || "",
+          district: resolvedLocation?.district || "",
+          state: resolvedLocation?.state || "",
+          country: resolvedLocation?.country || "",
+          postalCode: resolvedLocation?.postalCode || "",
         },
         severity: data.severity,
         aiAssistant: aiAssistantPayload,
@@ -435,48 +430,25 @@ export function ReportForm() {
         </div>
       )}
 
-      {/* 3. Location GPS Retrieval (Auto-Detect Option) */}
+      {/* 3. Location Leaflet Map Picker */}
       <div className="flex flex-col gap-3 p-4 border border-border bg-muted/20 rounded-md">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-foreground">2. Location Information</span>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleGetLocation}
-            isLoading={isLocating}
-            disabled={isFormDisabled}
-          >
-            Auto-Detect GPS
-          </Button>
-        </div>
-
-        <Input
-          label="Location/Address Description"
-          placeholder="e.g. Near intersection of 5th Ave and Elm St"
-          error={errors.location?.message}
-          disabled={isFormDisabled}
-          {...register("location")}
+        <span className="text-xs font-semibold text-foreground">2. Location Information</span>
+        <MapPicker
+          initialLatitude={getValues("latitude") || 12.9716}
+          initialLongitude={getValues("longitude") || 77.5946}
+          initialLocation={resolvedLocation}
+          onLocationChange={(loc) => {
+            setValue("latitude", loc.latitude);
+            setValue("longitude", loc.longitude);
+            setValue("location", loc.formattedAddress);
+            setResolvedLocation(loc);
+          }}
         />
-
-        <div className="grid grid-cols-2 gap-4">
-          <Input
-            label="Latitude"
-            type="number"
-            step="any"
-            error={errors.latitude?.message}
-            disabled={isFormDisabled}
-            {...register("latitude", { valueAsNumber: true })}
-          />
-          <Input
-            label="Longitude"
-            type="number"
-            step="any"
-            error={errors.longitude?.message}
-            disabled={isFormDisabled}
-            {...register("longitude", { valueAsNumber: true })}
-          />
-        </div>
+        {errors.location && (
+          <span className="text-xs text-destructive font-medium mt-0.5" role="alert">
+            {errors.location.message}
+          </span>
+        )}
       </div>
 
       {/* 4. Pre-fill & Metadata Fields */}

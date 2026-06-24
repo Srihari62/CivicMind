@@ -59,7 +59,10 @@ export interface MediaAsset {
 export interface ReportLocation {
   latitude: number;
   longitude: number;
+  placeId?: string;
   formattedAddress: string;
+  locality?: string;
+  subLocality?: string;
   city?: string;
   district?: string;
   state?: string;

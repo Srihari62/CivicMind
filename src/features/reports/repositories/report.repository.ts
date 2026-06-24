@@ -128,14 +128,19 @@ export class ReportRepository {
     reportId: string,
     media: MediaAsset[]
   ): Promise<void> {
-    const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
     const now = new Date().toISOString();
-
-    await updateDoc(docRef, {
+    const updates = {
       "evidence.media": media,
       status: REPORT_STATUS.SUBMITTED,
       "timestamps.updatedAt": now,
-    });
+    };
+    if (typeof window === "undefined") {
+      const { safeDb } = await import("@/services/firebase/admin");
+      await safeDb.updateReport(reportId, updates);
+      return;
+    }
+    const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
+    await updateDoc(docRef, updates);
   }
 
   /**
@@ -144,6 +149,10 @@ export class ReportRepository {
    * @returns The report document or null if not found
    */
   public static async getReport(id: string): Promise<CivicReport | null> {
+    if (typeof window === "undefined") {
+      const { safeDb } = await import("@/services/firebase/admin");
+      return await safeDb.getReport(id);
+    }
     const docRef = doc(db, COLLECTIONS.REPORTS, id);
     const docSnap = await getDoc(docRef);
 
@@ -162,11 +171,16 @@ export class ReportRepository {
     reportId: string,
     fields: Partial<CivicReport["ai"]["verification"]>
   ): Promise<void> {
-    const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
     const updates: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(fields)) {
       updates[`ai.verification.${key}`] = value;
     }
+    if (typeof window === "undefined") {
+      const { safeDb } = await import("@/services/firebase/admin");
+      await safeDb.updateReport(reportId, updates);
+      return;
+    }
+    const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
     await updateDoc(docRef, updates);
   }
 
@@ -194,15 +208,21 @@ export class ReportRepository {
     assignmentMethod: "automatic" | "manual",
     status: string
   ): Promise<void> {
-    const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
-    await updateDoc(docRef, {
+    const updates = {
       "ai.assignment.officerId": officerId,
       "ai.assignment.department": department,
       "ai.assignment.assignedAt": new Date().toISOString(),
       "ai.assignment.assignmentMethod": assignmentMethod,
       status,
       "timestamps.updatedAt": new Date().toISOString(),
-    });
+    };
+    if (typeof window === "undefined") {
+      const { safeDb } = await import("@/services/firebase/admin");
+      await safeDb.updateReport(reportId, updates);
+      return;
+    }
+    const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
+    await updateDoc(docRef, updates);
   }
 
   /**
@@ -212,6 +232,11 @@ export class ReportRepository {
     reportId: string,
     event: TimelineEvent
   ): Promise<void> {
+    if (typeof window === "undefined") {
+      const { safeDb } = await import("@/services/firebase/admin");
+      await safeDb.updateReport(reportId, {}, [event]);
+      return;
+    }
     const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
     await updateDoc(docRef, {
       timeline: arrayUnion(event),
@@ -232,9 +257,8 @@ export class ReportRepository {
       proofPhotoUrl?: string;
     }
   ): Promise<void> {
-    const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
     const resolvedAtStr = new Date().toISOString();
-    await updateDoc(docRef, {
+    const updates = {
       status: "resolved",
       resolvedBy: payload.resolvedBy,
       resolvedAt: resolvedAtStr,
@@ -247,7 +271,14 @@ export class ReportRepository {
         resolvedAt: resolvedAtStr,
       },
       "timestamps.updatedAt": resolvedAtStr,
-    });
+    };
+    if (typeof window === "undefined") {
+      const { safeDb } = await import("@/services/firebase/admin");
+      await safeDb.updateReport(reportId, updates);
+      return;
+    }
+    const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
+    await updateDoc(docRef, updates);
   }
 }
 export default ReportRepository;
