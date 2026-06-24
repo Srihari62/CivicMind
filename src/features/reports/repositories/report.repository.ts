@@ -102,6 +102,16 @@ export class ReportRepository {
           actorRole: "citizen",
           action: "Citizen Reported",
         },
+        ...(draftData.aiAssistant
+          ? [
+              {
+                timestamp: now,
+                actorId: "ai",
+                actorRole: "ai" as const,
+                action: "AI Assistant Completed",
+              },
+            ]
+          : []),
       ],
     };
 

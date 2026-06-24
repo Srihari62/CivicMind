@@ -15,6 +15,7 @@ import { ReportService } from "@/features/reports/services/report.service";
 import { CivicReport } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ISSUE_CATEGORIES, REPORT_STATUSES } from "@/constants";
+import { AlertCircle } from "lucide-react";
 
 export default function ReportDetailsPage() {
   const params = useParams();
@@ -126,6 +127,23 @@ export default function ReportDetailsPage() {
                   Report ID: {report.id} • Filed on {new Date(report.timestamps.createdAt).toLocaleString()}
                 </p>
               </div>
+
+              {/* Repost Banner */}
+              {report.ai?.verification?.duplicateReportIds && report.ai.verification.duplicateReportIds.length > 0 && (
+                <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-lg text-sm">
+                  <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-semibold">Linked Repost</span>
+                    <span className="text-xs opacity-90">
+                      This report has been identified as a duplicate of an existing active issue (Report ID:{" "}
+                      <Link href={`/reports/${report.ai.verification.duplicateReportIds[0]}`} className="underline font-bold font-mono">
+                        {report.ai.verification.duplicateReportIds[0]}
+                      </Link>
+                      ). The reported count for the original issue has been updated.
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Description */}
               <div className="flex flex-col gap-2">

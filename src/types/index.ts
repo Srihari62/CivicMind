@@ -105,6 +105,7 @@ export interface TimelineEvent {
 export interface CivicReport {
   id: string;
   status: ReportStatus;
+  reportedCount?: number;
   
   metadata: {
     title: string;

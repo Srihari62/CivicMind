@@ -728,6 +728,7 @@ export default function AdminDashboardPage() {
                                 <td className="px-6 py-4 flex items-center gap-3">
                                   <div className="h-8 w-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-slate-300 text-xs overflow-hidden">
                                     {u.photoURL || u.photo ? (
+                                      /* eslint-disable-next-line @next/next/no-img-element */
                                       <img src={u.photoURL || u.photo} alt={u.displayName} className="h-full w-full object-cover" />
                                     ) : (
                                       (u.displayName || u.email || "?").charAt(0).toUpperCase()

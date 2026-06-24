@@ -1,42 +1,39 @@
 /**
  * @file src/ai/agents/department-routing.agent.ts
- * @description Agent responsible for routing reports to correct municipal departments.
+ * @description Deterministic Department Routing Agent.
  */
 
 import { CivicReport } from "@/types";
-import { doc, updateDoc } from "firebase/firestore";
-import { db, COLLECTIONS } from "@/services/firebase/firestore";
-import { AssignmentService } from "@/features/reports/services/assignment.service";
-import { AppError } from "@/utils/error";
 
 export class DepartmentRoutingAgent {
   public readonly name = "Department Routing Agent";
 
+  // Configurable mapping of category to department name
+  private readonly routingMap: Record<string, string>;
+
+  constructor(customMap?: Record<string, string>) {
+    this.routingMap = customMap || {
+      road_damage: "Roads",
+      garbage: "Sanitation",
+      street_light: "Electrical",
+      water_leakage: "Water Supply",
+      water_leak: "Water Supply",
+      drainage: "Drainage",
+      illegal_dumping: "Sanitation",
+      park_damage: "Parks",
+      fallen_tree: "Parks",
+      traffic_signal: "Traffic",
+    };
+  }
+
   /**
-   * Runs routing for the report and updates Firestore.
+   * Executes department routing deterministically in memory.
    */
-  public async execute(reportId: string, report: CivicReport): Promise<string> {
-    console.info(`[${this.name}] Starting routing for report ${reportId}`);
-    try {
-      const category = report.metadata?.category || "other";
-      const department = AssignmentService.mapCategoryToDepartment(category);
-
-      const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
-      await updateDoc(docRef, {
-        "ai.verification.assignedDepartment": department,
-        "ai.assignment.department": department,
-      });
-
-      console.info(`[${this.name}] Routed to: ${department}`);
-      return department;
-    } catch (error) {
-      throw new AppError({
-        message: `Routing failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-        code: "ROUTING_FAILED",
-        statusCode: 500,
-        context: { reportId, error },
-      });
-    }
+  public execute(report: CivicReport): string {
+    const category = report.metadata?.category || "other";
+    const department = this.routingMap[category] || "Roads";
+    console.info(`[${this.name}] Routed category "${category}" to department "${department}"`);
+    return department;
   }
 }
 

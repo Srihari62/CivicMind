@@ -1,55 +1,42 @@
 /**
  * @file src/ai/agents/priority-engine.agent.ts
- * @description Agent that calculates and updates the final report priority and trust score.
+ * @description Deterministic Priority Engine Agent.
  */
 
-import { CivicReport } from "@/types";
-import { doc, updateDoc } from "firebase/firestore";
-import { db, COLLECTIONS } from "@/services/firebase/firestore";
+import { CivicReport, PriorityLevel } from "@/types";
 import { PriorityEngine } from "../utils/priority-engine";
-import { AppError } from "@/utils/error";
 
 export class PriorityEngineAgent {
   public readonly name = "Priority Engine Agent";
 
   /**
-   * Calculates priority and trust score, then persists to Firestore.
+   * Executes priority calculation deterministically in memory.
    */
-  public async execute(reportId: string, report: CivicReport): Promise<{ priority: string; trustScore: number }> {
-    console.info(`[${this.name}] Starting priority calculation for report ${reportId}`);
-    try {
-      // Extract parameters from the updated report (fetched from Firestore in orchestrator)
-      const severity = report.ai?.assistant?.severity || "medium";
-      const confidence = report.ai?.verification?.fakeMediaConfidence ?? 1.0;
-      const fakeProbability = report.ai?.verification?.fakeMediaProbability ?? 0.0;
-      const duplicateProbability = report.ai?.verification?.duplicateProbability ?? 0.0;
+  public execute(
+    report: CivicReport,
+    verificationResult: {
+      suggestedSeverity: string;
+      confidence: number;
+      fakeMediaProbability: number;
+    },
+    duplicateProbability: number
+  ): { priority: PriorityLevel; trustScore: number } {
+    const severity = verificationResult.suggestedSeverity;
+    const confidence = verificationResult.confidence;
+    const fakeProbability = verificationResult.fakeMediaProbability;
 
-      const priority = PriorityEngine.calculate({
-        severity,
-        confidence,
-        fakeProbability,
-        duplicateProbability,
-      });
+    const priority = PriorityEngine.calculate({
+      severity,
+      confidence,
+      fakeProbability,
+      duplicateProbability,
+    });
 
-      // Calculate final trust score: confidence penalized by fake and duplicate probabilities
-      const trustScore = confidence * (1 - fakeProbability) * (1 - duplicateProbability);
+    // Calculate final trust score: confidence penalized by fake and duplicate probabilities
+    const trustScore = confidence * (1 - fakeProbability) * (1 - duplicateProbability);
 
-      const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
-      await updateDoc(docRef, {
-        "ai.verification.priority": priority,
-        "ai.verification.trustScore": trustScore,
-      });
-
-      console.info(`[${this.name}] Priority: ${priority}, Trust Score: ${trustScore}`);
-      return { priority, trustScore };
-    } catch (error) {
-      throw new AppError({
-        message: `Priority calculation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-        code: "PRIORITY_CALCULATION_FAILED",
-        statusCode: 500,
-        context: { reportId, error },
-      });
-    }
+    console.info(`[${this.name}] Calculated priority: ${priority}, trust score: ${trustScore}`);
+    return { priority, trustScore };
   }
 }
 

@@ -64,8 +64,17 @@ export default function CitizenDashboardPage() {
     return matched ? matched.label : value;
   };
 
-  const renderStatusBadge = (status: string) => {
+  const renderStatusBadge = (status: string, duplicateReportIds?: string[] | null) => {
     const lowerStatus = String(status || "").toLowerCase().trim();
+
+    if (duplicateReportIds && duplicateReportIds.length > 0) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500">
+          <AlertCircle className="w-3.5 h-3.5" />
+          Linked Repost
+        </span>
+      );
+    }
 
     if (lowerStatus === "processing") {
       return (
@@ -229,6 +238,12 @@ export default function CitizenDashboardPage() {
                       <p className="text-xs text-muted-foreground line-clamp-2">
                         {report.ai?.assistant?.description || report.metadata.description || "No description provided."}
                       </p>
+                      {report.ai?.verification?.duplicateReportIds && report.ai.verification.duplicateReportIds.length > 0 && (
+                        <p className="text-xs text-amber-500/90 font-semibold mt-1 flex items-center gap-1.5 bg-amber-500/5 border border-amber-500/10 px-2 py-1 rounded w-fit">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          Linked Repost of #{report.ai.verification.duplicateReportIds[0]}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
@@ -236,7 +251,10 @@ export default function CitizenDashboardPage() {
                         <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
                           Verification Status
                         </span>
-                        {renderStatusBadge(report.ai?.verification?.status || "processing")}
+                        {renderStatusBadge(
+                          report.ai?.verification?.status || "processing",
+                          report.ai?.verification?.duplicateReportIds
+                        )}
                       </div>
                       <div className="w-8 h-8 rounded-full bg-secondary/50 group-hover:bg-primary/10 group-hover:text-primary transition-all duration-200 flex items-center justify-center text-muted-foreground">
                         <ArrowRight className="w-4 h-4" />

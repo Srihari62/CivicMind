@@ -1,31 +1,30 @@
 /**
  * @file src/ai/agents/officer-assignment.agent.ts
- * @description Background agent that routes and assigns reports to available officers.
+ * @description Deterministic Officer Assignment Agent using the Firebase Admin SDK.
  */
 
 import { CivicReport } from "@/types";
-import { doc, updateDoc } from "firebase/firestore";
-import { db, COLLECTIONS } from "@/services/firebase/firestore";
-import { OfficerService } from "@/features/reports/services/officer.service";
-import { TimelineService } from "@/features/reports/services/timeline.service";
-import { NotificationService } from "@/features/reports/services/notification.service";
+import { safeDb } from "@/services/firebase/admin";
 import { AppError } from "@/utils/error";
 
 export class OfficerAssignmentAgent {
   public readonly name = "Officer Assignment Agent";
 
   /**
-   * Assigns an officer to the report and computes final verification status.
+   * Assigns an officer deterministically and returns assignment info.
    */
-  public async execute(reportId: string, report: CivicReport): Promise<string | null> {
-    console.info(`[${this.name}] Starting officer assignment for report ${reportId}`);
+  public async execute(
+    report: CivicReport,
+    department: string
+  ): Promise<{
+    officerId: string | null;
+    officerName: string;
+    status: string;
+  }> {
+    console.info(`[${this.name}] Executing assignment for department "${department}"`);
     try {
-      // 1. Determine department (already computed and saved by DepartmentRoutingAgent)
-      const department = report.ai?.assignment?.department || "Roads";
-
-      // 2. Fetch available officers in department
-      const availableOfficers = await OfficerService.getAvailableOfficers(department);
-      const now = new Date().toISOString();
+      // 1. Fetch available officers in department
+      const availableOfficers = await safeDb.getAvailableOfficers(department);
 
       let assignedOfficerId: string | null = null;
       let assignedOfficerName = "";
@@ -58,66 +57,19 @@ export class OfficerAssignmentAgent {
         assignedOfficerId = selectedOfficer.uid;
         assignedOfficerName = selectedOfficer.displayName || selectedOfficer.email;
         status = "submitted";
-
-        // Increment officer workload
-        await OfficerService.incrementCases(assignedOfficerId);
       }
 
-      // 3. Compute final verification status
-      const fakeProb = report.ai?.verification?.fakeMediaProbability ?? 0.0;
-      const dupProb = report.ai?.verification?.duplicateProbability ?? 0.0;
-      const confidence = report.ai?.verification?.fakeMediaConfidence ?? 1.0;
-
-      let verificationStatus: "verified" | "rejected" | "requires_review" = "verified";
-
-      if (fakeProb >= 0.7 || dupProb >= 0.85) {
-        verificationStatus = "rejected";
-      } else if (fakeProb >= 0.4 || dupProb >= 0.5 || confidence < 0.6) {
-        verificationStatus = "requires_review";
-      }
-
-      // 4. Update Firestore incremental fields
-      const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
-      await updateDoc(docRef, {
-        "status": status,
-        "ai.verification.status": verificationStatus,
-        "timestamps.updatedAt": now,
-        "ai.assignment": {
-          officerId: assignedOfficerId,
-          department: department,
-          assignedAt: now,
-          assignmentMethod: "automatic",
-        },
-      });
-
-      // 5. Post-assignment hooks (timeline log, notifications)
-      if (assignedOfficerId) {
-        await TimelineService.logEvent(
-          reportId,
-          "system",
-          "system",
-          `Automatically Assigned to ${assignedOfficerName} (${department})`
-        );
-        await NotificationService.notifyOfficerAssigned(assignedOfficerId, reportId);
-      } else {
-        await TimelineService.logEvent(
-          reportId,
-          "system",
-          "system",
-          "Auto assignment failed. No available officers in department.",
-          `Department: ${department}`
-        );
-        await NotificationService.notifyAdminAssignmentFailed(reportId, department);
-      }
-
-      console.info(`[${this.name}] Completed. Officer: ${assignedOfficerId}, Status: ${status}, Verification: ${verificationStatus}`);
-      return assignedOfficerId;
+      return {
+        officerId: assignedOfficerId,
+        officerName: assignedOfficerName,
+        status,
+      };
     } catch (error) {
       throw new AppError({
-        message: `Officer assignment failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-        code: "OFFICER_ASSIGNMENT_FAILED",
+        message: `Officer assignment query failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        code: "ASSIGNMENT_QUERY_FAILED",
         statusCode: 500,
-        context: { reportId, error },
+        context: { reportId: report.id, error },
       });
     }
   }

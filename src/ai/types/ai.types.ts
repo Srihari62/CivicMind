@@ -42,3 +42,15 @@ export interface ClassificationResult {
   summary: string;
 }
 
+export interface VerificationAnalysisResult {
+  fakeMediaProbability: number;
+  fakeMediaConfidence: number;
+  fakeMediaReason: string;
+  confidence: number;
+  summary: string;
+  suggestedSeverity: "low" | "medium" | "high" | "critical";
+  trustScore: number;
+  verificationNotes: string;
+}
+
+

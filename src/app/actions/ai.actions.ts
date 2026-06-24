@@ -103,8 +103,6 @@ export async function analyzeReportEvidence(
   }
 }
 
-import { ensureServerAuthenticated } from "@/services/firebase/auth";
-
 /**
  * Starts the asynchronous AI verification pipeline for a submitted report on the server.
  * This is a fire-and-forget background execution, so it does not block the client.
@@ -113,7 +111,6 @@ import { ensureServerAuthenticated } from "@/services/firebase/auth";
 export async function startReportVerification(reportId: string): Promise<void> {
   // Execute the verification orchestrator in the background on the server
   (async () => {
-    await ensureServerAuthenticated();
     await VerificationOrchestrator.verifyReport(reportId);
   })().catch((err) => {
     console.error(`[ai.actions] Background verification orchestrator failed for report ${reportId}:`, err);
