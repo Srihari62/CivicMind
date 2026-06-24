@@ -4,7 +4,10 @@
  * Handles api communication, multi-modal downloads, retry policies, and schema parsing.
  */
 
-import { getGeminiModel, GEMINI_MODELS } from "@/services/gemini/config";
+import "server-only";
+
+import { getGeminiModel } from "@/services/gemini/config";
+import { AI_MODELS } from "@/config/ai-models";
 import { AppError } from "@/utils/error";
 import { GeminiResponseParser } from "../parser/gemini-response.parser";
 
@@ -25,7 +28,7 @@ export class GeminiService {
     prompt: string,
     media: { url: string; mimeType: string }[] = [],
     requiredKeys: string[] = [],
-    modelName: string = GEMINI_MODELS.FLASH,
+    modelName: string = AI_MODELS.VERIFICATION,
     temperature = 0.1,
     maxRetries = 3,
     maxOutputTokens?: number

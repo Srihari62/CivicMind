@@ -29,17 +29,16 @@ export class ReportService {
       location: ReportLocation;
       severity?: string;
       aiAssistant?: {
-        generatedTitle: string;
-        generatedDescription: string;
-        generatedCategory: string;
-        generatedCategoryLabel?: string | null;
-        generatedSeverity: string;
+        title: string;
+        description: string;
+        category: string;
+        severity: string;
         confidence: number;
         summary: string;
         detectedObjects?: string[];
-        analyzedAt: string;
         model: string;
         promptVersion: string;
+        analyzedAt: string;
         initialPriority: string;
       } | null;
     },
@@ -56,6 +55,14 @@ export class ReportService {
    */
   public static async getReport(id: string): Promise<CivicReport | null> {
     return await ReportRepository.getReport(id);
+  }
+
+  /**
+   * Retrieves all reports.
+   * @returns Array of CivicReport objects
+   */
+  public static async getAllReports(): Promise<CivicReport[]> {
+    return await ReportRepository.getAllReports();
   }
 }
 export default ReportService;

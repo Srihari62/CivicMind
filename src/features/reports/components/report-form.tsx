@@ -16,10 +16,11 @@ import { reportFormSchema, ReportFormInput } from "../schemas/report.schema";
 import { ReportService } from "../services/report.service";
 import { LocationService } from "@/services/maps/location.service";
 import { MediaService } from "@/features/media/services/media.service";
-import { analyzeReportEvidence } from "@/app/actions/ai.actions";
+import { analyzeReportEvidence, startReportVerification } from "@/app/actions/ai.actions";
 import { MediaAsset } from "@/types";
 import { EvidenceAnalysisResult } from "@/ai/types/ai.types";
 import { calculateInitialPriority } from "@/ai/utils/priority";
+import { AI_MODELS } from "@/config/ai-models";
 import {
   ISSUE_CATEGORIES,
   MAX_MEDIA_COUNT,
@@ -237,17 +238,16 @@ export function ReportForm() {
         const initialPriority = calculateInitialPriority(aiAnalysisResult.severity, aiAnalysisResult.confidence);
 
         aiAssistantPayload = {
-          generatedTitle: aiAnalysisResult.title,
-          generatedDescription: aiAnalysisResult.description,
-          generatedCategory: aiAnalysisResult.classification,
-          generatedCategoryLabel: aiAnalysisResult.classificationLabel || null,
-          generatedSeverity: aiAnalysisResult.severity,
+          title: aiAnalysisResult.title,
+          description: aiAnalysisResult.description,
+          category: aiAnalysisResult.classification,
+          severity: aiAnalysisResult.severity,
           confidence: aiAnalysisResult.confidence,
           summary: aiAnalysisResult.summary,
           detectedObjects: aiAnalysisResult.detectedObjects || [],
-          analyzedAt: aiAnalysisResult.analyzedAt,
-          model: "gemini-3.5-flash",
+          model: AI_MODELS.ASSISTANT,
           promptVersion: "1.0.0",
+          analyzedAt: aiAnalysisResult.analyzedAt,
           initialPriority,
         };
       }
@@ -271,6 +271,11 @@ export function ReportForm() {
 
       // Pass pre-uploaded Cloudinary assets directly to createReport
       const reportId = await ReportService.createReport(payload, uploadedAssets, profile.uid);
+
+      // Trigger server action (fire-and-forget)
+      startReportVerification(reportId).catch((err) => {
+        console.error("Failed to start verification:", err);
+      });
 
       // Redirect to success route
       router.push(`/reports/${reportId}?success=true`);

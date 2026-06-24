@@ -5,7 +5,8 @@
  * and standardizes the execution pathway.
  */
 
-import { getGeminiModel, GEMINI_MODELS } from "@/services/gemini/config";
+import { getGeminiModel } from "@/services/gemini/config";
+import { AI_MODELS } from "@/config/ai-models";
 import { AppError, parseGeminiError } from "@/utils/error";
 
 export interface AgentConfig {
@@ -29,7 +30,7 @@ export class CivicAgent {
   constructor(config: AgentConfig) {
     this.name = config.name;
     this.systemPrompt = config.systemPrompt;
-    this.modelName = config.modelName || GEMINI_MODELS.FLASH;
+    this.modelName = config.modelName || AI_MODELS.VERIFICATION;
     this.temperature = config.temperature ?? 0.2; // Default low temperature for deterministic responses
     this.maxOutputTokens = config.maxOutputTokens;
   }

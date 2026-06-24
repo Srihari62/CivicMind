@@ -84,7 +84,7 @@ export default function ReportDetailsPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div className="flex flex-col gap-0.5">
-                <span className="font-semibold">Success! Issue Report Submitted</span>
+                <span className="font-semibold">Report submitted successfully.</span>
                 <span className="text-xs opacity-90">
                   Your report has been successfully recorded in the municipal queue. AI triage agents will begin automatic categorization and priority routing.
                 </span>

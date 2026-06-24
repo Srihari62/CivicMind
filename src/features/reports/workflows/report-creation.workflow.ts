@@ -31,17 +31,16 @@ export class ReportCreationWorkflow {
       location: ReportLocation;
       severity?: string;
       aiAssistant?: {
-        generatedTitle: string;
-        generatedDescription: string;
-        generatedCategory: string;
-        generatedCategoryLabel?: string | null;
-        generatedSeverity: string;
+        title: string;
+        description: string;
+        category: string;
+        severity: string;
         confidence: number;
         summary: string;
         detectedObjects?: string[];
-        analyzedAt: string;
         model: string;
         promptVersion: string;
+        analyzedAt: string;
         initialPriority: string;
       } | null;
     },
@@ -70,7 +69,9 @@ export class ReportCreationWorkflow {
       // 4. Submit Report (link media and update status to submitted)
       await ReportRepository.submitReport(reportId, mediaAssets);
 
-      // 5. Return Report ID
+      // 5. Verification Orchestrator is triggered via Server Action asynchronously after submission
+
+      // 6. Return Report ID
       return reportId;
     } catch (error) {
       if (error instanceof AppError) {

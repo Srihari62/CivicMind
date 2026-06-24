@@ -6,7 +6,8 @@
 
 "use server";
 
-import { EvidenceAnalysisAgent } from "@/ai/agents/evidence-analysis.agent";
+import { FastAssistantAgent } from "@/ai/agents/fast-assistant.agent";
+import { VerificationOrchestrator } from "@/ai/orchestrator/verification-orchestrator";
 import { CivicReport, MediaAsset } from "@/types";
 import { EvidenceAnalysisResult } from "@/ai/types/ai.types";
 
@@ -34,7 +35,7 @@ export async function analyzeReportEvidence(
   payload: AIAnalysisPayload
 ): Promise<AIAnalysisResponse> {
   try {
-    const agent = new EvidenceAnalysisAgent();
+    const agent = new FastAssistantAgent();
 
     // Construct a temporary report mock conforming to the CivicReport schema
     const mockReport: CivicReport = {
@@ -57,18 +58,28 @@ export async function analyzeReportEvidence(
       ai: {
         assistant: null,
         verification: {
-          status: "pending",
+          status: "processing",
           fakeMediaProbability: null,
+          fakeMediaConfidence: null,
+          fakeMediaReason: null,
           duplicateProbability: null,
-          priority: null,
+          duplicateReportIds: null,
+          duplicateReason: null,
           assignedDepartment: null,
+          priority: null,
+          trustScore: null,
+          verificationModel: null,
+          verificationVersion: null,
+          summary: null,
           analyzedAt: null,
+          failureReason: null,
         },
-      },
-      verification: {
-        status: "pending",
-        requiredVotes: 3,
-        receivedVotes: 0,
+        assignment: {
+          officerId: null,
+          department: null,
+          assignedAt: null,
+          assignmentMethod: null,
+        },
       },
       timestamps: {
         createdAt: new Date().toISOString(),
@@ -90,4 +101,21 @@ export async function analyzeReportEvidence(
       error: msg,
     };
   }
+}
+
+import { ensureServerAuthenticated } from "@/services/firebase/auth";
+
+/**
+ * Starts the asynchronous AI verification pipeline for a submitted report on the server.
+ * This is a fire-and-forget background execution, so it does not block the client.
+ * @param reportId - ID of the report to verify
+ */
+export async function startReportVerification(reportId: string): Promise<void> {
+  // Execute the verification orchestrator in the background on the server
+  (async () => {
+    await ensureServerAuthenticated();
+    await VerificationOrchestrator.verifyReport(reportId);
+  })().catch((err) => {
+    console.error(`[ai.actions] Background verification orchestrator failed for report ${reportId}:`, err);
+  });
 }

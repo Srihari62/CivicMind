@@ -4,13 +4,22 @@
  * Only repository classes are permitted to perform direct reads/writes with Firestore.
  */
 
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, increment } from "firebase/firestore";
 import { db, COLLECTIONS } from "@/services/firebase/firestore";
 import { UserProfile } from "@/types";
 
 export interface FirestoreUserProfile extends UserProfile {
   photoURL?: string;
   isProfileComplete: boolean;
+
+  // Officer-specific profile fields
+  department?: string;
+  zone?: string;
+  availability?: "available" | "busy" | "offline";
+  activeCases?: number;
+  phone?: string;
+  photo?: string;
+  isActive?: boolean;
 }
 
 export class UserRepository {
@@ -69,5 +78,108 @@ export class UserRepository {
     };
     
     await updateDoc(docRef, data);
+  }
+
+  /**
+   * Retrieves all officers belonging to a specific department.
+   * @param department - Department name
+   */
+  public static async getOfficerByDepartment(department: string): Promise<FirestoreUserProfile[]> {
+    const q = query(
+      collection(db, COLLECTIONS.USERS),
+      where("role", "==", "officer"),
+      where("department", "==", department)
+    );
+    const snapshot = await getDocs(q);
+    const officers: FirestoreUserProfile[] = [];
+    snapshot.forEach((d) => {
+      officers.push(d.data() as FirestoreUserProfile);
+    });
+    return officers;
+  }
+
+  /**
+   * Retrieves all available officers in a specific department.
+   * @param department - Department name
+   */
+  public static async getAvailableOfficers(department: string): Promise<FirestoreUserProfile[]> {
+    const q = query(
+      collection(db, COLLECTIONS.USERS),
+      where("role", "==", "officer"),
+      where("department", "==", department),
+      where("availability", "==", "available"),
+      where("isActive", "==", true)
+    );
+    const snapshot = await getDocs(q);
+    const officers: FirestoreUserProfile[] = [];
+    snapshot.forEach((d) => {
+      officers.push(d.data() as FirestoreUserProfile);
+    });
+    return officers;
+  }
+
+  /**
+   * Updates an officer's availability.
+   * @param uid - Officer UID
+   * @param availability - New availability state
+   */
+  public static async updateOfficerAvailability(
+    uid: string,
+    availability: "available" | "busy" | "offline"
+  ): Promise<void> {
+    await this.updateUserProfile(uid, { availability });
+  }
+
+  /**
+   * Increments the active cases count for an officer.
+   * @param uid - Officer UID
+   */
+  public static async incrementActiveCases(uid: string): Promise<void> {
+    const docRef = doc(db, COLLECTIONS.USERS, uid);
+    await updateDoc(docRef, {
+      activeCases: increment(1),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  /**
+   * Decrements the active cases count for an officer.
+   * @param uid - Officer UID
+   */
+  public static async decrementActiveCases(uid: string): Promise<void> {
+    const docRef = doc(db, COLLECTIONS.USERS, uid);
+    await updateDoc(docRef, {
+      activeCases: increment(-1),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  /**
+   * Retrieves all registered officers in the platform.
+   */
+  public static async getAllOfficers(): Promise<FirestoreUserProfile[]> {
+    const q = query(
+      collection(db, COLLECTIONS.USERS),
+      where("role", "==", "officer")
+    );
+    const snapshot = await getDocs(q);
+    const officers: FirestoreUserProfile[] = [];
+    snapshot.forEach((d) => {
+      officers.push(d.data() as FirestoreUserProfile);
+    });
+    return officers;
+  }
+
+  /**
+   * Retrieves all registered users in the platform.
+   */
+  public static async getAllUsers(): Promise<FirestoreUserProfile[]> {
+    const q = query(collection(db, COLLECTIONS.USERS));
+    const snapshot = await getDocs(q);
+    const users: FirestoreUserProfile[] = [];
+    snapshot.forEach((d) => {
+      users.push(d.data() as FirestoreUserProfile);
+    });
+    return users;
   }
 }

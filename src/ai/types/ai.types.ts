@@ -22,3 +22,23 @@ export interface EvidenceAnalysisResult {
   detectedObjects?: string[];
   analyzedAt: string;
 }
+
+export interface FakeMediaResult {
+  fakeMediaProbability: number;
+  confidence: number;
+  reasoning: string;
+  recommendation: string;
+}
+
+export interface DuplicateDetectionResult {
+  duplicateProbability: number;
+  duplicateReportIds: string[];
+  reasoning: string;
+}
+
+export interface ClassificationResult {
+  finalCategory: string;
+  finalSeverity: "low" | "medium" | "high" | "critical";
+  summary: string;
+}
+

@@ -4,10 +4,10 @@
  * Implements the grouped schema matching production AI layouts.
  */
 
-import { collection, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, arrayUnion } from "firebase/firestore";
 import { db, COLLECTIONS } from "@/services/firebase/firestore";
-import { CivicReport, MediaAsset, ReportLocation } from "@/types";
-import { REPORT_STATUS, VERIFICATION_STATUS } from "@/constants";
+import { CivicReport, MediaAsset, ReportLocation, TimelineEvent } from "@/types";
+import { REPORT_STATUS } from "@/constants";
 
 export class ReportRepository {
   /**
@@ -37,17 +37,16 @@ export class ReportRepository {
       location: ReportLocation;
       severity?: string;
       aiAssistant?: {
-        generatedTitle: string;
-        generatedDescription: string;
-        generatedCategory: string;
-        generatedCategoryLabel?: string | null;
-        generatedSeverity: string;
+        title: string;
+        description: string;
+        category: string;
+        severity: string;
         confidence: number;
         summary: string;
         detectedObjects?: string[];
-        analyzedAt: string;
         model: string;
         promptVersion: string;
+        analyzedAt: string;
         initialPriority: string;
       } | null;
     }
@@ -69,25 +68,41 @@ export class ReportRepository {
       ai: {
         assistant: draftData.aiAssistant ?? null,
         verification: {
-          status: "pending",
+          status: "processing",
           fakeMediaProbability: null,
+          fakeMediaConfidence: null,
+          fakeMediaReason: null,
           duplicateProbability: null,
-          priority: null,
+          duplicateReportIds: null,
+          duplicateReason: null,
           assignedDepartment: null,
-          analyzedAt: null,
+          priority: null,
+          trustScore: null,
           verificationModel: null,
           verificationVersion: null,
+          summary: null,
+          analyzedAt: null,
+          failureReason: null,
         },
-      },
-      verification: {
-        status: VERIFICATION_STATUS.PENDING,
-        requiredVotes: 3, // Default value placeholder
-        receivedVotes: 0,
+        assignment: {
+          officerId: null,
+          department: null,
+          assignedAt: null,
+          assignmentMethod: null,
+        },
       },
       timestamps: {
         createdAt: now,
         updatedAt: now,
       },
+      timeline: [
+        {
+          timestamp: now,
+          actorId: draftData.metadata.createdBy,
+          actorRole: "citizen",
+          action: "Citizen Reported",
+        },
+      ],
     };
 
     await setDoc(docRef, report);
@@ -126,6 +141,103 @@ export class ReportRepository {
       return docSnap.data() as CivicReport;
     }
     return null;
+  }
+
+  /**
+   * Updates partial verification fields on a report.
+   * @param reportId - The ID of the report
+   * @param fields - The partial fields to merge into ai.verification
+   */
+  public static async updateVerification(
+    reportId: string,
+    fields: Partial<CivicReport["ai"]["verification"]>
+  ): Promise<void> {
+    const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
+    const updates: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(fields)) {
+      updates[`ai.verification.${key}`] = value;
+    }
+    await updateDoc(docRef, updates);
+  }
+
+  /**
+   * Retrieves all reports from Firestore.
+   * @returns Array of CivicReport objects
+   */
+  public static async getAllReports(): Promise<CivicReport[]> {
+    const q = query(collection(db, COLLECTIONS.REPORTS));
+    const snapshot = await getDocs(q);
+    const reports: CivicReport[] = [];
+    snapshot.forEach((docSnap) => {
+      reports.push(docSnap.data() as CivicReport);
+    });
+    return reports;
+  }
+
+  /**
+   * Assigns an officer to a report.
+   */
+  public static async assignOfficer(
+    reportId: string,
+    officerId: string | null,
+    department: string,
+    assignmentMethod: "automatic" | "manual",
+    status: string
+  ): Promise<void> {
+    const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
+    await updateDoc(docRef, {
+      "ai.assignment.officerId": officerId,
+      "ai.assignment.department": department,
+      "ai.assignment.assignedAt": new Date().toISOString(),
+      "ai.assignment.assignmentMethod": assignmentMethod,
+      status,
+      "timestamps.updatedAt": new Date().toISOString(),
+    });
+  }
+
+  /**
+   * Appends an immutable event to the report's timeline.
+   */
+  public static async appendTimelineEvent(
+    reportId: string,
+    event: TimelineEvent
+  ): Promise<void> {
+    const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
+    await updateDoc(docRef, {
+      timeline: arrayUnion(event),
+      "timestamps.updatedAt": new Date().toISOString(),
+    });
+  }
+
+  /**
+   * Updates report resolution details and sets status to resolved.
+   */
+  public static async updateResolution(
+    reportId: string,
+    payload: {
+      resolvedBy: string;
+      resolutionNotes: string;
+      resolutionMedia: MediaAsset[];
+      category?: string;
+      proofPhotoUrl?: string;
+    }
+  ): Promise<void> {
+    const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
+    const resolvedAtStr = new Date().toISOString();
+    await updateDoc(docRef, {
+      status: "resolved",
+      resolvedBy: payload.resolvedBy,
+      resolvedAt: resolvedAtStr,
+      resolutionNotes: payload.resolutionNotes,
+      resolutionMedia: payload.resolutionMedia,
+      resolution: {
+        notes: payload.resolutionNotes,
+        category: payload.category || "completed",
+        proofPhotoUrl: payload.proofPhotoUrl || (payload.resolutionMedia?.[0]?.url || ""),
+        resolvedAt: resolvedAtStr,
+      },
+      "timestamps.updatedAt": resolvedAtStr,
+    });
   }
 }
 export default ReportRepository;

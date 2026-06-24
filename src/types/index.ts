@@ -91,6 +91,14 @@ export interface LocationCoordinates {
   address?: string;
 }
 
+export interface TimelineEvent {
+  timestamp: string;
+  actorId: string;
+  actorRole: UserRole | "system" | "ai";
+  action: string;
+  note?: string;
+}
+
 /**
  * Principal Civic Issue Report document interface.
  */
@@ -113,43 +121,56 @@ export interface CivicReport {
   };
   
   ai: {
-    assistant?: {
-      generatedTitle: string;
-      generatedDescription: string;
-      generatedCategory: string;
-      generatedCategoryLabel?: string | null;
-      generatedSeverity: string;
+    assistant: {
+      title: string;
+      description: string;
+      category: string;
+      severity: string;
       confidence: number;
       summary: string;
       detectedObjects?: string[];
-      analyzedAt: string;
       model: string;
       promptVersion: string;
+      analyzedAt: string;
       initialPriority: string;
     } | null;
     verification: {
-      status: string; // "pending" | "processed" | "failed"
+      status: "processing" | "verified" | "requires_review" | "rejected" | "failed";
       fakeMediaProbability?: number | null;
+      fakeMediaConfidence?: number | null;
+      fakeMediaReason?: string | null;
       duplicateProbability?: number | null;
-      priority?: PriorityLevel | null;
+      duplicateReportIds?: string[] | null;
+      duplicateReason?: string | null;
       assignedDepartment?: string | null;
-      analyzedAt?: string | null;
+      priority?: PriorityLevel | null;
+      trustScore?: number | null;
       verificationModel?: string | null;
       verificationVersion?: string | null;
+      summary?: string | null;
+      analyzedAt?: string | null;
+      failureReason?: string | null;
+    };
+    assignment: {
+      officerId: string | null;
+      department: string | null;
+      assignedAt: string | null;
+      assignmentMethod: string | null;
     };
   };
-  
-  verification: {
-    status: VerificationStatus;
-    requiredVotes: number;
-    receivedVotes: number;
-  };
 
-  routing?: {
-    assignedDepartment?: string;
-    assignedOfficerId?: string;
-    resolutionNotes?: string;
-  };
+  resolvedBy?: string | null;
+  resolvedAt?: string | null;
+  resolutionNotes?: string | null;
+  resolutionMedia?: MediaAsset[] | null;
+  resolution?: {
+    notes: string;
+    category: string;
+    proofPhotoUrl?: string;
+    resolvedAt: string;
+  } | null;
+
+  timeline?: TimelineEvent[];
 
   timestamps: {
     createdAt: string;

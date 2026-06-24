@@ -1,30 +1,29 @@
 /**
- * @file src/ai/agents/evidence-analysis.agent.ts
- * @description specialized AI agent that checks report metadata and media files to triage civic issues.
+ * @file src/ai/agents/fast-assistant.agent.ts
+ * @description Lightweight AI agent that checks report metadata and media files for citizen assistance.
  */
 
 import { BaseAgent } from "./base-agent";
 import { CivicReport } from "@/types";
 import { EvidenceAnalysisResult } from "../types/ai.types";
-import { EVIDENCE_ANALYSIS_PROMPTS, PromptBuilder } from "../prompts/evidence.prompt";
-import { doc, updateDoc } from "firebase/firestore";
-import { db, COLLECTIONS } from "@/services/firebase/firestore";
+import { FAST_ASSISTANT_PROMPTS } from "../prompts/fast-assistant.prompt";
+import { PromptBuilder } from "../prompts/evidence.prompt";
 import { AppError } from "@/utils/error";
 import { normalizeSeverity } from "../utils/priority";
 
 import { AI_MODELS } from "@/config/ai-models";
 
-export class EvidenceAnalysisAgent extends BaseAgent<CivicReport, EvidenceAnalysisResult> {
+export class FastAssistantAgent extends BaseAgent<CivicReport, EvidenceAnalysisResult> {
   constructor() {
     super({
-      name: "Evidence Analysis Agent",
-      modelName: AI_MODELS.VERIFICATION,
-      temperature: 0.1,
+      name: "Fast Assistant Agent",
+      modelName: AI_MODELS.ASSISTANT,
+      temperature: 0.2,
     });
   }
 
   /**
-   * Validates that the report possesses necessary triaging evidence.
+   * Validates input.
    */
   protected validateInput(report: CivicReport): void {
     if (!report.id) {
@@ -44,10 +43,10 @@ export class EvidenceAnalysisAgent extends BaseAgent<CivicReport, EvidenceAnalys
   }
 
   /**
-   * Compiles the report metadata and evidence details into the prompt template.
+   * Compiles prompt.
    */
   protected buildPrompt(report: CivicReport): { systemInstruction: string; prompt: string } {
-    const activePrompt = EVIDENCE_ANALYSIS_PROMPTS["1.0.0"];
+    const activePrompt = FAST_ASSISTANT_PROMPTS["1.0.0"];
 
     const mediaList =
       report.evidence?.media && report.evidence.media.length > 0
@@ -76,16 +75,14 @@ export class EvidenceAnalysisAgent extends BaseAgent<CivicReport, EvidenceAnalys
   }
 
   /**
-   * Transforms the parsed JSON output from Gemini into the final EvidenceAnalysisResult.
+   * Parses Gemini's raw JSON output.
    */
   protected parseResponse(rawJson: string): EvidenceAnalysisResult {
     try {
       const parsed = JSON.parse(rawJson);
 
-      // Normalize severity
       const severity = normalizeSeverity(parsed.severity);
 
-      // Normalize classification (category)
       const validCategories = [
         "road_damage",
         "garbage",
@@ -99,7 +96,6 @@ export class EvidenceAnalysisAgent extends BaseAgent<CivicReport, EvidenceAnalys
       ];
       let classification = String(parsed.classification || "").toLowerCase().trim();
       if (!validCategories.includes(classification)) {
-        // Map common synonyms if necessary, or default to other
         if (
           classification.includes("pothole") ||
           classification.includes("road") ||
@@ -164,14 +160,13 @@ export class EvidenceAnalysisAgent extends BaseAgent<CivicReport, EvidenceAnalys
         severity,
         summary: parsed.summary || "No summary provided.",
         confidence: typeof parsed.confidence === "number" ? parsed.confidence : 0.5,
-        fakeMediaProbability:
-          typeof parsed.fakeMediaProbability === "number" ? parsed.fakeMediaProbability : 0.0,
+        fakeMediaProbability: 0.0, // Not performed in Phase 1
         detectedObjects: Array.isArray(parsed.detectedObjects) ? parsed.detectedObjects : [],
         analyzedAt: new Date().toISOString(),
       };
     } catch (error) {
       throw new AppError({
-        message: "Failed to parse and map raw model response to EvidenceAnalysisResult model.",
+        message: "Failed to parse raw response in FastAssistantAgent.",
         code: "AGENT_RESPONSE_PARSE_FAILED",
         statusCode: 500,
         context: { rawJson, error: error instanceof Error ? error.message : "JSON parse failed" },
@@ -180,7 +175,7 @@ export class EvidenceAnalysisAgent extends BaseAgent<CivicReport, EvidenceAnalys
   }
 
   /**
-   * Returns media files for multimodal submission to Gemini.
+   * Returns media files for Gemini.
    */
   protected getMediaAssets(report: CivicReport): { url: string; mimeType: string }[] {
     const media = report.evidence?.media || [];
@@ -188,39 +183,18 @@ export class EvidenceAnalysisAgent extends BaseAgent<CivicReport, EvidenceAnalys
   }
 
   /**
-   * Required keys in response JSON schema.
+   * Required keys.
    */
   protected getRequiredKeys(): string[] {
-    return ["title", "description", "classification", "severity", "summary", "confidence", "fakeMediaProbability"];
+    return ["title", "description", "classification", "severity", "summary", "confidence"];
   }
 
   /**
-   * Persists results to Firestore under `report.ai` path.
+   * Persists results. (Does nothing as Phase 1 only writes to UI state).
    */
-  protected async persistResult(reportId: string, result: EvidenceAnalysisResult): Promise<void> {
-    try {
-      const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
-
-      // Perform partial update to secure isolation guidelines
-      await updateDoc(docRef, {
-        "ai.verification.status": "processed",
-        "ai.verification.priority": result.severity,
-        "ai.verification.fakeMediaProbability": result.fakeMediaProbability,
-        "ai.verification.analyzedAt": result.analyzedAt,
-        "ai.verification.duplicateProbability": 0, // Mock/placeholder
-        "ai.verification.verificationModel": this.modelName,
-        "ai.verification.verificationVersion": "1.0.0",
-      });
-    } catch (error) {
-      throw new AppError({
-        message: `Failed to persist AI report triaging output: ${
-          error instanceof Error ? error.message : "Database write error"
-        }`,
-        code: "AGENT_PERSIST_FAILED",
-        statusCode: 500,
-        context: { reportId, result, error },
-      });
-    }
+  protected async persistResult(_reportId: string, _result: EvidenceAnalysisResult): Promise<void> {
+    // Phase 1 does not persist directly to database.
   }
 }
-export default EvidenceAnalysisAgent;
+
+export default FastAssistantAgent;

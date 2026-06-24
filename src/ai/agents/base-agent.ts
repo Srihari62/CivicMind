@@ -3,18 +3,21 @@
  * @description Abstract base class defining the AI Agent lifecycle and execution pipeline.
  */
 
+import "server-only";
+
 import { AgentConfig } from "../types/ai.types";
 import { GeminiService } from "../services/gemini.service";
+import { AI_MODELS } from "@/config/ai-models";
 
 export abstract class BaseAgent<TInput, TOutput> {
   public readonly name: string;
-  protected readonly modelName: string;
+  public readonly modelName: string;
   protected readonly temperature: number;
   protected readonly maxOutputTokens?: number;
 
   constructor(config: AgentConfig) {
     this.name = config.name;
-    this.modelName = config.modelName || "gemini-3.5-flash";
+    this.modelName = config.modelName || AI_MODELS.VERIFICATION;
     this.temperature = config.temperature ?? 0.1;
     this.maxOutputTokens = config.maxOutputTokens;
   }
@@ -64,6 +67,8 @@ export abstract class BaseAgent<TInput, TOutput> {
    * @param input - The structured input data for the task
    */
   public async execute(targetId: string, input: TInput): Promise<TOutput> {
+    console.info(`[${this.name}] Agent started`);
+    
     // 1. Validate Input
     this.validateInput(input);
 
@@ -86,11 +91,16 @@ export abstract class BaseAgent<TInput, TOutput> {
       this.maxOutputTokens
     );
 
+    const rawResponse = JSON.stringify(resultObj);
+    console.info(`[${this.name}] Raw Gemini response:`, rawResponse);
+
     // 5. Parse and finalize typed output
-    const finalResult = this.parseResponse(JSON.stringify(resultObj));
+    const finalResult = this.parseResponse(rawResponse);
+    console.info(`[${this.name}] Parsed response:`, JSON.stringify(finalResult));
 
     // 6. Persist to Firestore
     await this.persistResult(targetId, finalResult);
+    console.info(`[${this.name}] Persisted payload:`, JSON.stringify(finalResult));
 
     return finalResult;
   }
@@ -101,6 +111,8 @@ export abstract class BaseAgent<TInput, TOutput> {
    * @param input - The structured input data for the task
    */
   public async analyze(input: TInput): Promise<TOutput> {
+    console.info(`[${this.name}] Agent started`);
+    
     // 1. Validate Input
     this.validateInput(input);
 
@@ -123,8 +135,14 @@ export abstract class BaseAgent<TInput, TOutput> {
       this.maxOutputTokens
     );
 
+    const rawResponse = JSON.stringify(resultObj);
+    console.info(`[${this.name}] Raw Gemini response:`, rawResponse);
+
     // 5. Parse and finalize typed output
-    return this.parseResponse(JSON.stringify(resultObj));
+    const finalResult = this.parseResponse(rawResponse);
+    console.info(`[${this.name}] Parsed response:`, JSON.stringify(finalResult));
+
+    return finalResult;
   }
 }
 export default BaseAgent;
