@@ -81,10 +81,12 @@ export function RouteGuard({
     }
   }, [isAuthenticated, firebaseUser, profile, loading, requireAuth, allowedRoles, pathname, router]);
 
+  const isAuthorized = !requireAuth || !allowedRoles || (profile && allowedRoles.includes(profile.role));
+
   // Render a professional brand loader while state loads or transitions occur
   if (
     loading || 
-    (requireAuth && (!isAuthenticated || !profile)) || 
+    (requireAuth && (!isAuthenticated || !profile || !isAuthorized)) || 
     (!requireAuth && isAuthenticated)
   ) {
     return (

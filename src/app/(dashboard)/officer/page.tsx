@@ -27,6 +27,9 @@ import {
 import Link from "next/link";
 import { updateOfficerAvailabilityAction } from "@/app/actions/officer.actions";
 
+import { collection, query, onSnapshot } from "firebase/firestore";
+import { db, COLLECTIONS } from "@/services/firebase/firestore";
+
 export const dynamic = "force-dynamic";
 
 export default function OfficerDashboardPage() {
@@ -41,22 +44,31 @@ export default function OfficerDashboardPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
 
-  const loadReports = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await ReportService.getAllReports();
-      setReports(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load reports.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadReports();
-  }, []);
+    if (!profile?.uid) return;
+    
+    setLoading(true);
+    const q = query(collection(db, COLLECTIONS.REPORTS));
+    
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const list: CivicReport[] = [];
+        snapshot.forEach((docSnap) => {
+          list.push({ id: docSnap.id, ...docSnap.data() } as CivicReport);
+        });
+        setReports(list);
+        setLoading(false);
+      },
+      (err) => {
+        console.error("Error subscribing to reports in officer console:", err);
+        setError("Failed to stream reports update.");
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [profile?.uid]);
 
   useEffect(() => {
     if (profile?.availability) {
@@ -68,7 +80,7 @@ export default function OfficerDashboardPage() {
     if (!profile?.uid) return;
     setAvailability(val);
     try {
-      await updateOfficerAvailabilityAction(profile.uid, val);
+      await updateOfficerAvailabilityAction(profile.uid, profile.uid, val);
     } catch (err) {
       console.error("Failed to update availability:", err);
     }
@@ -190,7 +202,7 @@ export default function OfficerDashboardPage() {
               </p>
             </div>
             <Button
-              onClick={loadReports}
+              onClick={() => window.location.reload()}
               disabled={loading}
               variant="outline"
               size="sm"
@@ -429,13 +441,13 @@ export default function OfficerDashboardPage() {
                           {new Date(report.timestamps.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <Link href={`/officer/reports/${report.id}`}>
+                          <Link href={`/officer/reports/${report.id}/investigate`}>
                             <Button
                               variant="ghost"
                               size="sm"
                               className="text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 gap-1.5"
                             >
-                              Inspect
+                              Investigate
                               <ArrowRight className="h-3.5 w-3.5" />
                             </Button>
                           </Link>

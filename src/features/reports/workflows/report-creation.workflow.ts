@@ -5,10 +5,10 @@
  * and finalize submissions without direct Firebase SDK dependencies.
  */
 
-import { ReportRepository } from "../repositories/report.repository";
-import { MediaService } from "@/features/media/services/media.service";
-import { ReportLocation, MediaAsset } from "@/types";
-import { AppError } from "@/utils/error";
+import { ReportRepository } from '../repositories/report.repository';
+import { MediaService } from '@/features/media/services/media.service';
+import { ReportLocation, MediaAsset } from '@/types';
+import { AppError } from '@/utils/error';
 
 export class ReportCreationWorkflow {
   /**
@@ -55,9 +55,17 @@ export class ReportCreationWorkflow {
       let mediaAssets: MediaAsset[] = [];
       if (filesOrMedia.length > 0) {
         const first = filesOrMedia[0];
-        if (typeof window !== "undefined" ? first instanceof File : (first.constructor && first.constructor.name === "File") || first instanceof File) {
+        if (
+          typeof window !== 'undefined'
+            ? first instanceof File
+            : (first.constructor && first.constructor.name === 'File') || first instanceof File
+        ) {
           const storageFolderPath = `reports/${reportId}/evidence`;
-          mediaAssets = await MediaService.uploadFiles(filesOrMedia as File[], storageFolderPath, userId);
+          mediaAssets = await MediaService.uploadFiles(
+            filesOrMedia as File[],
+            storageFolderPath,
+            userId
+          );
         } else {
           mediaAssets = filesOrMedia as MediaAsset[];
         }
@@ -78,8 +86,9 @@ export class ReportCreationWorkflow {
         throw error;
       }
       throw new AppError({
-        message: error instanceof Error ? error.message : "Failed to execute report creation workflow.",
-        code: "WORKFLOW_EXECUTION_FAILED",
+        message:
+          error instanceof Error ? error.message : 'Failed to execute report creation workflow.',
+        code: 'WORKFLOW_EXECUTION_FAILED',
         statusCode: 500,
       });
     }

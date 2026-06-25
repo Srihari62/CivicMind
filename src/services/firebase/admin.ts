@@ -222,4 +222,44 @@ To run the server-side AI Verification Pipeline locally:
       await cUpdateDoc(docRef, updates);
     }
   },
+
+  async getAllReports(): Promise<CivicReport[]> {
+    const useAdmin = await this.checkAdminSupport();
+    if (useAdmin && adminDb) {
+      const snapshot = await adminDb.collection("reports").get();
+      const reports: CivicReport[] = [];
+      snapshot.forEach((doc) => {
+        reports.push({ id: doc.id, ...doc.data() } as CivicReport);
+      });
+      return reports;
+    } else {
+      const q = cQuery(cCollection(clientDb, "reports"));
+      const snapshot = await cGetDocs(q);
+      const reports: CivicReport[] = [];
+      snapshot.forEach((doc) => {
+        reports.push({ id: doc.id, ...doc.data() } as CivicReport);
+      });
+      return reports;
+    }
+  },
+
+  async getAllUsers(): Promise<FirestoreUserProfile[]> {
+    const useAdmin = await this.checkAdminSupport();
+    if (useAdmin && adminDb) {
+      const snapshot = await adminDb.collection("users").get();
+      const users: FirestoreUserProfile[] = [];
+      snapshot.forEach((doc) => {
+        users.push({ uid: doc.id, ...doc.data() } as FirestoreUserProfile);
+      });
+      return users;
+    } else {
+      const q = cQuery(cCollection(clientDb, "users"));
+      const snapshot = await cGetDocs(q);
+      const users: FirestoreUserProfile[] = [];
+      snapshot.forEach((doc) => {
+        users.push({ uid: doc.id, ...doc.data() } as FirestoreUserProfile);
+      });
+      return users;
+    }
+  },
 };

@@ -161,20 +161,38 @@ export default function CitizenDashboardPage() {
         {/* Navigation Bar */}
         <header className="border-b border-white/10 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-30">
           <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-            <span className="font-bold text-blue-500 tracking-wider flex items-center gap-1.5 select-none">
-              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-              CivicMind
-            </span>
+            <div className="flex items-center gap-6">
+              <span className="font-bold text-blue-500 tracking-wider flex items-center gap-1.5 select-none">
+                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                CivicMind
+              </span>
+              <nav className="hidden md:flex items-center gap-4 text-sm font-semibold">
+                <Link href="/dashboard" className="text-white border-b-2 border-blue-500 pb-1">
+                  Dashboard
+                </Link>
+                <Link href="/community" className="text-zinc-450 hover:text-white transition">
+                  Community Feed
+                </Link>
+              </nav>
+            </div>
             <div className="flex items-center gap-4">
               {/* Notification Center component integrated */}
-              <NotificationCenter reports={reports} />
+              <NotificationCenter />
               
               <Link href="/reports/new">
                 <Button size="sm">Report Issue</Button>
               </Link>
-              <span className="text-xs text-zinc-400 font-mono hidden sm:inline-block">
-                {profile?.email}
-              </span>
+              
+              <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition" title="View Profile">
+                {profile?.avatarUrl ? (
+                  <img src={profile.avatarUrl} alt="Avatar" className="w-7 h-7 rounded-full border border-white/20 object-cover" />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 text-xs font-bold font-mono">
+                    {profile?.displayName?.[0]?.toUpperCase() || "C"}
+                  </div>
+                )}
+              </Link>
+
               <Button variant="outline" size="sm" onClick={() => logout()}>
                 Sign Out
               </Button>

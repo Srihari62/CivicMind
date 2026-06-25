@@ -21,12 +21,12 @@ export default function BeforeAfterGallery({ report }: BeforeAfterGalleryProps) 
   // Extract Resolution Details safely
   const reportExtended = report as unknown as Record<string, unknown>;
   const resolution = report.resolution || (reportExtended.resolutionPayload as Record<string, unknown> | undefined);
-  const officerNotes = report.resolutionNotes || (resolution ? String(resolution.notes || "") : "") || "No notes provided.";
+  const officerNotes = (resolution ? String(resolution.notes || "") : "") || "No notes provided.";
   
   // Extract Before / After Assets safely
   const repairEvidence = resolution?.repairEvidence as Record<string, unknown> | undefined;
-  const beforeAssets: MediaAsset[] = report.repairEvidence?.before || (repairEvidence?.before as MediaAsset[] | undefined) || report.evidence?.media || [];
-  const afterAssets: MediaAsset[] = report.repairEvidence?.after || (repairEvidence?.after as MediaAsset[] | undefined) || report.resolutionMedia || (resolution?.proofPhotoUrl ? [{ id: "after_proof", url: String(resolution.proofPhotoUrl), type: "image" } as MediaAsset] : []);
+  const beforeAssets: MediaAsset[] = (repairEvidence?.before as MediaAsset[] | undefined) || report.evidence?.media || [];
+  const afterAssets: MediaAsset[] = (repairEvidence?.after as MediaAsset[] | undefined) || (resolution?.proofPhotoUrl ? [{ id: "after_proof", url: String(resolution.proofPhotoUrl), type: "image" } as MediaAsset] : []);
 
   const aiSummary = (resolution?.aiSummary || reportExtended.aiSummaryPayload) as { workCompleted?: string; summary?: string; citizenExplanation?: string } | null | undefined;
 

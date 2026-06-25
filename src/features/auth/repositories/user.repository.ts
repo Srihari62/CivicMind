@@ -191,6 +191,10 @@ export class UserRepository {
    * Retrieves all registered users in the platform.
    */
   public static async getAllUsers(): Promise<FirestoreUserProfile[]> {
+    if (typeof window === "undefined") {
+      const { safeDb } = await import("@/services/firebase/admin");
+      return await safeDb.getAllUsers();
+    }
     const q = query(collection(db, COLLECTIONS.USERS));
     const snapshot = await getDocs(q);
     const users: FirestoreUserProfile[] = [];

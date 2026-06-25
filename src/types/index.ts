@@ -8,7 +8,7 @@
 /**
  * User roles inside the CivicMind ecosystem.
  */
-export type UserRole = "citizen" | "officer" | "admin";
+export type UserRole = 'citizen' | 'officer' | 'admin';
 
 /**
  * Citizen or official user account structure.
@@ -28,21 +28,21 @@ export interface UserProfile {
  * Status phases of a reported civic issue.
  */
 export type ReportStatus =
-  | "draft"
-  | "submitted"
-  | "accepted"
-  | "investigating"
-  | "in_progress"
-  | "resolved"
-  | "rejected";
+  | 'draft'
+  | 'submitted'
+  | 'accepted'
+  | 'investigating'
+  | 'in_progress'
+  | 'resolved'
+  | 'rejected';
 
-export type AiStatus = "pending" | "processed" | "failed";
-export type VerificationStatus = "pending" | "verified" | "flagged" | "rejected";
-export type PriorityLevel = "critical" | "high" | "medium" | "low" | "unknown";
+export type AiStatus = 'pending' | 'processed' | 'failed';
+export type VerificationStatus = 'pending' | 'verified' | 'flagged' | 'rejected';
+export type PriorityLevel = 'critical' | 'high' | 'medium' | 'low' | 'unknown';
 
 export interface MediaAsset {
   id: string;
-  type: "image" | "video";
+  type: 'image' | 'video';
   url: string;
   storagePath: string;
   mimeType: string;
@@ -74,17 +74,17 @@ export interface ReportLocation {
  * Categories matching the classifier system options.
  */
 export type IssueCategory =
-  | "infrastructure"
-  | "sanitation"
-  | "environmental"
-  | "utility"
-  | "public_safety"
-  | "other";
+  | 'infrastructure'
+  | 'sanitation'
+  | 'environmental'
+  | 'utility'
+  | 'public_safety'
+  | 'other';
 
 /**
  * Priority urgency ratings.
  */
-export type UrgencyLevel = "critical" | "high" | "medium" | "low";
+export type UrgencyLevel = 'critical' | 'high' | 'medium' | 'low';
 
 /**
  * Location data matching Google Maps structures.
@@ -98,7 +98,7 @@ export interface LocationCoordinates {
 export interface TimelineEvent {
   timestamp: string;
   actorId: string;
-  actorRole: UserRole | "system" | "ai";
+  actorRole: UserRole | 'system' | 'ai';
   action: string;
   note?: string;
 }
@@ -110,7 +110,7 @@ export interface CivicReport {
   id: string;
   status: ReportStatus;
   reportedCount?: number;
-  
+
   metadata: {
     title: string;
     description: string;
@@ -118,13 +118,13 @@ export interface CivicReport {
     createdBy: string;
     editedAfterAI?: boolean;
   };
-  
+
   location: ReportLocation;
-  
+
   evidence: {
     media: MediaAsset[];
   };
-  
+
   ai: {
     assistant: {
       title: string;
@@ -140,7 +140,7 @@ export interface CivicReport {
       initialPriority: string;
     } | null;
     verification: {
-      status: "processing" | "verified" | "requires_review" | "rejected" | "failed";
+      status: 'processing' | 'verified' | 'requires_review' | 'rejected' | 'failed';
       fakeMediaProbability?: number | null;
       fakeMediaConfidence?: number | null;
       fakeMediaReason?: string | null;
@@ -164,10 +164,6 @@ export interface CivicReport {
     };
   };
 
-  resolvedBy?: string | null;
-  resolvedAt?: string | null;
-  resolutionNotes?: string | null;
-  resolutionMedia?: MediaAsset[] | null;
   resolution?: {
     notes: string;
     category: string;

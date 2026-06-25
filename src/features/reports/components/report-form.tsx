@@ -32,6 +32,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import dynamic from "next/dynamic";
 
+import { AlertCircle } from "lucide-react";
+
 const MapPicker = dynamic(() => import("@/components/maps/MapPicker"), {
   ssr: false,
   loading: () => (
@@ -60,6 +62,7 @@ export function ReportForm() {
   const [aiMessage, setAiMessage] = useState<string | null>(null);
   const [aiAnalysisResult, setAiAnalysisResult] = useState<EvidenceAnalysisResult | null>(null);
   const [resolvedLocation, setResolvedLocation] = useState<ReportLocation | null>(null);
+  const [showUnrelatedModal, setShowUnrelatedModal] = useState<boolean>(false);
 
   const {
     register,
@@ -149,8 +152,8 @@ export function ReportForm() {
           : undefined;
 
       // 3. Invoke Server Action to execute the AI agent pipeline without Firestore write
-      const response = await analyzeReportEvidence({
-        media: newAssets, // Only analyze newly uploaded media assets
+      const response = await analyzeReportEvidence(profile.uid, {
+        media: updatedAssets, // Analyze all uploaded media assets together
         location: locationPayload,
       });
 
@@ -159,6 +162,19 @@ export function ReportForm() {
       }
 
       const aiData = response.data;
+
+      // Civic issue validation check
+      if (aiData.isCivicIssue === false) {
+        setMediaFiles([]);
+        setUploadedAssets([]);
+        setShowUnrelatedModal(true);
+        setAiSuggested(false);
+        setAiMessage(null);
+        setAiAnalysisResult(null);
+        setIsAnalyzing(false);
+        return;
+      }
+
       setAiConfidence(aiData.confidence);
       setAiAnalysisResult(aiData);
 
@@ -268,7 +284,7 @@ export function ReportForm() {
       const reportId = await ReportService.createReport(payload, uploadedAssets, profile.uid);
 
       // Trigger server action (fire-and-forget)
-      startReportVerification(reportId).catch((err) => {
+      startReportVerification(profile.uid, reportId).catch((err) => {
         console.error("Failed to start verification:", err);
       });
 
@@ -286,6 +302,7 @@ export function ReportForm() {
   const isFormDisabled = isAnalyzing || isSubmitting;
 
   return (
+    <>
     <form
       onSubmit={handleSubmit(onSubmit)}
       className="flex flex-col gap-5 w-full max-w-xl bg-card border border-border p-6 rounded-lg shadow-sm"
@@ -541,6 +558,27 @@ export function ReportForm() {
         Submit Issue Report
       </Button>
     </form>
+    
+    {showUnrelatedModal && (
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+        <div className="bg-zinc-900 border border-white/10 rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl relative">
+          <div className="mx-auto w-12 h-12 bg-rose-500/10 border border-rose-500/20 text-rose-550 rounded-full flex items-center justify-center">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <h3 className="font-extrabold text-lg text-white">Invalid Media Uploaded</h3>
+          <p className="text-xs text-zinc-400 leading-relaxed">
+            This image does not appear to contain a civic or municipal issue. Please upload a valid photo of public damage, trash, or safety hazards.
+          </p>
+          <Button
+            onClick={() => setShowUnrelatedModal(false)}
+            className="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold"
+          >
+            Retry
+          </Button>
+        </div>
+      </div>
+    )}
+  </>
   );
 }
 export default ReportForm;

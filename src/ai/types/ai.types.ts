@@ -21,6 +21,7 @@ export interface EvidenceAnalysisResult {
   fakeMediaProbability: number;
   detectedObjects?: string[];
   analyzedAt: string;
+  isCivicIssue?: boolean;
 }
 
 export interface FakeMediaResult {

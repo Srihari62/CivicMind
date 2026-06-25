@@ -7,6 +7,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useAuth } from "@/providers/auth-provider";
 import { BrainCircuit, RefreshCw, Target } from "lucide-react";
 import { getAIPredictiveInsights, PredictiveInsight } from "@/app/actions/ai.actions";
 import { CivicReport } from "@/types";
@@ -19,6 +20,7 @@ const CACHE_KEY = "civicmind_admin_predictive_insights";
 const CACHE_EXPIRY_MS = 6 * 60 * 60 * 1000; // 6 Hours cache
 
 export default function PredictiveInsights({ reports }: PredictiveInsightsProps) {
+  const { profile } = useAuth();
   const [insights, setInsights] = useState<PredictiveInsight[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +52,7 @@ export default function PredictiveInsights({ reports }: PredictiveInsightsProps)
         created: r.timestamps?.createdAt || "",
       }));
 
-      const result = await getAIPredictiveInsights(reportsLean);
+      const result = await getAIPredictiveInsights(profile?.uid || "", reportsLean);
       setInsights(result);
 
       localStorage.setItem(

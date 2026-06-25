@@ -7,6 +7,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useAuth } from "@/providers/auth-provider";
 import { Sparkles, RefreshCw, Layers, ListTodo, Route, Lightbulb } from "lucide-react";
 import { getAIExecutiveSummary, ExecutiveSummaryResponse } from "@/app/actions/ai.actions";
 import { CivicReport } from "@/types";
@@ -20,6 +21,7 @@ const CACHE_KEY = "civicmind_admin_exec_summary";
 const CACHE_EXPIRY_MS = 4 * 60 * 60 * 1000; // 4 Hours cache
 
 export default function ExecutiveSummary({ reports, avgResolutionTime }: ExecutiveSummaryProps) {
+  const { profile } = useAuth();
   const [summary, setSummary] = useState<ExecutiveSummaryResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +105,7 @@ export default function ExecutiveSummary({ reports, avgResolutionTime }: Executi
         deptBreakdown,
       };
 
-      const result = await getAIExecutiveSummary(statsPayload);
+      const result = await getAIExecutiveSummary(profile?.uid || "", statsPayload);
       setSummary(result);
       
       // Save cache

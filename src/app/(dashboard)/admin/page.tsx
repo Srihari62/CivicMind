@@ -13,10 +13,6 @@ import { Button } from "@/components/ui/button";
 import { ReportService } from "@/features/reports/services/report.service";
 import { CivicReport } from "@/types";
 import {
-  Clock,
-  AlertCircle,
-  CheckCircle2,
-  UserCheck,
   RefreshCw,
   Search,
   Filter,
@@ -33,6 +29,9 @@ import Link from "next/link";
 import { FirestoreUserProfile } from "@/features/auth/repositories/user.repository";
 import { OfficerService } from "@/features/reports/services/officer.service";
 
+import { collection, query, onSnapshot } from "firebase/firestore";
+import { db, COLLECTIONS } from "@/services/firebase/firestore";
+
 // SPRINT 10 Component Imports
 import ExecutiveOverview from "@/components/admin/ExecutiveOverview";
 import CityHealthScore from "@/components/admin/CityHealthScore";
@@ -47,6 +46,7 @@ import OfficerPerformance from "@/components/admin/OfficerPerformance";
 import DepartmentWorkload from "@/components/admin/DepartmentWorkload";
 import PredictiveInsights from "@/components/admin/PredictiveInsights";
 import TrendAnalysis from "@/components/admin/TrendAnalysis";
+import MunicipalAssistant from "@/components/admin/assistant/MunicipalAssistant";
 
 export const dynamic = "force-dynamic";
 
@@ -57,7 +57,7 @@ export default function AdminDashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   // General tab switcher state
-  const [activeTab, setActiveTab] = useState<"command_center" | "incidents" | "officers">("command_center");
+  const [activeTab, setActiveTab] = useState<"command_center" | "incidents" | "officers" | "assistant">("command_center");
 
   // original Search & Filter State (retained for Registry tab)
   const [searchTerm, setSearchTerm] = useState("");
@@ -94,35 +94,50 @@ export default function AdminDashboardPage() {
   const [formIsActive, setFormIsActive] = useState(true);
   const [formRole, setFormRole] = useState<"officer" | "citizen" | "admin">("officer");
 
-  const loadReports = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await ReportService.getAllReports();
-      setReports(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load reports.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadUsers = async () => {
-    setUsersLoading(true);
-    try {
-      const data = await OfficerService.getAllUsers();
-      setUsers(data);
-    } catch (err) {
-      console.error("Failed to load users:", err);
-    } finally {
-      setUsersLoading(false);
-    }
-  };
-
-  // Run on mount
   useEffect(() => {
-    loadReports();
-    loadUsers();
+    // 1. Subscribe to reports
+    setLoading(true);
+    const reportsQuery = query(collection(db, COLLECTIONS.REPORTS));
+    const unsubscribeReports = onSnapshot(
+      reportsQuery,
+      (snapshot: any) => {
+        const list: CivicReport[] = [];
+        snapshot.forEach((docSnap: any) => {
+          list.push({ id: docSnap.id, ...docSnap.data() } as CivicReport);
+        });
+        setReports(list);
+        setLoading(false);
+      },
+      (err: any) => {
+        console.error("Failed to stream reports for admin CC:", err);
+        setError("Failed to load reports stream.");
+        setLoading(false);
+      }
+    );
+
+    // 2. Subscribe to users / officers
+    setUsersLoading(true);
+    const usersQuery = query(collection(db, COLLECTIONS.USERS));
+    const unsubscribeUsers = onSnapshot(
+      usersQuery,
+      (snapshot: any) => {
+        const list: FirestoreUserProfile[] = [];
+        snapshot.forEach((docSnap: any) => {
+          list.push({ uid: docSnap.id, ...docSnap.data() } as FirestoreUserProfile);
+        });
+        setUsers(list);
+        setUsersLoading(false);
+      },
+      (err: any) => {
+        console.error("Failed to stream users/officers for admin CC:", err);
+        setUsersLoading(false);
+      }
+    );
+
+    return () => {
+      unsubscribeReports();
+      unsubscribeUsers();
+    };
   }, []);
 
   const openEditForm = (u: FirestoreUserProfile) => {
@@ -158,7 +173,6 @@ export default function AdminDashboardPage() {
       });
       setIsEditing(false);
       setSelectedUser(null);
-      await loadUsers();
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to save profile changes.");
     } finally {
@@ -319,8 +333,7 @@ export default function AdminDashboardPage() {
             </div>
             <Button
               onClick={() => {
-                loadReports();
-                loadUsers();
+                window.location.reload();
               }}
               disabled={loading || usersLoading}
               variant="outline"
@@ -363,6 +376,16 @@ export default function AdminDashboardPage() {
               }`}
             >
               <Users className="w-3.5 h-3.5" /> Officer Directory
+            </button>
+            <button
+              onClick={() => setActiveTab("assistant")}
+              className={`pb-3.5 text-xs font-black uppercase tracking-widest border-b-2 transition-all px-1 flex items-center gap-1.5 ${
+                activeTab === "assistant"
+                  ? "border-red-500 text-red-400"
+                  : "border-transparent text-zinc-400 hover:text-zinc-200"
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" /> AI Municipal Assistant
             </button>
           </div>
 
@@ -791,6 +814,8 @@ export default function AdminDashboardPage() {
                 )}
               </div>
             </>
+          ) : activeTab === "assistant" ? (
+            <MunicipalAssistant reports={reports} users={users} />
           ) : (
             <div className="flex flex-col gap-6">
               {isEditing && selectedUser ? (

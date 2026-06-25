@@ -66,6 +66,7 @@ export class FastAssistantAgent extends BaseAgent<CivicReport, EvidenceAnalysisR
       longitude: report.location?.longitude !== undefined ? report.location.longitude : "N/A",
       formattedAddress: report.location?.formattedAddress || "N/A",
       mediaList,
+      preferredLanguage: (report.metadata as any).preferredLanguage || "English",
     });
 
     return {
@@ -163,6 +164,7 @@ export class FastAssistantAgent extends BaseAgent<CivicReport, EvidenceAnalysisR
         fakeMediaProbability: 0.0, // Not performed in Phase 1
         detectedObjects: Array.isArray(parsed.detectedObjects) ? parsed.detectedObjects : [],
         analyzedAt: new Date().toISOString(),
+        isCivicIssue: parsed.isCivicIssue ?? true,
       };
     } catch (error) {
       throw new AppError({

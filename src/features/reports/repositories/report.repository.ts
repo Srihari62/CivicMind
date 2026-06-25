@@ -189,6 +189,10 @@ export class ReportRepository {
    * @returns Array of CivicReport objects
    */
   public static async getAllReports(): Promise<CivicReport[]> {
+    if (typeof window === "undefined") {
+      const { safeDb } = await import("@/services/firebase/admin");
+      return await safeDb.getAllReports();
+    }
     const q = query(collection(db, COLLECTIONS.REPORTS));
     const snapshot = await getDocs(q);
     const reports: CivicReport[] = [];
@@ -260,15 +264,16 @@ export class ReportRepository {
     const resolvedAtStr = new Date().toISOString();
     const updates = {
       status: "resolved",
-      resolvedBy: payload.resolvedBy,
-      resolvedAt: resolvedAtStr,
-      resolutionNotes: payload.resolutionNotes,
-      resolutionMedia: payload.resolutionMedia,
       resolution: {
         notes: payload.resolutionNotes,
         category: payload.category || "completed",
         proofPhotoUrl: payload.proofPhotoUrl || (payload.resolutionMedia?.[0]?.url || ""),
         resolvedAt: resolvedAtStr,
+        resolvedBy: payload.resolvedBy,
+        repairEvidence: {
+          before: [],
+          after: payload.resolutionMedia || [],
+        },
       },
       "timestamps.updatedAt": resolvedAtStr,
     };

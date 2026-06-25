@@ -144,7 +144,7 @@ export default function OfficerReportDetailsPage() {
     setSaveStatus("saving");
     notesTimerRef.current = setTimeout(async () => {
       try {
-        const res = await saveOfficerNotesAction(report.id, profile.uid, noteContent);
+        const res = await saveOfficerNotesAction(profile.uid, report.id, profile.uid, noteContent);
         if (res.success) {
           setSaveStatus("saved");
           // Refresh report background data to load history without blocking
@@ -171,7 +171,7 @@ export default function OfficerReportDetailsPage() {
     if (!report || !profile?.uid) return;
     setSubmitting(true);
     try {
-      const res = await acceptAssignmentAction(report.id, profile.uid);
+      const res = await acceptAssignmentAction(profile.uid, report.id, profile.uid);
       if (res.success) {
         await fetchReport();
       } else {
@@ -188,7 +188,7 @@ export default function OfficerReportDetailsPage() {
     if (!report || !profile?.uid || !rejectReason.trim()) return;
     setSubmitting(true);
     try {
-      const res = await rejectAssignmentAction(report.id, profile.uid, rejectReason);
+      const res = await rejectAssignmentAction(profile.uid, report.id, profile.uid, rejectReason);
       if (res.success) {
         router.push("/officer");
       } else {
@@ -207,7 +207,7 @@ export default function OfficerReportDetailsPage() {
     if (!report || !profile?.uid) return;
     setSubmitting(true);
     try {
-      const res = await startInvestigationAction(report.id, profile.uid);
+      const res = await startInvestigationAction(profile.uid, report.id, profile.uid);
       if (res.success) {
         await fetchReport();
       } else {
@@ -279,9 +279,11 @@ export default function OfficerReportDetailsPage() {
       alert("Please fill out the Action Taken Notes first to audit and generate the summary.");
       return;
     }
+    if (!profile?.uid) return;
     setIsGeneratingAI(true);
     try {
       const res = await generateAIResolutionSummaryAction(
+        profile.uid,
         report?.metadata.title || "Incident",
         report?.metadata.category || "General",
         resNotes,
@@ -310,6 +312,7 @@ export default function OfficerReportDetailsPage() {
         after: afterMedia,
       };
       const res = await resolveReportAction(
+        profile.uid,
         report.id,
         profile.uid,
         resNotes,

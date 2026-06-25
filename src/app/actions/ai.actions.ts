@@ -11,6 +11,9 @@ import { VerificationOrchestrator } from "@/ai/orchestrator/verification-orchest
 import { CivicReport, MediaAsset } from "@/types";
 import { EvidenceAnalysisResult } from "@/ai/types/ai.types";
 import { getGeminiModel } from "@/services/gemini/config";
+import { AssistantContextService } from "@/services/analytics/assistant-context.service";
+
+import { authorizeAction } from "./auth-guard";
 
 export interface AIAnalysisPayload {
   media: MediaAsset[];
@@ -30,12 +33,19 @@ export interface AIAnalysisResponse {
 /**
  * Analyzes uploaded media evidence immediately after file upload.
  * Does not write or create any records in the Firestore database.
+ * @param callerUid - UID of the caller user
  * @param payload - Includes uploaded Cloudinary assets and optional GPS coordinates
  */
 export async function analyzeReportEvidence(
+  callerUid: string,
   payload: AIAnalysisPayload
 ): Promise<AIAnalysisResponse> {
   try {
+    await authorizeAction(callerUid, ["citizen", "officer", "admin"]);
+    const { UserRepository } = await import("@/features/auth/repositories/user.repository");
+    const userProfile = await UserRepository.getUserProfile(callerUid);
+    const preferredLanguage = (userProfile as any)?.preferredLanguage || "English";
+
     const agent = new FastAssistantAgent();
 
     // Construct a temporary report mock conforming to the CivicReport schema
@@ -47,7 +57,8 @@ export async function analyzeReportEvidence(
         description: "",
         category: "",
         createdBy: "assistant",
-      },
+        preferredLanguage,
+      } as any,
       location: {
         latitude: payload.location?.latitude ?? 0,
         longitude: payload.location?.longitude ?? 0,
@@ -107,9 +118,11 @@ export async function analyzeReportEvidence(
 /**
  * Starts the asynchronous AI verification pipeline for a submitted report on the server.
  * This is a fire-and-forget background execution, so it does not block the client.
+ * @param callerUid - UID of the caller user
  * @param reportId - ID of the report to verify
  */
-export async function startReportVerification(reportId: string): Promise<void> {
+export async function startReportVerification(callerUid: string, reportId: string): Promise<void> {
+  await authorizeAction(callerUid, ["citizen", "officer", "admin"]);
   // Execute the verification orchestrator in the background on the server
   (async () => {
     await VerificationOrchestrator.verifyReport(reportId);
@@ -142,8 +155,9 @@ export interface ExecutiveSummaryResponse {
 /**
  * Next.js Server Action to generate a Gemini-powered Executive Summary for administrators.
  */
-export async function getAIExecutiveSummary(stats: ExecutiveSummaryStats): Promise<ExecutiveSummaryResponse> {
+export async function getAIExecutiveSummary(callerUid: string, stats: ExecutiveSummaryStats): Promise<ExecutiveSummaryResponse> {
   try {
+    await authorizeAction(callerUid, ["admin"]);
     const model = getGeminiModel();
     const prompt = `You are a Smart City Executive AI Assistant for the CivicMind Command Center. Analyze the following municipal metrics for today:
 - Total reports in system: ${stats.totalCount}
@@ -196,15 +210,19 @@ export interface PredictiveInsight {
 /**
  * Next.js Server Action to generate Gemini-powered predictive insights from existing reports.
  */
-export async function getAIPredictiveInsights(reportsData: Array<{
-  id: string;
-  category: string;
-  dept: string;
-  lat: number;
-  lng: number;
-  created: string;
-}>): Promise<PredictiveInsight[]> {
+export async function getAIPredictiveInsights(
+  callerUid: string,
+  reportsData: Array<{
+    id: string;
+    category: string;
+    dept: string;
+    lat: number;
+    lng: number;
+    created: string;
+  }>
+): Promise<PredictiveInsight[]> {
   try {
+    await authorizeAction(callerUid, ["admin"]);
     const model = getGeminiModel();
     const prompt = `You are a Smart City Predictive Urban Planning AI. Analyze the following list of recent municipal reports:
 ${reportsData.slice(0, 45).map(r => `- ID: ${r.id}, Category: ${r.category}, Dept: ${r.dept}, Lat: ${r.lat.toFixed(4)}, Lng: ${r.lng.toFixed(4)}, Created: ${r.created}`).join("\n")}
@@ -250,5 +268,150 @@ Ensure there is no markdown code blocks, backticks, or text before/after the JSO
         recommendedAction: "Run a scheduled inspection of the electrical nodes in the central sector to prevent localized grid outages."
       }
     ];
+  }
+}
+
+export interface ChatMessage {
+  role: "user" | "model";
+  content: string;
+}
+
+export interface ExecutiveBriefData {
+  overview: string;
+  criticalIssues: string;
+  departmentsUnderPressure: string;
+  operationalRisks: string;
+  recommendedActions: string;
+  resourceAllocationSuggestions: string;
+}
+
+export interface AskAssistantResponse {
+  success: boolean;
+  reply?: string;
+  brief?: ExecutiveBriefData;
+  error?: string;
+}
+
+/**
+ * Next.js Server Action to interact with the AI Municipal Assistant.
+ * Supports standard chat multi-turn dialogue or structured Executive Brief generation.
+ */
+export async function askMunicipalAssistant(
+  callerUid: string,
+  history: ChatMessage[],
+  message: string,
+  mode: "chat" | "executive_brief" = "chat",
+  forceRefresh = false
+): Promise<AskAssistantResponse> {
+  try {
+    await authorizeAction(callerUid, ["admin"]);
+    // 1. Retrieve the cached or fresh municipal context
+    const analytics = await AssistantContextService.getMunicipalContext(forceRefresh);
+    const compactContext = AssistantContextService.buildCompactContext(analytics);
+
+    const model = getGeminiModel();
+
+    if (mode === "executive_brief") {
+      const prompt = `You are an experienced Smart City Municipal Operations Analyst. Analyze the city's operational context and generate a structured Executive Brief of approximately 250 words total.
+Your output must be a valid JSON object. Do not include any markdown, backticks, or other text outside of the JSON object.
+Ensure the JSON is strictly parsable.
+
+JSON Schema to return:
+{
+  "overview": "High-level overview of city operations today, summarizing key statistics.",
+  "criticalIssues": "Identify top 2-3 critical issues or bottlenecks.",
+  "departmentsUnderPressure": "Highlight which departments have high workloads or backlog sizes.",
+  "operationalRisks": "Highlight any immediate risks to city operations (e.g. fake media, unresolved critical events).",
+  "recommendedActions": "Strategic recommended actions for administrators.",
+  "resourceAllocationSuggestions": "Where to allocate staff or budget."
+}
+
+If data is unavailable for any section, state "Insufficient data available." Do not hallucinate statistics.
+
+Context:
+${compactContext}`;
+
+      const response = await model.generateContent(prompt);
+      const text = response.response.text().trim();
+      const jsonString = text.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
+
+      try {
+        const brief = JSON.parse(jsonString) as ExecutiveBriefData;
+        return {
+          success: true,
+          brief,
+        };
+      } catch (parseErr) {
+        console.error("Failed to parse executive brief JSON:", text, parseErr);
+        // Fallback brief if parsing fails
+        return {
+          success: true,
+          brief: {
+            overview: "Overview summary could not be parsed: Insufficient data available.",
+            criticalIssues: "Critical issues cannot be verified: Insufficient data available.",
+            departmentsUnderPressure: "Departments evaluation: Insufficient data available.",
+            operationalRisks: "Operational risks telemetry: Insufficient data available.",
+            recommendedActions: "Recommended actions: Insufficient data available.",
+            resourceAllocationSuggestions: "Resource allocations: Insufficient data available."
+          }
+        };
+      }
+    } else {
+      // Chat mode
+      const contents = [];
+
+      // Pass context and instructions in first turn
+      contents.push({
+        role: "user",
+        parts: [{
+          text: `System Instruction: You are an experienced municipal operations analyst for the CivicMind Command Center.
+You help city administrators make strategic operational decisions based on real data.
+Your responses must be concise, actionable, evidence-based, professional, and decision-oriented.
+
+Strict Guidelines:
+1. Ground every statistic and number in the provided context. If a metric is not present in the context, do not make it up.
+2. If the data is unavailable to answer a question, clearly state: "Insufficient data available."
+3. Speak like a senior analyst (professional, analytical, direct, decision-oriented).
+
+Here is the current municipal context:
+${compactContext}`
+        }]
+      });
+
+      contents.push({
+        role: "model",
+        parts: [{
+          text: "Understood. I have loaded the municipal analytics context. I will analyze the data and answer your operations questions professionally and evidence-based."
+        }]
+      });
+
+      // Add conversation history
+      for (const msg of history) {
+        contents.push({
+          role: msg.role === "user" ? "user" : "model",
+          parts: [{ text: msg.content }]
+        });
+      }
+
+      // Add current message
+      contents.push({
+        role: "user",
+        parts: [{ text: message }]
+      });
+
+      const response = await model.generateContent({ contents });
+      const reply = response.response.text().trim();
+
+      return {
+        success: true,
+        reply,
+      };
+    }
+  } catch (error) {
+    console.error("Error in askMunicipalAssistant:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred.",
+    };
   }
 }

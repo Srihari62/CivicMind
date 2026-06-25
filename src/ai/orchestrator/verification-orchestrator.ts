@@ -4,15 +4,15 @@
  * Runs agents sequentially in memory, handles retries, and performs a single Firestore update.
  */
 
-import "server-only";
+import 'server-only';
 
-import { safeDb } from "@/services/firebase/admin";
-import { VerificationAnalysisAgent } from "../agents/verification-analysis.agent";
-import { DuplicateDetectionAgent } from "../agents/duplicate-detection.agent";
-import { DepartmentRoutingAgent } from "../agents/department-routing.agent";
-import { PriorityEngineAgent } from "../agents/priority-engine.agent";
-import { OfficerAssignmentAgent } from "../agents/officer-assignment.agent";
-import { NotificationService } from "@/features/reports/services/notification.service";
+import { safeDb } from '@/services/firebase/admin';
+import { VerificationAnalysisAgent } from '../agents/verification-analysis.agent';
+import { DuplicateDetectionAgent } from '../agents/duplicate-detection.agent';
+import { DepartmentRoutingAgent } from '../agents/department-routing.agent';
+import { PriorityEngineAgent } from '../agents/priority-engine.agent';
+import { OfficerAssignmentAgent } from '../agents/officer-assignment.agent';
+import { NotificationService } from '@/features/reports/services/notification.service';
 
 /**
  * Retries a promise-returning function with exponential backoff.
@@ -56,7 +56,7 @@ export class VerificationOrchestrator {
 
       // 2. Run VerificationAnalysisAgent (Gemini call)
       const verificationAgent = new VerificationAnalysisAgent();
-      const verificationResult = await runWithRetry("Verification Analysis Agent", () =>
+      const verificationResult = await runWithRetry('Verification Analysis Agent', () =>
         verificationAgent.analyze(report)
       );
 
@@ -65,16 +65,22 @@ export class VerificationOrchestrator {
       const duplicateResult = await duplicateAgent.execute(reportId, report);
 
       // Check if duplicate is found
-      const isDuplicate = duplicateResult.duplicateProbability >= 0.85 && duplicateResult.duplicateReportIds.length > 0;
+      const isDuplicate =
+        duplicateResult.duplicateProbability >= 0.85 &&
+        duplicateResult.duplicateReportIds.length > 0;
 
       let department: string | null = null;
-      let priority: string = "unknown";
+      let priority: string = 'unknown';
       let trustScore = 0.5;
-      let assignmentResult = { officerId: null as string | null, officerName: "N/A", status: "rejected" };
-      let verificationStatus: "verified" | "rejected" | "requires_review" = "verified";
+      let assignmentResult = {
+        officerId: null as string | null,
+        officerName: 'N/A',
+        status: 'rejected',
+      };
+      let verificationStatus: 'verified' | 'rejected' | 'requires_review' = 'verified';
 
       if (isDuplicate) {
-        verificationStatus = "rejected";
+        verificationStatus = 'rejected';
         // Increment reportedCount on original report
         const originalReportId = duplicateResult.duplicateReportIds[0];
         const originalReport = await safeDb.getReport(originalReportId);
@@ -112,9 +118,9 @@ export class VerificationOrchestrator {
         const fakeProb = verificationResult.fakeMediaProbability;
         const confidence = verificationResult.confidence;
         if (fakeProb >= 0.7) {
-          verificationStatus = "rejected";
+          verificationStatus = 'rejected';
         } else if (fakeProb >= 0.4 || confidence < 0.6) {
-          verificationStatus = "requires_review";
+          verificationStatus = 'requires_review';
         }
 
         // 8. Update Officer cases count if assigned
@@ -128,22 +134,22 @@ export class VerificationOrchestrator {
       const newEvents = [
         {
           timestamp: nowStr,
-          actorId: "system",
-          actorRole: "system" as const,
-          action: "Verification Started",
+          actorId: 'system',
+          actorRole: 'system' as const,
+          action: 'Verification Started',
         },
         {
           timestamp: nowStr,
-          actorId: "ai",
-          actorRole: "ai" as const,
-          action: "Verification Completed",
+          actorId: 'ai',
+          actorRole: 'ai' as const,
+          action: 'Verification Completed',
           note: verificationResult.summary,
         },
         {
           timestamp: nowStr,
-          actorId: "system",
-          actorRole: "system" as const,
-          action: "Duplicate Check Completed",
+          actorId: 'system',
+          actorRole: 'system' as const,
+          action: 'Duplicate Check Completed',
           note: isDuplicate
             ? `Duplicate of report #${duplicateResult.duplicateReportIds[0]}. Flagged as Repost.`
             : duplicateResult.reasoning,
@@ -154,57 +160,57 @@ export class VerificationOrchestrator {
         newEvents.push(
           {
             timestamp: nowStr,
-            actorId: "system",
-            actorRole: "system" as const,
-            action: "Department Routed",
+            actorId: 'system',
+            actorRole: 'system' as const,
+            action: 'Department Routed',
             note: `Routed to: ${department}`,
           },
           {
             timestamp: nowStr,
-            actorId: "system",
-            actorRole: "system" as const,
-            action: "Priority Calculated",
+            actorId: 'system',
+            actorRole: 'system' as const,
+            action: 'Priority Calculated',
             note: `Priority: ${priority}, Trust Score: ${trustScore.toFixed(2)}`,
           },
           ...(assignmentResult.officerId
             ? [
                 {
                   timestamp: nowStr,
-                  actorId: "system",
-                  actorRole: "system" as const,
+                  actorId: 'system',
+                  actorRole: 'system' as const,
                   action: `Automatically Assigned to ${assignmentResult.officerName} (${department})`,
                 },
               ]
             : [
                 {
                   timestamp: nowStr,
-                  actorId: "system",
-                  actorRole: "system" as const,
-                  action: "No available officer found.",
+                  actorId: 'system',
+                  actorRole: 'system' as const,
+                  action: 'No available officer found.',
                   note: `Department: ${department}`,
                 },
               ]),
           {
             timestamp: nowStr,
-            actorId: "system",
-            actorRole: "system" as const,
-            action: "Completed",
+            actorId: 'system',
+            actorRole: 'system' as const,
+            action: 'Completed',
           }
         );
       } else {
         newEvents.push(
           {
             timestamp: nowStr,
-            actorId: "system",
-            actorRole: "system" as const,
-            action: "Marked as Repost",
+            actorId: 'system',
+            actorRole: 'system' as const,
+            action: 'Marked as Repost',
             note: `Linked to existing report ID: ${duplicateResult.duplicateReportIds[0]}`,
           },
           {
             timestamp: nowStr,
-            actorId: "system",
-            actorRole: "system" as const,
-            action: "Completed",
+            actorId: 'system',
+            actorRole: 'system' as const,
+            action: 'Completed',
           }
         );
       }
@@ -213,8 +219,8 @@ export class VerificationOrchestrator {
       await safeDb.updateReport(
         reportId,
         {
-          status: isDuplicate ? "rejected" : assignmentResult.status,
-          "ai.verification": {
+          status: isDuplicate ? 'rejected' : assignmentResult.status,
+          'ai.verification': {
             status: verificationStatus,
             fakeMediaProbability: verificationResult.fakeMediaProbability,
             fakeMediaConfidence: verificationResult.fakeMediaConfidence,
@@ -225,23 +231,23 @@ export class VerificationOrchestrator {
               ? `Duplicate of report #${duplicateResult.duplicateReportIds[0]}`
               : duplicateResult.reasoning,
             assignedDepartment: department,
-            priority: isDuplicate ? "low" : priority,
+            priority: isDuplicate ? 'low' : priority,
             trustScore: isDuplicate ? 0.0 : trustScore,
             verificationModel: verificationAgent.modelName,
-            verificationVersion: "1.0.0",
+            verificationVersion: '1.0.0',
             summary: isDuplicate
               ? `This report is a duplicate of #${duplicateResult.duplicateReportIds[0]}. It has been marked as a repost and linked.`
               : verificationResult.summary,
             analyzedAt: nowStr,
             failureReason: null,
           },
-          "ai.assignment": {
+          'ai.assignment': {
             officerId: isDuplicate ? null : assignmentResult.officerId,
             department: isDuplicate ? null : department,
             assignedAt: isDuplicate ? null : nowStr,
-            assignmentMethod: isDuplicate ? null : "automatic",
+            assignmentMethod: isDuplicate ? null : 'automatic',
           },
-          "timestamps.updatedAt": nowStr,
+          'timestamps.updatedAt': nowStr,
         },
         newEvents
       );
@@ -251,11 +257,13 @@ export class VerificationOrchestrator {
         if (assignmentResult.officerId) {
           await NotificationService.notifyOfficerAssigned(assignmentResult.officerId, reportId);
         } else {
-          await NotificationService.notifyAdminAssignmentFailed(reportId, department || "N/A");
+          await NotificationService.notifyAdminAssignmentFailed(reportId, department || 'N/A');
         }
       }
 
-      console.info(`[VerificationOrchestrator] Pipeline Completed Successfully for report "${reportId}"`);
+      console.info(
+        `[VerificationOrchestrator] Pipeline Completed Successfully for report "${reportId}"`
+      );
     } catch (err) {
       console.error(`[VerificationOrchestrator] Pipeline failed:`, err);
       await this.handlePipelineFailure(reportId, err);
@@ -266,24 +274,24 @@ export class VerificationOrchestrator {
    * Helper to handle pipeline errors and record failure.
    */
   private static async handlePipelineFailure(reportId: string, error: unknown): Promise<void> {
-    const errorMsg = error instanceof Error ? error.message : "Unknown error";
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
     try {
       const nowStr = new Date().toISOString();
       const failEvent = {
         timestamp: nowStr,
-        actorId: "system",
-        actorRole: "system" as const,
-        action: "AI Verification Pipeline Failed",
+        actorId: 'system',
+        actorRole: 'system' as const,
+        action: 'AI Verification Pipeline Failed',
         note: `Error: ${errorMsg}`,
       };
 
       await safeDb.updateReport(
         reportId,
         {
-          "ai.verification.status": "failed",
-          "ai.verification.analyzedAt": nowStr,
-          "ai.verification.failureReason": errorMsg,
-          "timestamps.updatedAt": nowStr,
+          'ai.verification.status': 'failed',
+          'ai.verification.analyzedAt': nowStr,
+          'ai.verification.failureReason': errorMsg,
+          'timestamps.updatedAt': nowStr,
         },
         [failEvent]
       );

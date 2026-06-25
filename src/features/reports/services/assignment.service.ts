@@ -204,11 +204,11 @@ export class AssignmentService {
     }
 
     await TimelineService.logEvent(reportId, officerId, "officer", "Investigation Started", "Officer started field investigation.");
-    await NotificationService.notifyCitizenStatusChanged(
-      report.metadata.createdBy,
-      reportId,
-      "in_progress"
-    );
+    try {
+      await NotificationService.notifyInvestigationStarted(reportId);
+    } catch (e) {
+      console.error("Failed to notify investigation started:", e);
+    }
   }
 
   /**
@@ -359,14 +359,9 @@ export class AssignmentService {
     // Decrement workload
     await OfficerService.decrementCases(officerId);
 
-    // Save resolution payload
     const resolvedAtStr = new Date().toISOString();
     const updates = {
       status: "resolved",
-      resolvedBy: officerId,
-      resolvedAt: resolvedAtStr,
-      resolutionNotes: notes,
-      repairEvidence,
       resolution: {
         notes,
         category: category || "completed",
@@ -396,11 +391,21 @@ export class AssignmentService {
     }
 
     await TimelineService.logEvent(reportId, officerId, "officer", "Resolved", notes);
-    await NotificationService.notifyCitizenStatusChanged(
-      report.metadata.createdBy,
-      reportId,
-      "resolved"
-    );
+    
+    // Award citizen points (+50)
+    try {
+      const { CitizenStatsService } = await import("./stats.service");
+      await CitizenStatsService.awardPoints(report.metadata.createdBy, 50, "resolve");
+    } catch (e) {
+      console.error("Failed to award points to citizen:", e);
+    }
+
+    // Trigger database notification
+    try {
+      await NotificationService.notifyResolved(reportId);
+    } catch (e) {
+      console.error("Failed to notify citizen of resolution:", e);
+    }
   }
 }
 export default AssignmentService;

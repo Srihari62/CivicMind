@@ -1,125 +1,57 @@
 /**
  * @file src/components/dashboard/NotificationCenter.tsx
- * @description Premium Notification Center for citizens.
- * Listens to Firestore reports in real time, extracts timeline events, manages read states locally, and animates badge counts.
+ * @description Premium Notification Center component.
+ * Listens to Firestore `notifications` collection in real-time, matching active user ID.
  */
 
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Bell, Check, Trash2, X, FileText, Cpu, ShieldAlert, Wrench, Image as ImageIcon, CheckCircle, Clock } from "lucide-react";
+import { Bell, Check, Trash2, X, FileText, Cpu, ShieldCheck, ShieldAlert, Wrench, Image as ImageIcon, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CivicReport } from "@/types";
+import { collection, query, where, onSnapshot, doc, updateDoc, writeBatch, deleteDoc } from "firebase/firestore";
+import { db } from "@/services/firebase/firestore";
+import { useAuth } from "@/providers/auth-provider";
 import Link from "next/link";
+import { DbNotification } from "@/features/reports/services/notification.service";
 
-interface NotificationCenterProps {
-  reports: CivicReport[];
-}
-
-interface NotificationItem {
-  id: string;
-  reportId: string;
-  reportTitle: string;
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  description: string;
-  timestamp: string;
-  isUnread: boolean;
-}
-
-export default function NotificationCenter({ reports }: NotificationCenterProps) {
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+export default function NotificationCenter() {
+  const { profile } = useAuth();
+  const [notifications, setNotifications] = useState<DbNotification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [readIds, setReadIds] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Load read notifications from localStorage on mount
+  // 1. Subscribe to user notifications in real-time
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("civicmind_read_notifications");
-      if (stored) {
-        setReadIds(JSON.parse(stored));
-      }
-    } catch (e) {
-      console.error("Failed to read notification state from localStorage", e);
-    }
-  }, []);
+    if (!profile?.uid) return;
 
-  // Sync read state back to localStorage
-  const saveReadState = (newReadIds: string[]) => {
-    setReadIds(newReadIds);
-    try {
-      localStorage.setItem("civicmind_read_notifications", JSON.stringify(newReadIds));
-    } catch (e) {
-      console.error("Failed to save notification state to localStorage", e);
-    }
-  };
+    const q = query(
+      collection(db, "notifications"),
+      where("userId", "==", profile.uid)
+    );
 
-  // Extract notifications from reports' timeline events
-  useEffect(() => {
-    const list: NotificationItem[] = [];
-
-    reports.forEach((report) => {
-      const timeline = report.timeline || [];
-      const titleLimit = report.ai?.assistant?.title || report.metadata.title || "Report";
-
-      timeline.forEach((event) => {
-        const action = event.action || "";
-        const lowerAction = action.toLowerCase();
-        let icon = Clock;
-        let nTitle = "";
-        let nDesc = "";
-
-        // Check matching actions
-        if (lowerAction.includes("citizen reported")) {
-          icon = FileText;
-          nTitle = "Report Submitted";
-          nDesc = `Your report for "${titleLimit}" has been submitted successfully.`;
-        } else if (lowerAction.includes("ai assistant") || lowerAction.includes("ai verification")) {
-          icon = Cpu;
-          nTitle = "AI Verification Complete";
-          nDesc = `AI Triage has completed analysis for "${titleLimit}".`;
-        } else if (lowerAction.includes("accepted") || lowerAction.includes("officer assigned")) {
-          icon = ShieldAlert;
-          nTitle = "Officer Assigned";
-          nDesc = `A field officer was dispatched to investigate "${titleLimit}".`;
-        } else if (lowerAction.includes("investigation started") || lowerAction.includes("investigation")) {
-          icon = Wrench;
-          nTitle = "Investigation Started";
-          nDesc = `Investigation has commenced on site for "${titleLimit}".`;
-        } else if (lowerAction.includes("progress uploaded") || lowerAction.includes("evidence uploaded")) {
-          icon = ImageIcon;
-          nTitle = "Repair Evidence Uploaded";
-          nDesc = `Officer updated notes or uploaded progress media for "${titleLimit}".`;
-        } else if (lowerAction.includes("resolved") || lowerAction.includes("completed")) {
-          icon = CheckCircle;
-          nTitle = "Incident Resolved";
-          nDesc = `Incident "${titleLimit}" is resolved. View before/after reports.`;
-        } else {
-          // General fallback
-          return;
-        }
-
-        const id = `${report.id}_${action}_${event.timestamp}`;
-        const isUnread = !readIds.includes(id);
-
-        list.push({
-          id,
-          reportId: report.id,
-          reportTitle: titleLimit,
-          icon,
-          title: nTitle,
-          description: nDesc,
-          timestamp: event.timestamp,
-          isUnread,
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const list: DbNotification[] = [];
+        snapshot.forEach((docSnap) => {
+          list.push({ id: docSnap.id, ...docSnap.data() } as DbNotification);
         });
-      });
-    });
 
-    // Sort chronologically (newest first)
-    list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    setNotifications(list);
-  }, [reports, readIds]);
+        // Sort chronologically (newest first)
+        list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        setNotifications(list);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error listening to notifications snapshot:", error);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [profile?.uid]);
 
   // Handle outside clicks to close dropdown
   useEffect(() => {
@@ -132,24 +64,72 @@ export default function NotificationCenter({ reports }: NotificationCenterProps)
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const unreadCount = notifications.filter((n) => n.isUnread).length;
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const handleMarkAsRead = (id: string) => {
-    if (!readIds.includes(id)) {
-      saveReadState([...readIds, id]);
+  const handleMarkAsRead = async (id: string) => {
+    try {
+      const docRef = doc(db, "notifications", id);
+      await updateDoc(docRef, { read: true });
+    } catch (e) {
+      console.error("Failed to mark notification as read:", e);
     }
   };
 
-  const handleMarkAllAsRead = () => {
-    const allIds = notifications.map((n) => n.id);
-    saveReadState(allIds);
+  const handleMarkAllAsRead = async () => {
+    const unread = notifications.filter((n) => !n.read);
+    if (unread.length === 0) return;
+
+    try {
+      const batch = writeBatch(db);
+      unread.forEach((n) => {
+        batch.update(doc(db, "notifications", n.id), { read: true });
+      });
+      await batch.commit();
+    } catch (e) {
+      console.error("Failed to mark all as read:", e);
+    }
   };
 
-  const handleClearAll = () => {
-    // Clear notifications by setting all as read
-    const allIds = notifications.map((n) => n.id);
-    saveReadState(allIds);
-    setIsOpen(false);
+  const handleClearAll = async () => {
+    if (notifications.length === 0) return;
+
+    try {
+      const batch = writeBatch(db);
+      notifications.forEach((n) => {
+        batch.delete(doc(db, "notifications", n.id));
+      });
+      await batch.commit();
+      setIsOpen(false);
+    } catch (e) {
+      console.error("Failed to clear notifications:", e);
+    }
+  };
+
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case "report_submitted":
+        return FileText;
+      case "verification_completed":
+        return Cpu;
+      case "assigned_to_officer":
+        return ShieldCheck;
+      case "new_assignment":
+        return ShieldAlert;
+      case "investigation_started":
+        return Wrench;
+      case "citizen_added_evidence":
+        return ImageIcon;
+      case "resolved":
+        return CheckCircle;
+      case "high_priority_report":
+      case "department_backlog":
+      case "sla_risk":
+        return AlertCircle;
+      case "high_fake_media":
+        return ShieldAlert;
+      default:
+        return Bell;
+    }
   };
 
   return (
@@ -167,7 +147,7 @@ export default function NotificationCenter({ reports }: NotificationCenterProps)
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.5, opacity: 0 }}
-              className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-blue-600 border-2 border-zinc-950 text-[10px] font-extrabold flex items-center justify-center text-white"
+              className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-blue-655 border border-zinc-950 text-[10px] font-black flex items-center justify-center text-white"
             >
               {unreadCount}
             </motion.span>
@@ -204,6 +184,13 @@ export default function NotificationCenter({ reports }: NotificationCenterProps)
                     Mark read
                   </button>
                 )}
+                <Link
+                  href="/notifications"
+                  onClick={() => setIsOpen(false)}
+                  className="text-blue-400 hover:text-blue-300 font-semibold transition"
+                >
+                  View Page
+                </Link>
                 <button
                   onClick={() => setIsOpen(false)}
                   className="text-zinc-500 hover:text-white"
@@ -215,7 +202,11 @@ export default function NotificationCenter({ reports }: NotificationCenterProps)
 
             {/* List */}
             <div className="max-h-[350px] overflow-y-auto divide-y divide-white/5">
-              {notifications.length === 0 ? (
+              {loading ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+                </div>
+              ) : notifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
                   <div className="p-3 bg-white/5 rounded-full border border-white/10 mb-3 text-zinc-500">
                     <Bell className="w-6 h-6" />
@@ -227,14 +218,14 @@ export default function NotificationCenter({ reports }: NotificationCenterProps)
                 </div>
               ) : (
                 notifications.map((n) => {
-                  const Icon = n.icon;
+                  const Icon = getNotificationIcon(n.type);
                   return (
                     <div
                       key={n.id}
-                      className={`flex gap-3.5 p-4 items-start transition-all hover:bg-white/5 ${n.isUnread ? "bg-blue-500/[0.03]" : ""}`}
+                      className={`flex gap-3.5 p-4 items-start transition-all hover:bg-white/5 ${!n.read ? "bg-blue-500/[0.03]" : ""}`}
                     >
                       {/* Icon */}
-                      <div className={`p-2 rounded-xl border shrink-0 ${n.isUnread ? "bg-blue-500/10 border-blue-500/20 text-blue-400" : "bg-zinc-900 border-zinc-800 text-zinc-400"}`}>
+                      <div className={`p-2 rounded-xl border shrink-0 ${!n.read ? "bg-blue-500/10 border-blue-500/20 text-blue-400" : "bg-zinc-900 border-zinc-800 text-zinc-400"}`}>
                         <Icon className="w-4 h-4" />
                       </div>
 
@@ -242,7 +233,7 @@ export default function NotificationCenter({ reports }: NotificationCenterProps)
                       <div className="flex-1 min-w-0 space-y-1">
                         <div className="flex items-start justify-between gap-2">
                           <Link
-                            href={`/reports/${n.reportId}`}
+                            href={profile?.role === "officer" ? `/officer/reports/${n.reportId}/investigate` : `/reports/${n.reportId}`}
                             onClick={() => {
                               handleMarkAsRead(n.id);
                               setIsOpen(false);
@@ -252,15 +243,15 @@ export default function NotificationCenter({ reports }: NotificationCenterProps)
                             {n.title}
                           </Link>
                           <span className="text-[9px] text-zinc-500 shrink-0 mt-0.5">
-                            {new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
                           </span>
                         </div>
                         <p className="text-[11px] text-zinc-400 leading-relaxed line-clamp-2">
-                          {n.description}
+                          {n.message}
                         </p>
                         
                         {/* Action buttons */}
-                        {n.isUnread && (
+                        {!n.read && (
                           <button
                             onClick={() => handleMarkAsRead(n.id)}
                             className="text-[10px] text-blue-400 hover:text-blue-300 font-semibold flex items-center gap-1 mt-1.5"
