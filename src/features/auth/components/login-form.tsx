@@ -44,6 +44,12 @@ export function LoginForm() {
       const profile = await AuthService.getProfile(user.uid);
 
       if (profile) {
+        if (profile.isActive === false) {
+          await AuthService.logout();
+          setGlobalError("Your account has been disabled. Please contact an administrator.");
+          return;
+        }
+
         if (profile.isProfileComplete) {
           const redirectPath = profile.role === "admin" ? "/admin" : profile.role === "officer" ? "/officer" : "/dashboard";
           router.push(redirectPath);

@@ -54,6 +54,13 @@ export function RouteGuard({
         return;
       }
 
+      // Enforce account status check
+      if (profile.isActive === false) {
+        logout().catch((err) => console.error("RouteGuard active check logout failure:", err));
+        router.replace("/login");
+        return;
+      }
+
       // 2. Complete profile first if incomplete (unless already on complete-profile page)
       if (!profile.isProfileComplete && pathname !== "/complete-profile") {
         router.replace("/complete-profile");
@@ -64,6 +71,15 @@ export function RouteGuard({
       if (profile.isProfileComplete && pathname === "/complete-profile") {
         router.replace(defaultRoleRedirect(profile.role));
         return;
+      }
+
+      // Strict admin route isolation
+      if (profile && profile.role === "admin") {
+        const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
+        if (!isAdminRoute) {
+          router.replace("/admin");
+          return;
+        }
       }
 
       // 4. Role-based routing authorization check
@@ -86,6 +102,14 @@ export function RouteGuard({
     if (!requireAuth) return true;
     if (pathname === "/complete-profile") return true;
     if (!profile) return false;
+    if (profile.isActive === false) return false;
+    
+    // Strict admin route isolation
+    if (profile.role === "admin") {
+      const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
+      if (!isAdminRoute) return false;
+    }
+
     if (allowedRoles && !allowedRoles.includes(profile.role)) return false;
     return true;
   })();
@@ -102,7 +126,7 @@ export function RouteGuard({
       }
 
       // On other pages, if profile doesn't exist, or is incomplete, or they are not authorized, show loader
-      if (!profile || !profile.isProfileComplete || !isAuthorized) return true;
+      if (!profile || !profile.isProfileComplete || !isAuthorized || profile.isActive === false) return true;
     } else {
       // Guest-only routes (e.g. /login, /register)
       // Show loader if the user is authenticated and has a complete profile (meaning we are about to redirect them away)

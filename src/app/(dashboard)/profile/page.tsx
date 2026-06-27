@@ -17,7 +17,10 @@ import { db, COLLECTIONS } from "@/services/firebase/firestore";
 import { CivicReport } from "@/types";
 import { UserRepository } from "@/features/auth/repositories/user.repository";
 import { CitizenStatsService } from "@/features/reports/services/stats.service";
-import { Award, Shield, CheckCircle, FileText, Globe, Calendar, Phone, Loader2, Sparkles, MapPin } from "lucide-react";
+import { MediaService } from "@/features/media/services/media.service";
+import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
+import { auth } from "@/services/firebase/auth";
+import { Award, Shield, CheckCircle, FileText, Globe, Calendar, Phone, Loader2, Sparkles, MapPin, Camera, Lock } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function ProfilePage() {
@@ -33,6 +36,17 @@ export default function ProfilePage() {
   const [preferredLanguage, setPreferredLanguage] = useState("english");
   const [community, setCommunity] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Password fields
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+
+  // Upload state
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   // Sync profile fields into local state when profile changes
   useEffect(() => {
@@ -104,6 +118,71 @@ export default function ProfilePage() {
     }
   };
 
+  // Avatar upload handler
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    if (!profile?.uid) return;
+
+    setUploadingAvatar(true);
+    try {
+      const assets = await MediaService.uploadFiles([files[0]], `profiles/${profile.uid}`, profile.uid);
+      if (assets.length > 0) {
+        const newUrl = assets[0].url;
+        setAvatarUrl(newUrl);
+        // Auto save to firestore profile
+        await UserRepository.updateUserProfile(profile.uid, {
+          avatarUrl: newUrl,
+        } as any);
+      }
+    } catch (err: any) {
+      console.error("Avatar upload failed:", err);
+      alert(err.message || "Failed to upload avatar image.");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  // Password update handler
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+    setPasswordSuccess(null);
+
+    const user = auth.currentUser;
+    if (!user || !user.email) {
+      setPasswordError("No authenticated session found.");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError("New password must be at least 6 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New passwords do not match.");
+      return;
+    }
+
+    setUpdatingPassword(true);
+    try {
+      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      await reauthenticateWithCredential(user, credential);
+      await updatePassword(user, newPassword);
+      
+      setPasswordSuccess("Security password updated successfully.");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err: any) {
+      console.error("Password update error:", err);
+      setPasswordError(err.message || "Failed to update security credentials. Ensure current password is correct.");
+    } finally {
+      setUpdatingPassword(false);
+    }
+  };
+
   // Gamification properties helper
   const stats = (profile as any)?.gamification || {
     points: 0,
@@ -146,6 +225,7 @@ export default function ProfilePage() {
             <div className="flex items-center gap-4">
               <Link href="/profile" className="flex items-center gap-2 border-b-2 border-blue-500 pb-1" title="View Profile">
                 {profile?.avatarUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
                   <img src={profile.avatarUrl} alt="Avatar" className="w-8 h-8 rounded-full border border-white/20 object-cover" />
                 ) : (
                   <div className="w-8 h-8 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 text-xs font-bold font-mono">
@@ -173,6 +253,7 @@ export default function ProfilePage() {
               {/* Profile Avatar */}
               <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-blue-500 shrink-0 bg-zinc-950 relative group">
                 {avatarUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
                   <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-blue-400 text-3xl font-extrabold font-mono bg-blue-500/10">
@@ -216,50 +297,160 @@ export default function ProfilePage() {
 
             {/* Profile Editing Form */}
             {isEditing && (
-              <motion.form
+              <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
-                onSubmit={handleSave}
-                className="border border-white/10 rounded-3xl p-6 bg-zinc-900/50 flex flex-col gap-4 shadow-xl"
+                className="flex flex-col gap-6"
               >
-                <h3 className="text-sm font-bold uppercase tracking-wider text-blue-400">Update Profile Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs text-zinc-400 font-semibold">Display Name</label>
-                    <Input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Your display name" className="bg-zinc-950 border-white/10 text-white" />
+                {/* Form 1: General Info & Image Upload */}
+                <form
+                  onSubmit={handleSave}
+                  className="border border-white/10 rounded-3xl p-6 bg-zinc-900/50 flex flex-col gap-4 shadow-xl"
+                >
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-blue-400">Update Profile Details</h3>
+                  
+                  {/* Upload Avatar Widget */}
+                  <div className="flex flex-col md:flex-row gap-4 items-center p-4 bg-zinc-950/40 border border-white/5 rounded-2xl">
+                    <div className="relative w-16 h-16 rounded-full overflow-hidden border border-white/10 shrink-0 bg-zinc-950 flex items-center justify-center font-bold text-zinc-400 text-lg">
+                      {avatarUrl ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        (name || profile?.email || "C").charAt(0).toUpperCase()
+                      )}
+                      {uploadingAvatar && (
+                        <div className="absolute inset-0 bg-black/75 flex items-center justify-center">
+                          <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 flex flex-col gap-1 w-full text-left">
+                      <span className="text-xs font-semibold text-zinc-350">Profile Picture Avatar</span>
+                      <span className="text-[10px] text-zinc-500">JPG, PNG, WEBP formats. Direct Cloudinary upload.</span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <label className="bg-zinc-850 hover:bg-zinc-800 text-zinc-300 border border-white/10 text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg cursor-pointer flex items-center gap-1.5 transition-colors">
+                          <Camera className="w-3.5 h-3.5 text-zinc-550" /> Choose Image file
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleAvatarUpload}
+                            disabled={uploadingAvatar}
+                          />
+                        </label>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs text-zinc-400 font-semibold">Contact Phone</label>
-                    <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 (555) 019-2834" className="bg-zinc-950 border-white/10 text-white" />
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs text-zinc-400 font-semibold">Display Name</label>
+                      <Input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Your display name" className="bg-zinc-950 border-white/10 text-white" />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs text-zinc-400 font-semibold">Contact Phone</label>
+                      <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 (555) 019-2834" className="bg-zinc-950 border-white/10 text-white" />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs text-zinc-400 font-semibold">Avatar Image URL</label>
+                      <Input value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://example.com/avatar.jpg" className="bg-zinc-950 border-white/10 text-white" />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs text-zinc-400 font-semibold">Preferred Language</label>
+                      <select
+                        value={preferredLanguage}
+                        onChange={(e) => setPreferredLanguage(e.target.value)}
+                        className="bg-zinc-950 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                      >
+                        <option value="english">English</option>
+                        <option value="spanish">Spanish</option>
+                        <option value="spanish_mx">Spanish (MX)</option>
+                        <option value="arabic">Arabic</option>
+                        <option value="chinese">Chinese</option>
+                        <option value="french">French</option>
+                      </select>
+                    </div>
+                    <div className="flex flex-col gap-1.5 md:col-span-2">
+                      <label className="text-xs text-zinc-400 font-semibold">Neighborhood / Community</label>
+                      <Input value={community} onChange={(e) => setCommunity(e.target.value)} placeholder="Downtown / North District" className="bg-zinc-950 border-white/10 text-white" />
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs text-zinc-400 font-semibold">Avatar Image URL</label>
-                    <Input value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://example.com/avatar.jpg" className="bg-zinc-950 border-white/10 text-white" />
+                  <Button type="submit" size="sm" disabled={saving} className="bg-blue-600 hover:bg-blue-500 text-white font-bold w-fit mt-2">
+                    {saving ? "Saving Changes..." : "Save Preferences"}
+                  </Button>
+                </form>
+
+                {/* Form 2: Password / Security credentials */}
+                <form
+                  onSubmit={handleUpdatePassword}
+                  className="border border-white/10 rounded-3xl p-6 bg-zinc-900/50 flex flex-col gap-4 shadow-xl"
+                >
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
+                    <Lock className="w-4 h-4 text-amber-500" /> Change Security Password
+                  </h3>
+                  
+                  {passwordError && (
+                    <div className="p-3 text-xs bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg">
+                      {passwordError}
+                    </div>
+                  )}
+                  
+                  {passwordSuccess && (
+                    <div className="p-3 text-xs bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg">
+                      {passwordSuccess}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs text-zinc-400 font-semibold">Current Password</label>
+                      <Input
+                        type="password"
+                        required
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        placeholder="Enter current password to authorize"
+                        className="bg-zinc-950 border-white/10 text-white"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs text-zinc-400 font-semibold">New Password</label>
+                        <Input
+                          type="password"
+                          required
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="Min. 6 characters"
+                          className="bg-zinc-950 border-white/10 text-white"
+                        />
+                      </div>
+                      
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs text-zinc-400 font-semibold">Confirm New Password</label>
+                        <Input
+                          type="password"
+                          required
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="Verify new password"
+                          className="bg-zinc-950 border-white/10 text-white"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs text-zinc-400 font-semibold">Preferred Language</label>
-                    <select
-                      value={preferredLanguage}
-                      onChange={(e) => setPreferredLanguage(e.target.value)}
-                      className="bg-zinc-950 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
-                    >
-                      <option value="english">English</option>
-                      <option value="spanish">Spanish</option>
-                      <option value="spanish_mx">Spanish (MX)</option>
-                      <option value="arabic">Arabic</option>
-                      <option value="chinese">Chinese</option>
-                      <option value="french">French</option>
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1.5 md:col-span-2">
-                    <label className="text-xs text-zinc-400 font-semibold">Neighborhood / Community</label>
-                    <Input value={community} onChange={(e) => setCommunity(e.target.value)} placeholder="Downtown / North District" className="bg-zinc-950 border-white/10 text-white" />
-                  </div>
-                </div>
-                <Button type="submit" size="sm" disabled={saving} className="bg-blue-600 hover:bg-blue-500 text-white font-bold w-fit mt-2">
-                  {saving ? "Saving Changes..." : "Save Preferences"}
-                </Button>
-              </motion.form>
+
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={updatingPassword}
+                    className="bg-amber-600 hover:bg-amber-700 text-white font-bold w-fit mt-2"
+                  >
+                    {updatingPassword ? "Updating Password..." : "Update Credentials"}
+                  </Button>
+                </form>
+              </motion.div>
             )}
 
             {/* Achievement / Points Overview Grid */}
