@@ -43,11 +43,19 @@ export function LoginForm() {
       // 2. Fetch User Profile to check completion
       const profile = await AuthService.getProfile(user.uid);
 
-      if (profile && profile.isProfileComplete) {
-        const redirectPath = profile.role === "admin" ? "/admin" : profile.role === "officer" ? "/officer" : "/dashboard";
-        router.push(redirectPath);
+      if (profile) {
+        if (profile.isProfileComplete) {
+          const redirectPath = profile.role === "admin" ? "/admin" : profile.role === "officer" ? "/officer" : "/dashboard";
+          router.push(redirectPath);
+        } else {
+          router.push("/complete-profile");
+        }
       } else {
-        router.push("/complete-profile");
+        await AuthService.logout();
+        setGlobalError("Your email is not registered. Redirecting to signup...");
+        setTimeout(() => {
+          router.push("/register");
+        }, 3000);
       }
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : "Invalid email or password combination.";

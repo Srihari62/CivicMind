@@ -18,12 +18,22 @@ import { ISSUE_CATEGORIES, REPORT_STATUSES } from "@/constants";
 import { AlertCircle, ArrowLeft } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db, COLLECTIONS } from "@/services/firebase/firestore";
+import dynamic from "next/dynamic";
 
 // Import custom Sprint 9 citizen dashboard components
 import ReportTimeline from "@/components/dashboard/ReportTimeline";
 import AIAnalysisCard from "@/components/dashboard/AIAnalysisCard";
 import VerificationProgress from "@/components/dashboard/VerificationProgress";
 import BeforeAfterGallery from "@/components/dashboard/BeforeAfterGallery";
+
+const MapViewer = dynamic(() => import("@/components/maps/MapViewer"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[320px] bg-slate-950/45 animate-pulse rounded-2xl flex items-center justify-center border border-slate-800">
+      <span className="text-xs text-slate-500">Initializing mapping engine...</span>
+    </div>
+  ),
+});
 
 export default function ReportDetailsPage() {
   const params = useParams();
@@ -206,6 +216,16 @@ export default function ReportDetailsPage() {
                       </span>
                     </div>
                   </div>
+
+                  {/* Map Viewer */}
+                  <MapViewer
+                    latitude={report.location.latitude}
+                    longitude={report.location.longitude}
+                    title={report.ai?.assistant?.title || report.metadata.title}
+                    category={report.ai?.assistant?.category || report.metadata.category}
+                    severity={(report.ai?.assistant?.severity || report.ai?.verification?.priority) ?? undefined}
+                    address={report.location.formattedAddress}
+                  />
                 </div>
 
                 {/* 2. AI Explainability Panel */}

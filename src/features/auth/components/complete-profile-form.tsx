@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 
 export function CompleteProfileForm() {
   const router = useRouter();
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, logout } = useAuth();
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -120,6 +120,22 @@ export function CompleteProfileForm() {
 
       <Button type="submit" isLoading={isLoading} className="w-full mt-2">
         Complete Registration
+      </Button>
+
+      <Button
+        type="button"
+        variant="outline"
+        onClick={async () => {
+          try {
+            await logout();
+            router.push("/login");
+          } catch (err) {
+            console.error("Failed to sign out:", err);
+          }
+        }}
+        className="w-full border-white/10 hover:bg-zinc-900 text-zinc-400 mt-1"
+      >
+        Sign Out / Cancel
       </Button>
     </form>
   );

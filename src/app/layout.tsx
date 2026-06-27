@@ -46,6 +46,8 @@ export const viewport: Viewport = {
   maximumScale: 5,
 };
 
+import { GoogleMapsProvider } from "@/components/maps/GoogleMapProvider";
+
 interface RootLayoutProps {
   children: React.ReactNode;
 }
@@ -59,7 +61,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <QueryProvider>
           <ThemeProvider defaultTheme="system" storageKey="civicmind-theme">
             <AuthProvider>
-              {children}
+              <GoogleMapsProvider>
+                {children}
+              </GoogleMapsProvider>
             </AuthProvider>
           </ThemeProvider>
         </QueryProvider>

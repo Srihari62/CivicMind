@@ -1,32 +1,17 @@
 /**
  * @file src/components/maps/MapPicker.tsx
- * @description Interactive Leaflet map location picker with address autocomplete, marker dragging, click-to-pin, and Nominatim geocoding.
+ * @description Interactive Google Map location picker with address autocomplete, marker dragging, click-to-pin, and Geocoding.
  */
 
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-
+import { Map, AdvancedMarker, useMap } from "@vis.gl/react-google-maps";
 import { LocationService } from "@/services/location/location.service";
 import { LocationSearch } from "./LocationSearch";
 import { LocationControls } from "./LocationControls";
 import { ReportLocation } from "@/types";
 import { AlertCircle, Loader2 } from "lucide-react";
-
-// Fix Leaflet marker asset paths
-const DefaultIcon = L.icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-L.Marker.prototype.options.icon = DefaultIcon;
 
 interface MapPickerProps {
   initialLatitude?: number;
@@ -35,21 +20,13 @@ interface MapPickerProps {
   onLocationChange: (location: ReportLocation) => void;
 }
 
-// Inner helper to handle click events on the map
-function MapEventsHandler({ onClick }: { onClick: (lat: number, lng: number) => void }) {
-  useMapEvents({
-    click(e) {
-      onClick(e.latlng.lat, e.latlng.lng);
-    },
-  });
-  return null;
-}
-
 // Inner helper to synchronize map camera panning when coordinates are updated
-function MapCameraHandler({ center }: { center: [number, number] }) {
+function MapCameraHandler({ center }: { center: { lat: number; lng: number } }) {
   const map = useMap();
   useEffect(() => {
-    map.setView(center, map.getZoom());
+    if (map) {
+      map.panTo(center);
+    }
   }, [center, map]);
   return null;
 }
@@ -82,6 +59,8 @@ export function MapPicker({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
   // Synchronize initial location when parsed
   useEffect(() => {
     if (initialLocation) {
@@ -101,7 +80,7 @@ export function MapPicker({
         onLocationChange(result);
       } catch (err) {
         console.warn("Reverse geocode request failed:", err);
-        setError("Nominatim geocoder service failed. Using raw GPS coordinates.");
+        setError("Google Maps geocoder service failed. Using raw GPS coordinates.");
         const fallback: ReportLocation = {
           ...locationData,
           latitude: lat,
@@ -125,19 +104,23 @@ export function MapPicker({
   }, [initialLocation, locationData.formattedAddress, performGeocoding, position]);
 
   // Handle marker drag event completion
-  const handleMarkerDragEnd = (e: L.DragEndEvent) => {
-    const marker = e.target;
-    if (marker) {
-      const latLng = marker.getLatLng();
-      setPosition([latLng.lat, latLng.lng]);
-      performGeocoding(latLng.lat, latLng.lng);
+  const handleMarkerDragEnd = (e: google.maps.MapMouseEvent) => {
+    if (e.latLng) {
+      const lat = e.latLng.lat();
+      const lng = e.latLng.lng();
+      setPosition([lat, lng]);
+      performGeocoding(lat, lng);
     }
   };
 
   // Handle map click events
-  const handleMapClick = (lat: number, lng: number) => {
-    setPosition([lat, lng]);
-    performGeocoding(lat, lng);
+  const handleMapClick = (e: any) => {
+    if (e.detail.latLng) {
+      const lat = e.detail.latLng.lat;
+      const lng = e.detail.latLng.lng;
+      setPosition([lat, lng]);
+      performGeocoding(lat, lng);
+    }
   };
 
   // Handle search autocomplete suggestion selections
@@ -198,28 +181,42 @@ export function MapPicker({
         </div>
       )}
 
-      {/* Leaflet Map panel container */}
-      <div className="h-[280px] w-full rounded-2xl overflow-hidden border border-slate-800 bg-slate-950/40 relative z-10 shadow-inner">
-        <MapContainer
-          center={position}
-          zoom={15}
-          scrollWheelZoom={true}
-          style={{ width: "100%", height: "100%" }}
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <Marker
-            position={position}
-            draggable={true}
-            eventHandlers={{
-              dragend: handleMarkerDragEnd,
-            }}
-          />
-          <MapEventsHandler onClick={handleMapClick} />
-          <MapCameraHandler center={position} />
-        </MapContainer>
+      {/* Google Map panel container */}
+      <div className="h-[280px] w-full rounded-2xl overflow-hidden border border-slate-800 bg-slate-950/40 relative shadow-inner">
+        {!apiKey ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-slate-950/60 backdrop-blur-sm gap-2">
+            <AlertCircle className="h-8 w-8 text-amber-500 animate-bounce" />
+            <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">Map Service Unavailable</span>
+            <span className="text-[11px] text-slate-500 max-w-[260px] leading-relaxed">
+              Google Maps API Key is missing. You can still manually enter the address and coordinates below.
+            </span>
+          </div>
+        ) : (
+          <Map
+            defaultZoom={15}
+            defaultCenter={{ lat: position[0], lng: position[1] }}
+            center={{ lat: position[0], lng: position[1] }}
+            mapId="DEMO_MAP_ID"
+            onClick={handleMapClick}
+            gestureHandling="greedy"
+            disableDefaultUI={true}
+            style={{ width: "100%", height: "100%" }}
+          >
+            <AdvancedMarker
+              position={{ lat: position[0], lng: position[1] }}
+              draggable={true}
+              onDragEnd={handleMarkerDragEnd}
+            >
+              <div className="relative flex items-center justify-center">
+                <div className="absolute w-8 h-8 rounded-full bg-indigo-500/30 animate-ping" />
+                <div className="w-5 h-5 rounded-full bg-indigo-650 border-2 border-white shadow-lg flex items-center justify-center">
+                  <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                </div>
+              </div>
+            </AdvancedMarker>
+            <MapCameraHandler center={{ lat: position[0], lng: position[1] }} />
+          </Map>
+        )}
       </div>
 
       {/* Selected coordinate controls panel */}

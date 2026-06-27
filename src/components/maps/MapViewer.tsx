@@ -1,30 +1,15 @@
 /**
  * @file src/components/maps/MapViewer.tsx
- * @description Incident geospatial visualizer using Leaflet. Features Satellite/OSM view, coordinates actions, and Google Maps redirections.
+ * @description Incident geospatial visualizer using Google Maps. Features Satellite/Roadmap toggles, coordinates actions, and navigation.
  */
 
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-
-import { MapPin, Navigation, Globe, Copy, Check, Info } from "lucide-react";
+import { Map, AdvancedMarker, InfoWindow, useMap } from "@vis.gl/react-google-maps";
+import { MapPin, Navigation, Globe, Copy, Check, Info, AlertCircle } from "lucide-react";
 import { Button } from "../ui/button";
 import { MarkerPopup } from "./MarkerPopup";
-
-// Fix Leaflet marker asset paths
-const DefaultIcon = L.icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-L.Marker.prototype.options.icon = DefaultIcon;
 
 interface MapViewerProps {
   latitude: number;
@@ -36,10 +21,12 @@ interface MapViewerProps {
 }
 
 // Inner helper to synchronize map camera panning when coordinates are updated
-function MapCameraHandler({ center }: { center: [number, number] }) {
+function MapCameraHandler({ center }: { center: { lat: number; lng: number } }) {
   const map = useMap();
   useEffect(() => {
-    map.setView(center, map.getZoom());
+    if (map) {
+      map.panTo(center);
+    }
   }, [center, map]);
   return null;
 }
@@ -52,10 +39,12 @@ export function MapViewer({
   severity,
   address,
 }: MapViewerProps) {
-  const [mapType, setMapType] = useState<"osm" | "satellite">("osm");
+  const [mapType, setMapType] = useState<"roadmap" | "satellite">("roadmap");
   const [copied, setCopied] = useState(false);
+  const [infoWindowOpen, setInfoWindowOpen] = useState(true);
 
   const position: [number, number] = [latitude, longitude];
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   const handleCopyCoords = () => {
     navigator.clipboard.writeText(`${latitude}, ${longitude}`);
@@ -64,7 +53,6 @@ export function MapViewer({
   };
 
   const gmapsDirectionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
-
   const hasCoords = latitude && longitude;
 
   if (!hasCoords) {
@@ -81,17 +69,6 @@ export function MapViewer({
     );
   }
 
-  // Choose the TileLayer URL based on user toggle selection
-  const tileLayerUrl =
-    mapType === "satellite"
-      ? "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-      : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
-
-  const attribution =
-    mapType === "satellite"
-      ? "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
-      : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
-
   return (
     <div className="flex flex-col gap-3 w-full">
       {/* Control Actions Bar */}
@@ -100,10 +77,10 @@ export function MapViewer({
           <Button
             type="button"
             variant="outline"
-            onClick={() => setMapType("osm")}
+            onClick={() => setMapType("roadmap")}
             className={`text-xs px-3 py-1.5 border border-slate-800 h-8 ${
-              mapType === "osm"
-                ? "bg-indigo-600 text-white hover:bg-indigo-500"
+              mapType === "roadmap"
+                ? "bg-indigo-650 text-white hover:bg-indigo-600 border-none"
                 : "bg-slate-900/60 text-slate-350 hover:bg-slate-850"
             }`}
           >
@@ -115,7 +92,7 @@ export function MapViewer({
             onClick={() => setMapType("satellite")}
             className={`text-xs px-3 py-1.5 border border-slate-800 h-8 ${
               mapType === "satellite"
-                ? "bg-indigo-600 text-white hover:bg-indigo-500"
+                ? "bg-indigo-650 text-white hover:bg-indigo-600 border-none"
                 : "bg-slate-900/60 text-slate-350 hover:bg-slate-850"
             }`}
           >
@@ -152,28 +129,48 @@ export function MapViewer({
       </div>
 
       {/* Map Content Box */}
-      <div className="h-[320px] w-full rounded-2xl overflow-hidden border border-slate-800 bg-slate-950/40 relative z-10 shadow-lg">
-        <MapContainer
-          center={position}
-          zoom={16}
-          scrollWheelZoom={true}
-          style={{ width: "100%", height: "100%" }}
-        >
-          <TileLayer attribution={attribution} url={tileLayerUrl} />
-          <Marker position={position}>
-            <Popup className="bg-slate-950 border border-slate-850 rounded-xl overflow-hidden">
-              <MarkerPopup
-                title={title}
-                category={category}
-                severity={severity}
-                address={address}
-                latitude={latitude}
-                longitude={longitude}
-              />
-            </Popup>
-          </Marker>
-          <MapCameraHandler center={position} />
-        </MapContainer>
+      <div className="h-[320px] w-full rounded-2xl overflow-hidden border border-slate-800 bg-slate-950/40 relative shadow-lg">
+        {!apiKey ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-slate-950/60 backdrop-blur-sm gap-2">
+            <AlertCircle className="h-8 w-8 text-amber-500 animate-bounce" />
+            <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">Map Service Unavailable</span>
+            <span className="text-[11px] text-slate-500 max-w-[260px] leading-relaxed">
+              Google Maps API Key is missing. Coordinates are available on record.
+            </span>
+          </div>
+        ) : (
+          <Map
+            defaultZoom={16}
+            defaultCenter={{ lat: position[0], lng: position[1] }}
+            center={{ lat: position[0], lng: position[1] }}
+            mapId="DEMO_MAP_ID"
+            mapTypeId={mapType}
+            gestureHandling="greedy"
+            disableDefaultUI={true}
+            style={{ width: "100%", height: "100%" }}
+          >
+            <AdvancedMarker
+              position={{ lat: position[0], lng: position[1] }}
+              onClick={() => setInfoWindowOpen(true)}
+            />
+            {infoWindowOpen && (
+              <InfoWindow
+                position={{ lat: position[0], lng: position[1] }}
+                onCloseClick={() => setInfoWindowOpen(false)}
+              >
+                <MarkerPopup
+                  title={title}
+                  category={category}
+                  severity={severity}
+                  address={address}
+                  latitude={latitude}
+                  longitude={longitude}
+                />
+              </InfoWindow>
+            )}
+            <MapCameraHandler center={{ lat: position[0], lng: position[1] }} />
+          </Map>
+        )}
       </div>
 
       {/* Address Details display panel */}

@@ -1,18 +1,18 @@
 /**
  * @file src/components/admin/IncidentHeatmap.tsx
- * @description Advanced Incident Heatmap and Map Analytics component for SPRINT 10.
+ * @description Google Maps Incident Heatmap and Map Analytics component for SPRINT 10.
  * Supports switching between Markers, custom grids Clustering, and Heatmap overlay blending.
  */
 
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { MapPin, Globe, Layers, ZoomIn, Calendar, Eye } from "lucide-react";
+import { MapPin, Globe, Layers, ZoomIn, Calendar, Eye, AlertCircle } from "lucide-react";
 import { CivicReport } from "@/types";
 import Link from "next/link";
 import { Button } from "../ui/button";
+import { Map, AdvancedMarker, InfoWindow, useMap, useMapsLibrary } from "@vis.gl/react-google-maps";
 
-// Safe wrapper to prevent SSR hydration errors with Leaflet
 export default function IncidentHeatmap({ reports }: { reports: CivicReport[] }) {
   const [mounted, setMounted] = useState(false);
   const [timeFilter, setTimeFilter] = useState<"today" | "week" | "month" | "all">("all");
@@ -89,7 +89,7 @@ export default function IncidentHeatmap({ reports }: { reports: CivicReport[] })
             <button
               onClick={() => setMapView("markers")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                mapView === "markers" ? "bg-red-500 text-white shadow-md" : "text-zinc-400 hover:text-white"
+                mapView === "markers" ? "bg-red-505 bg-red-600 text-white shadow-md rounded-lg" : "text-zinc-400 hover:text-white"
               }`}
             >
               <MapPin className="w-3.5 h-3.5" /> Markers
@@ -97,7 +97,7 @@ export default function IncidentHeatmap({ reports }: { reports: CivicReport[] })
             <button
               onClick={() => setMapView("cluster")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                mapView === "cluster" ? "bg-red-500 text-white shadow-md" : "text-zinc-400 hover:text-white"
+                mapView === "cluster" ? "bg-red-505 bg-red-600 text-white shadow-md rounded-lg" : "text-zinc-400 hover:text-white"
               }`}
             >
               <ZoomIn className="w-3.5 h-3.5" /> Clusters
@@ -105,7 +105,7 @@ export default function IncidentHeatmap({ reports }: { reports: CivicReport[] })
             <button
               onClick={() => setMapView("heatmap")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                mapView === "heatmap" ? "bg-red-500 text-white shadow-md" : "text-zinc-400 hover:text-white"
+                mapView === "heatmap" ? "bg-red-505 bg-red-600 text-white shadow-md rounded-lg" : "text-zinc-400 hover:text-white"
               }`}
             >
               <Layers className="w-3.5 h-3.5" /> Heatmap
@@ -171,7 +171,7 @@ export default function IncidentHeatmap({ reports }: { reports: CivicReport[] })
           </div>
         </div>
 
-        {/* Right Side: Leaflet Map Container */}
+        {/* Right Side: Google Map Container */}
         <div className="lg:col-span-3 h-[420px] rounded-xl overflow-hidden border border-white/10 bg-zinc-950 relative">
           <InnerMapWrapper reports={filteredReports} viewType={mapView} />
         </div>
@@ -180,18 +180,47 @@ export default function IncidentHeatmap({ reports }: { reports: CivicReport[] })
   );
 }
 
-/* Internal Leaflet Loader */
-import { MapContainer, TileLayer, Circle, CircleMarker, Popup, useMap } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+// Google Maps Heatmap Layer Overlay Component
+interface HeatmapLayerProps {
+  data: google.maps.LatLngLiteral[];
+}
 
-// Helper component to bind zoom bounds on cluster click
+function HeatmapLayer({ data }: HeatmapLayerProps) {
+  const map = useMap();
+  const vizLibrary = useMapsLibrary("visualization");
+
+  useEffect(() => {
+    if (!map || !vizLibrary) return;
+
+    const googlePoints = data.map((pt) => new google.maps.LatLng(pt.lat, pt.lng));
+
+    const heatmap = new vizLibrary.HeatmapLayer();
+    (heatmap as any).setOptions({
+      data: googlePoints,
+      map: map,
+      radius: 35,
+      opacity: 0.85,
+    });
+
+    return () => {
+      (heatmap as any).setMap(null);
+    };
+  }, [map, vizLibrary, data]);
+
+  return null;
+}
+
+// MapViewportController helper for Google Maps camera bounds panning
 function MapViewportController({ fitBoundsTrigger, bounds }: { fitBoundsTrigger: number; bounds: [number, number][] }) {
   const map = useMap();
   useEffect(() => {
-    if (bounds.length > 0) {
-      map.fitBounds(L.latLngBounds(bounds), { padding: [40, 40], maxZoom: 16 });
-    }
+    if (!map || bounds.length === 0) return;
+
+    const gBounds = new google.maps.LatLngBounds();
+    bounds.forEach(([lat, lng]) => {
+      gBounds.extend({ lat, lng });
+    });
+    map.fitBounds(gBounds);
   }, [fitBoundsTrigger, bounds, map]);
   return null;
 }
@@ -199,13 +228,14 @@ function MapViewportController({ fitBoundsTrigger, bounds }: { fitBoundsTrigger:
 function InnerMapWrapper({ reports, viewType }: { reports: CivicReport[]; viewType: "markers" | "cluster" | "heatmap" }) {
   const [zoomTrigger, setZoomTrigger] = useState(0);
   const [targetBounds, setTargetBounds] = useState<[number, number][]>([]);
+  const [selectedReport, setSelectedReport] = useState<CivicReport | null>(null);
 
-  // Default coordinate if no reports exist: use first report or a default center (e.g. 12.9716, 77.5946 for Bengaluru/generic)
-  const defaultCenter: [number, number] = reports.length > 0 
-    ? [reports[0].location.latitude, reports[0].location.longitude]
-    : [12.9716, 77.5946];
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
-  // Helper to determine color based on report severity
+  const defaultCenter = reports.length > 0 
+    ? { lat: reports[0].location.latitude, lng: reports[0].location.longitude }
+    : { lat: 12.9716, lng: 77.5946 };
+
   const getSeverityColor = (severity?: string | null) => {
     const val = String(severity || "").toLowerCase();
     if (val === "critical") return "#ef4444"; // Red
@@ -215,7 +245,6 @@ function InnerMapWrapper({ reports, viewType }: { reports: CivicReport[]; viewTy
   };
 
   // Custom Grid Clustering Algorithm
-  // Divide spatial coordinates into grid cells of size ~0.005 degrees (~500m)
   const gridSize = 0.006;
   const clusters: Record<string, { center: [number, number]; points: CivicReport[]; bounds: [number, number][] }> = {};
 
@@ -246,20 +275,28 @@ function InnerMapWrapper({ reports, viewType }: { reports: CivicReport[]; viewTy
     cluster.center = [avgLat, avgLng];
   });
 
+  if (!apiKey) {
+    return (
+      <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-zinc-950/60 backdrop-blur-sm gap-2">
+        <AlertCircle className="h-8 w-8 text-amber-500 animate-bounce" />
+        <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">Map Service Unavailable</span>
+        <span className="text-[11px] text-slate-500 max-w-[260px] leading-relaxed">
+          Google Maps API Key is missing. Live analytics coordinates cannot be mapped visually.
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full h-full relative z-0">
-      <MapContainer
-        center={defaultCenter}
-        zoom={13}
-        scrollWheelZoom={true}
+      <Map
+        defaultZoom={12}
+        defaultCenter={defaultCenter}
+        mapId="DEMO_MAP_ID"
+        gestureHandling="greedy"
+        disableDefaultUI={true}
         style={{ width: "100%", height: "100%", background: "#09090b" }}
       >
-        {/* CartoDB Dark Matter Tiles */}
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-        />
-
         <MapViewportController fitBoundsTrigger={zoomTrigger} bounds={targetBounds} />
 
         {/* 1. Markers View */}
@@ -267,21 +304,16 @@ function InnerMapWrapper({ reports, viewType }: { reports: CivicReport[]; viewTy
           reports.map((r) => {
             const severityColor = getSeverityColor(r.ai?.assistant?.severity || r.ai?.verification?.priority);
             return (
-              <CircleMarker
+              <AdvancedMarker
                 key={r.id}
-                center={[r.location.latitude, r.location.longitude]}
-                radius={8}
-                pathOptions={{
-                  fillColor: severityColor,
-                  color: "#ffffff",
-                  weight: 1.5,
-                  fillOpacity: 0.85,
-                }}
+                position={{ lat: r.location.latitude, lng: r.location.longitude }}
+                onClick={() => setSelectedReport(r)}
               >
-                <Popup className="leaflet-dark-popup">
-                  <PopupReportDetail report={r} color={severityColor} />
-                </Popup>
-              </CircleMarker>
+                <div 
+                  className="w-3.5 h-3.5 rounded-full border border-white shadow-md cursor-pointer hover:scale-110 transition"
+                  style={{ backgroundColor: severityColor }}
+                />
+              </AdvancedMarker>
             );
           })}
 
@@ -295,71 +327,69 @@ function InnerMapWrapper({ reports, viewType }: { reports: CivicReport[]; viewTy
               const r = cluster.points[0];
               const severityColor = getSeverityColor(r.ai?.assistant?.severity || r.ai?.verification?.priority);
               return (
-                <CircleMarker
+                <AdvancedMarker
                   key={r.id}
-                  center={[r.location.latitude, r.location.longitude]}
-                  radius={8}
-                  pathOptions={{
-                    fillColor: severityColor,
-                    color: "#ffffff",
-                    weight: 1.5,
-                    fillOpacity: 0.85,
-                  }}
+                  position={{ lat: r.location.latitude, lng: r.location.longitude }}
+                  onClick={() => setSelectedReport(r)}
                 >
-                  <Popup>
-                    <PopupReportDetail report={r} color={severityColor} />
-                  </Popup>
-                </CircleMarker>
+                  <div 
+                    className="w-3.5 h-3.5 rounded-full border border-white shadow-md cursor-pointer hover:scale-110 transition"
+                    style={{ backgroundColor: severityColor }}
+                  />
+                </AdvancedMarker>
               );
             }
 
             // Cluster marker
             return (
-              <CircleMarker
+              <AdvancedMarker
                 key={key}
-                center={cluster.center}
-                radius={14 + Math.min(count * 2, 10)}
-                pathOptions={{
-                  fillColor: "#ef4444",
-                  color: "#ef4444",
-                  weight: 2,
-                  fillOpacity: 0.45,
-                }}
-                eventHandlers={{
-                  click: () => {
-                    setTargetBounds(cluster.bounds);
-                    setZoomTrigger((prev) => prev + 1);
-                  },
+                position={{ lat: cluster.center[0], lng: cluster.center[1] }}
+                onClick={() => {
+                  setTargetBounds(cluster.bounds);
+                  setZoomTrigger((prev) => prev + 1);
                 }}
               >
-                <Popup>
-                  <div className="p-2 text-center text-xs space-y-1">
-                    <span className="font-extrabold text-white block">Cluster: {count} Incident Reports</span>
-                    <span className="text-[10px] text-zinc-400 block">Click to zoom and expand cluster area</span>
-                  </div>
-                </Popup>
-              </CircleMarker>
+                <div 
+                  className="flex items-center justify-center rounded-full bg-red-650 border border-white font-extrabold text-white text-xs cursor-pointer shadow-lg hover:scale-105 transition"
+                  style={{
+                    width: `${24 + Math.min(count * 2, 14)}px`,
+                    height: `${24 + Math.min(count * 2, 14)}px`,
+                    backgroundColor: "#ef4444",
+                  }}
+                >
+                  {count}
+                </div>
+              </AdvancedMarker>
             );
           })}
 
         {/* 3. Heatmap View */}
-        {viewType === "heatmap" &&
-          reports.map((r) => {
-            const severityColor = getSeverityColor(r.ai?.assistant?.severity || r.ai?.verification?.priority);
-            return (
-              <Circle
-                key={r.id}
-                center={[r.location.latitude, r.location.longitude]}
-                radius={220} // meter radius
-                pathOptions={{
-                  fillColor: severityColor,
-                  color: "transparent",
-                  fillOpacity: 0.18,
-                }}
-              />
-            );
-          })}
-      </MapContainer>
+        {viewType === "heatmap" && (
+          <HeatmapLayer
+            data={reports.map((r) => ({
+              lat: r.location.latitude,
+              lng: r.location.longitude,
+            }))}
+          />
+        )}
+
+        {/* Popup for Selected Marker */}
+        {selectedReport && selectedReport.location?.latitude && (
+          <InfoWindow
+            position={{
+              lat: selectedReport.location.latitude,
+              lng: selectedReport.location.longitude,
+            }}
+            onCloseClick={() => setSelectedReport(null)}
+          >
+            <PopupReportDetail
+              report={selectedReport}
+              color={getSeverityColor(selectedReport.ai?.assistant?.severity || selectedReport.ai?.verification?.priority)}
+            />
+          </InfoWindow>
+        )}
+      </Map>
     </div>
   );
 }
@@ -394,7 +424,7 @@ function PopupReportDetail({ report, color }: { report: CivicReport; color: stri
         <span className="text-[8px] font-mono text-zinc-500">
           ID: #{report.id.slice(0, 6)}
         </span>
-        <Link href={`/officer/reports/${report.id}`} className="shrink-0">
+        <Link href={`/admin/reports/${report.id}`} className="shrink-0">
           <Button size="sm" className="h-6 px-2 text-[9px] font-bold bg-zinc-800 hover:bg-zinc-700 text-white border border-white/5 flex items-center gap-1">
             <Eye className="w-2.5 h-2.5" /> Inspect Console
           </Button>

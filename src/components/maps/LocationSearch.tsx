@@ -1,13 +1,13 @@
 /**
  * @file src/components/maps/LocationSearch.tsx
- * @description Nominatim address autocompleting search box component.
+ * @description Google Places address autocompleting search box component.
  */
 
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Search, Loader2, MapPin, X } from "lucide-react";
-import { GeocoderService } from "@/services/location/geocoder.service";
+import { Search, Loader2, MapPin, X, AlertCircle } from "lucide-react";
+import { useMapsLibrary } from "@vis.gl/react-google-maps";
 import { ReportLocation } from "@/types";
 
 interface LocationSearchProps {
@@ -17,76 +17,101 @@ interface LocationSearchProps {
 
 export function LocationSearch({ onSelectLocation, className = "" }: LocationSearchProps) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<ReportLocation[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  
+  const placesLibrary = useMapsLibrary("places");
+  const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
 
-  // Debounced search logic
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
   useEffect(() => {
-    if (query.trim().length < 3) {
-      setResults([]);
-      return;
-    }
+    if (!placesLibrary || !inputRef.current) return;
 
-    const delayDebounce = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const data = await GeocoderService.geocode(query);
-        setResults(data);
-        setShowDropdown(true);
-      } catch (err) {
-        console.error("Geocode lookup failed:", err);
-      } finally {
-        setLoading(false);
+    const gAutocomplete = new placesLibrary.Autocomplete(inputRef.current, {
+      fields: ["geometry", "formatted_address", "address_components", "place_id"],
+    });
+
+    gAutocomplete.addListener("place_changed", () => {
+      const place = gAutocomplete.getPlace();
+      if (!place.geometry || !place.geometry.location) return;
+
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
+
+      const addressComponents = place.address_components || [];
+      let locality = "";
+      let subLocality = "";
+      let city = "";
+      let district = "";
+      let state = "";
+      let country = "";
+      let postalCode = "";
+
+      for (const comp of addressComponents) {
+        const types = comp.types || [];
+        if (types.includes("sublocality") || types.includes("sublocality_level_1")) {
+          subLocality = comp.long_name;
+        } else if (types.includes("locality")) {
+          locality = comp.long_name;
+        } else if (types.includes("administrative_area_level_2")) {
+          city = comp.long_name;
+        } else if (types.includes("administrative_area_level_3")) {
+          district = comp.long_name;
+        } else if (types.includes("administrative_area_level_1")) {
+          state = comp.long_name;
+        } else if (types.includes("country")) {
+          country = comp.long_name;
+        } else if (types.includes("postal_code")) {
+          postalCode = comp.long_name;
+        }
       }
-    }, 500);
 
-    return () => clearTimeout(delayDebounce);
-  }, [query]);
+      const resolvedCity = city || locality || "";
 
-  // Handle click outside of dropdown to close it
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowDropdown(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+      const location: ReportLocation = {
+        latitude: lat,
+        longitude: lng,
+        formattedAddress: place.formatted_address || "",
+        placeId: place.place_id || "",
+        locality: locality || subLocality || "",
+        subLocality: subLocality || "",
+        city: resolvedCity,
+        district: district || "",
+        state: state || "",
+        country: country || "",
+        postalCode: postalCode || "",
+      };
 
-  const handleSelect = (loc: ReportLocation) => {
-    setQuery(loc.formattedAddress);
-    setShowDropdown(false);
-    onSelectLocation(loc);
-  };
+      setQuery(place.formatted_address || "");
+      onSelectLocation(location);
+    });
+
+    setAutocomplete(gAutocomplete);
+  }, [placesLibrary, onSelectLocation]);
 
   const handleClear = () => {
     setQuery("");
-    setResults([]);
-    setShowDropdown(false);
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
   };
 
   return (
-    <div ref={dropdownRef} className={`relative w-full ${className}`}>
+    <div className={`relative w-full ${className}`}>
       <div className="relative flex items-center w-full">
         <span className="absolute left-3.5 text-slate-400">
           <Search className="h-4 w-4" />
         </span>
         <input
+          ref={inputRef}
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search any landmark, address or city..."
-          className="w-full pl-10 pr-10 py-3 bg-slate-900/60 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/30 transition-all backdrop-blur-md"
+          disabled={!apiKey}
+          placeholder={apiKey ? "Search address, landmark or city..." : "Map search disabled (Missing API Key)"}
+          className="w-full pl-10 pr-10 py-3 bg-slate-900/60 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/30 transition-all backdrop-blur-md disabled:cursor-not-allowed disabled:opacity-55"
         />
-        {loading && (
-          <span className="absolute right-3.5 text-slate-400">
-            <Loader2 className="h-4 w-4 animate-spin" />
-          </span>
-        )}
-        {!loading && query && (
+        {query && (
           <button
             type="button"
             onClick={handleClear}
@@ -96,31 +121,6 @@ export function LocationSearch({ onSelectLocation, className = "" }: LocationSea
           </button>
         )}
       </div>
-
-      {showDropdown && results.length > 0 && (
-        <div className="absolute z-[1000] w-full mt-1.5 bg-slate-950/95 border border-slate-800 rounded-xl max-h-60 overflow-y-auto shadow-2xl backdrop-blur-lg animate-in fade-in slide-in-from-top-1 duration-200">
-          {results.map((loc, idx) => (
-            <button
-              key={loc.placeId || idx}
-              type="button"
-              onClick={() => handleSelect(loc)}
-              className="w-full text-left px-4 py-3 hover:bg-slate-900/80 border-b border-slate-900/50 last:border-b-0 flex items-start gap-3 transition-colors group"
-            >
-              <MapPin className="h-4 w-4 text-slate-500 mt-0.5 shrink-0 group-hover:text-indigo-400 transition-colors" />
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] font-medium text-slate-250 leading-normal line-clamp-2">
-                  {loc.formattedAddress}
-                </span>
-                {loc.city && (
-                  <span className="text-[9px] uppercase tracking-wider font-semibold text-slate-500">
-                    {loc.city}, {loc.state}
-                  </span>
-                )}
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

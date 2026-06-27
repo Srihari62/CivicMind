@@ -24,7 +24,7 @@ export function RouteGuard({
 }: RouteGuardProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { firebaseUser, profile, loading, isAuthenticated } = useAuth();
+  const { firebaseUser, profile, loading, isAuthenticated, logout } = useAuth();
 
   useEffect(() => {
     if (loading) return;
@@ -47,8 +47,12 @@ export function RouteGuard({
         return;
       }
 
-      // Wait until profile is loaded
-      if (!profile) return;
+      // If profile is loaded but is null (doesn't exist in Firestore database)
+      if (!profile) {
+        logout().catch((err) => console.error("RouteGuard logout failure:", err));
+        router.replace("/register");
+        return;
+      }
 
       // 2. Complete profile first if incomplete (unless already on complete-profile page)
       if (!profile.isProfileComplete && pathname !== "/complete-profile") {
@@ -70,25 +74,46 @@ export function RouteGuard({
     } else {
       // Guest-only routes (e.g. /login, /register)
       if (isAuthenticated && firebaseUser) {
-        if (!profile) return;
-
-        if (!profile.isProfileComplete) {
-          router.replace("/complete-profile");
-        } else {
+        // Only redirect to dashboard if profile is fully complete
+        if (profile && profile.isProfileComplete) {
           router.replace(defaultRoleRedirect(profile.role));
         }
       }
     }
   }, [isAuthenticated, firebaseUser, profile, loading, requireAuth, allowedRoles, pathname, router]);
 
-  const isAuthorized = !requireAuth || !allowedRoles || (profile && allowedRoles.includes(profile.role));
+  const isAuthorized = (() => {
+    if (!requireAuth) return true;
+    if (pathname === "/complete-profile") return true;
+    if (!profile) return false;
+    if (allowedRoles && !allowedRoles.includes(profile.role)) return false;
+    return true;
+  })();
+
+  const shouldShowLoader = (() => {
+    if (loading) return true;
+
+    if (requireAuth) {
+      if (!isAuthenticated || !firebaseUser) return true;
+
+      // If we are on /complete-profile, we don't need a profile document to exist yet
+      if (pathname === "/complete-profile") {
+        return false;
+      }
+
+      // On other pages, if profile doesn't exist, or is incomplete, or they are not authorized, show loader
+      if (!profile || !profile.isProfileComplete || !isAuthorized) return true;
+    } else {
+      // Guest-only routes (e.g. /login, /register)
+      // Show loader if the user is authenticated and has a complete profile (meaning we are about to redirect them away)
+      if (isAuthenticated && firebaseUser && profile && profile.isProfileComplete) return true;
+    }
+
+    return false;
+  })();
 
   // Render a professional brand loader while state loads or transitions occur
-  if (
-    loading || 
-    (requireAuth && (!isAuthenticated || !profile || !isAuthorized)) || 
-    (!requireAuth && isAuthenticated)
-  ) {
+  if (shouldShowLoader) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground animate-fade-in">
         <div className="flex flex-col items-center gap-4">
