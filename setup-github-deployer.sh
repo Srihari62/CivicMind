@@ -77,6 +77,7 @@ ROLES=(
   "roles/artifactregistry.writer"
   "roles/storage.objectAdmin"
   "roles/iam.serviceAccountUser"
+  "roles/serviceusage.serviceUsageConsumer"
 )
 
 for ROLE in "${ROLES[@]}"; do
