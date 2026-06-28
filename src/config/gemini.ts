@@ -5,6 +5,7 @@
  */
 
 import { env } from "./env";
+import { AI_MODELS } from "./ai-models";
 
 // Safely read server-only key
 const getApiKey = (): string | undefined => {
@@ -17,10 +18,10 @@ const getApiKey = (): string | undefined => {
 
 export const geminiConfig = {
   apiKey: getApiKey(),
-  defaultModel: "gemini-2.5-flash",
+  defaultModel: AI_MODELS.ASSISTANT,
   models: {
-    FLASH: "gemini-2.5-flash",
-    PRO: "gemini-2.5-pro",
+    FLASH: AI_MODELS.VERIFICATION,
+    PRO: "gemini-3.5-pro",
   },
 } as const;
 

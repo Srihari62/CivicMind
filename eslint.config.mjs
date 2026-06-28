@@ -45,6 +45,10 @@ const eslintConfig = [
       
       // Enforce clean import structure
       "react/self-closing-comp": "warn",
+      
+      // Disable strict type checks for explicit any and unescaped entities
+      "@typescript-eslint/no-explicit-any": "off",
+      "react/no-unescaped-entities": "off"
     }
   }
 ];

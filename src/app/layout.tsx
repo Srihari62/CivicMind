@@ -8,6 +8,9 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "@/styles/globals.css";
+import { QueryProvider } from "@/providers/query-provider";
+import { ThemeProvider } from "@/providers/theme-provider";
+import { AuthProvider } from "@/providers/auth-provider";
 
 // Load Geist Sans Font (modern clean typography)
 const geistSans = Geist({
@@ -43,17 +46,27 @@ export const viewport: Viewport = {
   maximumScale: 5,
 };
 
+import { GoogleMapsProvider } from "@/components/maps/GoogleMapProvider";
+
 interface RootLayoutProps {
   children: React.ReactNode;
 }
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background text-foreground`}
       >
-        {children}
+        <QueryProvider>
+          <ThemeProvider defaultTheme="system" storageKey="civicmind-theme">
+            <AuthProvider>
+              <GoogleMapsProvider>
+                {children}
+              </GoogleMapsProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </QueryProvider>
       </body>
     </html>
   );

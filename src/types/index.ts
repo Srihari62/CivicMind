@@ -8,7 +8,7 @@
 /**
  * User roles inside the CivicMind ecosystem.
  */
-export type UserRole = "citizen" | "officer" | "admin";
+export type UserRole = 'citizen' | 'officer' | 'admin';
 
 /**
  * Citizen or official user account structure.
@@ -28,27 +28,74 @@ export interface UserProfile {
  * Status phases of a reported civic issue.
  */
 export type ReportStatus =
-  | "submitted"       // Initial state upon submission
-  | "investigating"   // Assigned to department, undergoing verification
-  | "in_progress"     // Work team dispatched, actively resolving
-  | "resolved"        // Issue successfully addressed
-  | "rejected";       // Out of scope, duplicate, or spam
+  | 'draft'
+  | 'submitted'
+  | 'assigned'
+  | 'accepted'
+  | 'travelling'
+  | 'investigating'
+  | 'investigation_started'
+  | 'in_progress'
+  | 'repair_in_progress'
+  | 'repair_completed'
+  | 'pending_verification'
+  | 'awaiting_verification'
+  | 'requires_review'
+  | 'resolved'
+  | 'closed'
+  | 'rejected'
+  | 'waiting_assignment'
+  | 'reopened';
+
+export type AiStatus = 'pending' | 'processed' | 'failed';
+export type VerificationStatus = 'pending' | 'verified' | 'flagged' | 'rejected';
+export type PriorityLevel = 'critical' | 'high' | 'medium' | 'low' | 'unknown';
+
+export interface MediaAsset {
+  id: string;
+  type: 'image' | 'video';
+  url: string;
+  storagePath: string;
+  mimeType: string;
+  size: number;
+  uploadedAt: string;
+  thumbnailUrl?: string;
+  // Extended fields for AI/media processing metadata
+  width?: number;
+  height?: number;
+  duration?: number;
+  checksum?: string;
+}
+
+export interface ReportLocation {
+  latitude: number;
+  longitude: number;
+  placeId?: string;
+  formattedAddress: string;
+  locality?: string;
+  subLocality?: string;
+  city?: string;
+  district?: string;
+  state?: string;
+  country?: string;
+  postalCode?: string;
+}
 
 /**
  * Categories matching the classifier system options.
  */
 export type IssueCategory =
-  | "infrastructure"
-  | "sanitation"
-  | "environmental"
-  | "utility"
-  | "public_safety"
-  | "other";
+  | 'infrastructure'
+  | 'sanitation'
+  | 'environmental'
+  | 'utility'
+  | 'public_safety'
+  | 'other';
 
 /**
  * Priority urgency ratings.
  */
-export type UrgencyLevel = "critical" | "high" | "medium" | "low";
+export type UrgencyLevel = 'critical' | 'high' | 'medium' | 'low';
 
 /**
  * Location data matching Google Maps structures.
@@ -59,38 +106,164 @@ export interface LocationCoordinates {
   address?: string;
 }
 
+export interface TimelineEvent {
+  timestamp: string;
+  actorId: string;
+  actorRole: UserRole | 'system' | 'ai';
+  action: string;
+  note?: string;
+  actorName?: string;
+  gps?: { latitude: number; longitude: number } | null;
+  media?: MediaAsset[];
+}
+
+
 /**
  * Principal Civic Issue Report document interface.
  */
 export interface CivicReport {
   id: string;
+  status: ReportStatus;
+  reportedCount?: number;
+
+  metadata: {
+    title: string;
+    description: string;
+    category: string;
+    createdBy: string;
+    editedAfterAI?: boolean;
+  };
+
+  location: ReportLocation;
+
+  evidence: {
+    media: MediaAsset[];
+  };
+
+  ai: {
+    assistant: {
+      title: string;
+      description: string;
+      category: string;
+      severity: string;
+      confidence: number;
+      summary: string;
+      detectedObjects?: string[];
+      model: string;
+      promptVersion: string;
+      analyzedAt: string;
+      initialPriority: string;
+    } | null;
+    verification: {
+      status: 'processing' | 'verified' | 'requires_review' | 'rejected' | 'failed';
+      fakeMediaProbability?: number | null;
+      fakeMediaConfidence?: number | null;
+      fakeMediaReason?: string | null;
+      duplicateProbability?: number | null;
+      duplicateReportIds?: string[] | null;
+      duplicateReason?: string | null;
+      assignedDepartment?: string | null;
+      priority?: PriorityLevel | null;
+      trustScore?: number | null;
+      verificationModel?: string | null;
+      verificationVersion?: string | null;
+      summary?: string | null;
+      analyzedAt?: string | null;
+      failureReason?: string | null;
+    };
+    assignment: {
+      officerId: string | null;
+      department: string | null;
+      assignedAt: string | null;
+      assignmentMethod: string | null;
+    };
+  };
+
+  resolution?: ReportResolutionDetails | null;
+  repair?: ReportRepairDetails | null;
+  progress?: ReportProgressItem[] | null;
+
+  repairEvidence?: {
+    before: MediaAsset[];
+    after: MediaAsset[];
+  } | null;
+
+  officerNotes?: OfficerNote | null;
+  progressUpdates?: ProgressUpdate[] | null;
+
+  timeline?: TimelineEvent[];
+
+  timestamps: {
+    createdAt: string;
+    updatedAt: string;
+  };
+}
+
+export interface ReportProgressItem {
   title: string;
   description: string;
-  category: IssueCategory;
-  urgency: UrgencyLevel;
-  location: LocationCoordinates;
-  status: ReportStatus;
-  imageUrl?: string;
-  videoUrl?: string;
-  
-  // Reporter association (null if submitted anonymously)
-  reporterId: string | null;
-  reporterName: string;
-  
-  // Municipal routing fields
-  assignedDepartment?: string;
-  assignedOfficerId?: string;
-  resolutionNotes?: string;
-  
-  // AI analysis metadata (cache of orchestrator results)
-  aiClassificationConfidence?: number;
-  aiUrgencyReason?: string;
-  aiTags?: string[];
-  publicSafetyRisk?: boolean;
-
+  media: MediaAsset[];
   createdAt: string;
-  updatedAt: string;
+  createdBy: string;
+  status: ReportStatus;
 }
+
+export interface ReportRepairDetails {
+  materials: string;
+  startedAt: string;
+  completedAt: string;
+  duration: number;
+  labourCount: number;
+  cost?: number;
+  notes: string;
+}
+
+export interface ReportResolutionDetails {
+  notes: string;
+  category: string;
+  proofPhotoUrl?: string;
+  resolvedAt: string;
+  resolvedBy?: string;
+  duration?: number; // in hours or days
+  repairEvidence?: {
+    before: MediaAsset[];
+    after: MediaAsset[];
+  };
+  aiSummary?: {
+    summary: string;
+    workCompleted: string;
+    citizenExplanation: string;
+  } | null;
+  generatedAt?: string | null;
+  model?: string | null;
+  materialsUsed?: string;
+  workCompleted?: string;
+  // Sprint 12C additions
+  technicalSummary?: string;
+  citizenSummary?: string;
+  adminSummary?: string;
+  verifiedByAI?: boolean;
+  confidence?: number;
+  beforeMedia?: MediaAsset[];
+  afterMedia?: MediaAsset[];
+}
+
+export interface OfficerNote {
+  content: string;
+  updatedAt: string;
+  history: { content: string; updatedAt: string }[];
+}
+
+export interface ProgressUpdate {
+  id: string;
+  title: string;
+  description: string;
+  images: MediaAsset[];
+  timestamp: string;
+  officerId: string;
+  officerName: string;
+}
+
 
 /**
  * Threaded comments/updates on reports.

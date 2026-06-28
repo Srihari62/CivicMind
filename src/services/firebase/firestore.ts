@@ -21,9 +21,6 @@ export const db: Firestore = getFirestore(app);
 export const COLLECTIONS = {
   USERS: "users",
   REPORTS: "reports",
-  COMMUNITIES: "communities",
-  INCIDENTS: "incidents",
-  DISPATCH_JOBS: "dispatch_jobs",
   AUDIT_LOGS: "audit_logs",
 } as const;
 
