@@ -200,6 +200,9 @@ export default function ProfilePage() {
     "Trusted Citizen": "Reached a score of 250 points in civic participation.",
     "Neighborhood Guardian": "Had 5 of your submitted reports successfully resolved.",
     "Civic Champion": "Elite civic contributor with over 1,000 points.",
+    "Bronze Resolver": "Successfully resolved 5 community reports.",
+    "Silver Resolver": "Successfully resolved 15 community reports.",
+    "Gold Resolver": "Successfully resolved 30 community reports.",
   };
 
   return (

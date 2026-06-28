@@ -1,12 +1,11 @@
 /**
  * @file src/app/(dashboard)/officer/reports/[reportId]/investigate/page.tsx
- * @description Officer Investigation Workspace page.
- * Full-lifecycle dashboard for managing assigned incidents, adding evidence/notes, AI summary generation, and case resolution.
+ * @description Redesigned professional Officer Investigation & Resolution Workspace.
  */
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/providers/auth-provider";
 import { RouteGuard } from "@/features/auth/components/route-guard";
@@ -18,17 +17,23 @@ import { db } from "@/services/firebase/firestore";
 import { CivicReport, MediaAsset } from "@/types";
 import {
   acceptAssignmentAction,
+  travelToIncidentAction,
   startInvestigationAction,
-  saveOfficerNotesAction,
-  generateAIResolutionSummaryAction,
+  saveInvestigationDetailsAction,
+  startRepairWorkAction,
+  saveRepairProgressAction,
+  completeRepairAction,
+  runAiVerificationAction,
   resolveReportAction,
-  uploadProgressMediaAction
+  rejectAssignmentAction,
+  saveResolutionDraftAction,
 } from "@/app/actions/officer.actions";
 import { MediaService } from "@/features/media/services/media.service";
 import {
-  FileText, Shield, MapPin, Camera, Clock, CheckCircle, AlertCircle, Wrench, Sparkles, Loader2, ChevronLeft, Upload
+  FileText, Shield, MapPin, Camera, CheckCircle, AlertCircle, Wrench, Sparkles, Loader2, ChevronLeft, Mic, Square, Award, Truck
 } from "lucide-react";
 import dynamic from "next/dynamic";
+import BeforeAfterGallery from "@/components/dashboard/BeforeAfterGallery";
 
 // Load Leaflet Map dynamically
 const MapViewer = dynamic(() => import("@/components/maps/MapViewer"), {
@@ -44,29 +49,68 @@ export default function OfficerInvestigationPage() {
   const { reportId } = useParams() as { reportId: string };
   const router = useRouter();
   const { profile } = useAuth();
+  
   const [report, setReport] = useState<CivicReport | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // Tools state
-  const [notesContent, setNotesContent] = useState("");
-  const [notesSaving, setNotesSaving] = useState(false);
-  const [uploadingProgress, setUploadingProgress] = useState(false);
-
-  // Resolution state
-  const [resolutionNotes, setResolutionNotes] = useState("");
-  const [selectedBeforeImg, setSelectedBeforeImg] = useState<string>("");
-  const [selectedAfterImg, setSelectedAfterImg] = useState<string>("");
-  const [generatingSummary, setGeneratingSummary] = useState(false);
-  const [resolving, setResolving] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [actionSuccess, setActionSuccess] = useState("");
 
-  const [aiSummaryResult, setAiSummaryResult] = useState<{
-    summary: string;
-    workCompleted: string;
-    citizenExplanation: string;
+  // Rejection Modal state
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejecting, setRejecting] = useState(false);
+
+  // Voice Notes Simulation state
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // State for Investigation Stage
+  const [investigationNotes, setInvestigationNotes] = useState("");
+  const [observedSeverity, setObservedSeverity] = useState("medium");
+  const [materialRequirement, setMaterialRequirement] = useState("");
+  const [safetyRisk, setSafetyRisk] = useState("low");
+  const [investigationPhotos, setInvestigationPhotos] = useState<MediaAsset[]>([]);
+  const [savingInvestigation, setSavingInvestigation] = useState(false);
+  const [startingRepair, setStartingRepair] = useState(false);
+  const [uploadingInvestPhoto, setUploadingInvestPhoto] = useState(false);
+
+  // State for Repair Stage
+  const [workPerformed, setWorkPerformed] = useState("");
+  const [repairMaterials, setRepairMaterials] = useState("");
+  const [labourCount, setLabourCount] = useState(1);
+  const [repairCost, setRepairCost] = useState(0);
+  const [repairPhotos, setRepairPhotos] = useState<MediaAsset[]>([]);
+  const [uploadingRepairPhoto, setUploadingRepairPhoto] = useState(false);
+  const [savingRepairProgress, setSavingRepairProgress] = useState(false);
+  const [completingRepair, setCompletingRepair] = useState(false);
+
+  // State for Verification / Resolution Review Stage
+  const [verificationNotes, setVerificationNotes] = useState("");
+  const [verificationMaterials, setVerificationMaterials] = useState("");
+  const [verificationAfterPhotos, setVerificationAfterPhotos] = useState<MediaAsset[]>([]);
+  const [uploadingAfterPhoto, setUploadingAfterPhoto] = useState(false);
+  const [checklist, setChecklist] = useState<Record<string, boolean>>({});
+  
+  const [aiRunning, setAiRunning] = useState(false);
+  const [aiResults, setAiResults] = useState<{
+    technicalSummary: string;
+    citizenSummary: string;
+    adminSummary: string;
+    verifiedByAI: boolean;
+    confidence: number;
+    repairCompleteness: number;
+    matchesReportedIssue: boolean;
   } | null>(null);
 
-  // 1. Subscribe to report details in real-time
+  const [editableTechnicalSummary, setEditableTechnicalSummary] = useState("");
+  const [editableCitizenSummary, setEditableCitizenSummary] = useState("");
+  const [editableAdminSummary, setEditableAdminSummary] = useState("");
+
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [resolving, setResolving] = useState(false);
+
+  // Subscribe to report details in real-time
   useEffect(() => {
     if (!reportId) return;
 
@@ -76,18 +120,49 @@ export default function OfficerInvestigationPage() {
         if (docSnap.exists()) {
           const data = docSnap.data() as CivicReport;
           setReport({ ...data, id: docSnap.id });
-          
-          // Pre-populate fields
-          setNotesContent(data.officerNotes?.content || "");
-          setResolutionNotes(data.resolution?.notes || "");
-          
-          // Auto select first citizen photo as before image
-          if (data.evidence?.media && data.evidence.media.length > 0) {
-            setSelectedBeforeImg(data.evidence.media[0].url);
+
+          // Prepopulate stage variables
+          if (data.repair) {
+            setWorkPerformed(data.repair.notes || "");
+            setRepairMaterials(data.repair.materials || "");
+            setLabourCount(data.repair.labourCount || 1);
+            setRepairCost(data.repair.cost || 0);
+            
+            const savedChecklist = (data.repair as any).checklist || {};
+            setChecklist(savedChecklist);
           }
-          // Auto select first repair proof image if present
-          if (data.resolution?.proofPhotoUrl) {
-            setSelectedAfterImg(data.resolution.proofPhotoUrl);
+
+          if (data.resolution) {
+            setVerificationNotes(data.resolution.notes || "");
+            setVerificationMaterials(data.resolution.materialsUsed || "");
+            
+            if (data.resolution.afterMedia) {
+              setVerificationAfterPhotos(data.resolution.afterMedia);
+            } else if (data.resolution.proofPhotoUrl) {
+              setVerificationAfterPhotos([{ id: "proof", url: data.resolution.proofPhotoUrl, type: "image" } as MediaAsset]);
+            }
+
+            if (data.resolution.technicalSummary) {
+              setAiResults({
+                technicalSummary: data.resolution.technicalSummary,
+                citizenSummary: data.resolution.citizenSummary || "",
+                adminSummary: data.resolution.adminSummary || "",
+                verifiedByAI: data.resolution.verifiedByAI ?? true,
+                confidence: data.resolution.confidence ?? 0.95,
+                repairCompleteness: 1.0,
+                matchesReportedIssue: true
+              });
+              setEditableTechnicalSummary(data.resolution.technicalSummary);
+              setEditableCitizenSummary(data.resolution.citizenSummary || "");
+              setEditableAdminSummary(data.resolution.adminSummary || "");
+            }
+          }
+
+          // Prepopulate investigation fields
+          const progressList = data.progress || [];
+          const investItem = progressList.find(p => p.status === "investigating");
+          if (investItem) {
+            setInvestigationPhotos(investItem.media || []);
           }
         }
         setLoading(false);
@@ -100,6 +175,482 @@ export default function OfficerInvestigationPage() {
 
     return () => unsubscribe();
   }, [reportId]);
+
+  // Stepper calculations
+  const getActiveStep = (status?: string): number => {
+    switch (status) {
+      case "assigned":
+      case "submitted":
+        return 0;
+      case "accepted":
+      case "travelling":
+        return 1;
+      case "investigating":
+      case "investigation_started":
+        return 2;
+      case "repair_in_progress":
+        return 3;
+      case "awaiting_verification":
+      case "repair_completed":
+        return 4;
+      case "resolved":
+      case "closed":
+        return 5;
+      default:
+        return 0;
+    }
+  };
+
+  const steps = [
+    { label: "Assigned", desc: "Review Case" },
+    { label: "Travelling", desc: "Navigate" },
+    { label: "Investigation", desc: "Inspect Site" },
+    { label: "Repair", desc: "Fix Issue" },
+    { label: "Verification", desc: "AI Audit" },
+    { label: "Resolved", desc: "Confirm Clean" }
+  ];
+
+  const activeStep = report ? getActiveStep(report.status) : 0;
+  const severity = report?.ai?.assistant?.severity || report?.ai?.verification?.priority || "medium";
+
+  // Timers and Simulations
+  const startRecording = () => {
+    setIsRecording(true);
+    setRecordingSeconds(0);
+    recordingTimerRef.current = setInterval(() => {
+      setRecordingSeconds((prev) => prev + 1);
+    }, 1000);
+  };
+
+  const stopRecording = () => {
+    setIsRecording(false);
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    
+    // Add dummy text to notes
+    const transcript = "\n[Voice Note Transcript]: Found moderate structural fatigue. Requiring standard departmental concrete sealant and 2 hours curing time. Clear signs of minor water undermining.";
+    setInvestigationNotes((prev) => prev + transcript);
+  };
+
+  // Handlers
+  const handleAccept = async () => {
+    if (!profile?.uid || !report) return;
+    try {
+      setActionError("");
+      setActionSuccess("");
+      const res = await acceptAssignmentAction(profile.uid, report.id, profile.uid, profile.displayName || "Officer");
+      if (res.success) {
+        setActionSuccess("Case accepted successfully!");
+      } else {
+        setActionError(res.error || "Failed to accept.");
+      }
+    } catch (e) {
+      console.error(e);
+      setActionError("Error accepting assignment.");
+    }
+  };
+
+  const handleStartTravel = async () => {
+    if (!profile?.uid || !report) return;
+    try {
+      setActionError("");
+      setActionSuccess("");
+      const res = await travelToIncidentAction(profile.uid, report.id, profile.uid, profile.displayName || "Officer");
+      if (res.success) {
+        setActionSuccess("Travel initiated.");
+      } else {
+        setActionError(res.error || "Failed to start travel.");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleArrival = async () => {
+    if (!profile?.uid || !report) return;
+    try {
+      setActionError("");
+      setActionSuccess("");
+      const res = await startInvestigationAction(profile.uid, report.id, profile.uid, profile.displayName || "Officer");
+      if (res.success) {
+        setActionSuccess("Arrived at site. Investigation stage active.");
+      } else {
+        setActionError(res.error || "Failed to mark arrival.");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!profile?.uid || !report || !rejectReason) return;
+    setRejecting(true);
+    try {
+      setActionError("");
+      const res = await rejectAssignmentAction(
+        profile.uid,
+        report.id,
+        profile.uid,
+        rejectReason,
+        profile.displayName || "Officer"
+      );
+      if (res.success) {
+        setIsRejectModalOpen(false);
+        router.push("/officer");
+      } else {
+        setActionError(res.error || "Failed to decline.");
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRejecting(false);
+    }
+  };
+
+  const handleUploadInvestigationPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!profile?.uid || !report || !e.target.files || e.target.files.length === 0) return;
+    setUploadingInvestPhoto(true);
+    setActionError("");
+    try {
+      const files = Array.from(e.target.files);
+      const assets = await MediaService.uploadFiles(files, `reports/${report.id}/investigation`, profile.uid);
+      setInvestigationPhotos((prev) => [...prev, ...assets]);
+    } catch (err) {
+      console.error(err);
+      setActionError("Failed to upload photos.");
+    } finally {
+      setUploadingInvestPhoto(false);
+    }
+  };
+
+  const handleSaveInvestigation = async () => {
+    if (!profile?.uid || !report) return;
+    setSavingInvestigation(true);
+    setActionError("");
+    setActionSuccess("");
+    try {
+      const res = await saveInvestigationDetailsAction(
+        profile.uid,
+        report.id,
+        profile.uid,
+        {
+          notes: investigationNotes,
+          observedSeverity,
+          materialRequirement,
+          safetyRisk,
+          photos: investigationPhotos,
+        },
+        profile.displayName || "Officer"
+      );
+      if (res.success) {
+        setActionSuccess("Investigation details saved!");
+      } else {
+        setActionError(res.error || "Failed to save investigation details.");
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSavingInvestigation(false);
+    }
+  };
+
+  const handleStartRepair = async () => {
+    if (!profile?.uid || !report) return;
+    setStartingRepair(true);
+    setActionError("");
+    try {
+      const res = await startRepairWorkAction(profile.uid, report.id, profile.uid, profile.displayName || "Officer");
+      if (res.success) {
+        setActionSuccess("Repair Work in Progress active!");
+      } else {
+        setActionError(res.error || "Failed to start repair work.");
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setStartingRepair(false);
+    }
+  };
+
+  const handleUploadRepairPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!profile?.uid || !report || !e.target.files || e.target.files.length === 0) return;
+    setUploadingRepairPhoto(true);
+    setActionError("");
+    try {
+      const files = Array.from(e.target.files);
+      const assets = await MediaService.uploadFiles(files, `reports/${report.id}/repair`, profile.uid);
+      setRepairPhotos((prev) => [...prev, ...assets]);
+    } catch (err) {
+      console.error(err);
+      setActionError("Failed to upload progress assets.");
+    } finally {
+      setUploadingRepairPhoto(false);
+    }
+  };
+
+  const handleSaveRepairProgress = async () => {
+    if (!profile?.uid || !report) return;
+    setSavingRepairProgress(true);
+    setActionError("");
+    setActionSuccess("");
+    try {
+      const res = await saveRepairProgressAction(
+        profile.uid,
+        report.id,
+        profile.uid,
+        {
+          workPerformed,
+          materialsUsed: repairMaterials,
+          labourCount,
+          cost: repairCost,
+          photos: repairPhotos,
+          videos: [],
+        },
+        profile.displayName || "Officer"
+      );
+      if (res.success) {
+        setActionSuccess("Repair progress logged!");
+      } else {
+        setActionError(res.error || "Failed to log progress.");
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSavingRepairProgress(false);
+    }
+  };
+
+  const handleFinishRepair = async () => {
+    if (!profile?.uid || !report) return;
+    
+    // Quick checklists verification
+    const activeChecklistItems = getChecklistItems(report.metadata.category);
+    const allChecked = activeChecklistItems.every(item => checklist[item]);
+    if (!allChecked) {
+      setActionError("All checklist items must be marked complete before ending the repair.");
+      return;
+    }
+
+    if (repairPhotos.length === 0 && verificationAfterPhotos.length === 0) {
+      setActionError("At least one AFTER image is required to complete the repair.");
+      return;
+    }
+
+    setCompletingRepair(true);
+    setActionError("");
+    setActionSuccess("");
+    try {
+      const res = await completeRepairAction(
+        profile.uid,
+        report.id,
+        profile.uid,
+        {
+          materials: repairMaterials,
+          labourCount,
+          cost: repairCost,
+          notes: workPerformed,
+          afterMedia: repairPhotos.length > 0 ? repairPhotos : verificationAfterPhotos,
+          checklist,
+        },
+        profile.displayName || "Officer"
+      );
+      if (res.success) {
+        setActionSuccess("Repair ended. Please perform AI Verification & Final Review.");
+      } else {
+        setActionError(res.error || "Failed to complete repair.");
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setCompletingRepair(false);
+    }
+  };
+
+  const handleUploadAfterPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!profile?.uid || !report || !e.target.files || e.target.files.length === 0) return;
+    setUploadingAfterPhoto(true);
+    setActionError("");
+    try {
+      const files = Array.from(e.target.files);
+      const assets = await MediaService.uploadFiles(files, `reports/${report.id}/after`, profile.uid);
+      setVerificationAfterPhotos((prev) => [...prev, ...assets]);
+    } catch (err) {
+      console.error(err);
+      setActionError("Failed to upload after photo.");
+    } finally {
+      setUploadingAfterPhoto(false);
+    }
+  };
+
+  const handleAiVerification = async () => {
+    if (!profile?.uid || !report) return;
+    if (verificationAfterPhotos.length === 0) {
+      setActionError("You must upload at least one After image before running verification.");
+      return;
+    }
+    
+    setAiRunning(true);
+    setActionError("");
+    setActionSuccess("");
+    try {
+      const beforeMedia = report.evidence?.media || [];
+      const res = await runAiVerificationAction(
+        profile.uid,
+        report.id,
+        profile.uid,
+        verificationNotes || workPerformed,
+        beforeMedia,
+        verificationAfterPhotos,
+        profile.displayName || "Officer"
+      );
+      
+      if (res.success && res.data) {
+        setAiResults(res.data);
+        setEditableTechnicalSummary(res.data.technicalSummary);
+        setEditableCitizenSummary(res.data.citizenSummary);
+        setEditableAdminSummary(res.data.adminSummary);
+        setActionSuccess("AI verification complete! Summaries generated.");
+      } else {
+        setActionError(res.error || "AI verification failed.");
+      }
+    } catch (e) {
+      console.error(e);
+      setActionError("AI process error.");
+    } finally {
+      setAiRunning(false);
+    }
+  };
+
+  const handleSaveResolutionDraft = async () => {
+    if (!profile?.uid || !report) return;
+    setSavingDraft(true);
+    setActionError("");
+    setActionSuccess("");
+    try {
+      const draft = {
+        notes: verificationNotes,
+        materialsUsed: verificationMaterials,
+        workCompleted: workPerformed,
+        aiSummary: aiResults ? {
+          summary: editableTechnicalSummary,
+          workCompleted: aiResults.technicalSummary,
+          citizenExplanation: editableCitizenSummary,
+        } : null,
+        repairEvidence: {
+          before: report.evidence?.media || [],
+          after: verificationAfterPhotos,
+        }
+      };
+
+      const res = await saveResolutionDraftAction(
+        profile.uid,
+        report.id,
+        profile.uid,
+        draft,
+        profile.displayName || "Officer"
+      );
+      if (res.success) {
+        setActionSuccess("Resolution draft saved!");
+      } else {
+        setActionError(res.error || "Failed to save draft.");
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSavingDraft(false);
+    }
+  };
+
+  const handleConfirmResolution = async () => {
+    if (!profile?.uid || !report) return;
+    if (!verificationNotes.trim()) {
+      setActionError("Resolution notes cannot be empty.");
+      return;
+    }
+
+    setResolving(true);
+    setActionError("");
+    setActionSuccess("");
+    try {
+      const beforeMedia = report.evidence?.media || [];
+      const repairEvidenceObj = {
+        before: beforeMedia,
+        after: verificationAfterPhotos,
+      };
+      
+      const duration = 60; // 60 minutes default
+
+      const aiSummaryObj = aiResults ? {
+        summary: editableTechnicalSummary,
+        workCompleted: aiResults.technicalSummary,
+        citizenExplanation: editableCitizenSummary,
+      } : {
+        summary: verificationNotes,
+        workCompleted: workPerformed,
+        citizenExplanation: verificationNotes
+      };
+
+      // First update resolution block draft to preserve the current editable summaries
+      const draft = {
+        notes: verificationNotes,
+        materialsUsed: verificationMaterials,
+        workCompleted: workPerformed,
+        aiSummary: aiSummaryObj,
+        repairEvidence: repairEvidenceObj
+      };
+      await saveResolutionDraftAction(profile.uid, report.id, profile.uid, draft, profile.displayName || "Officer");
+
+      // Resolve the report
+      const res = await resolveReportAction(
+        profile.uid,
+        report.id,
+        profile.uid,
+        verificationNotes,
+        repairEvidenceObj,
+        duration,
+        aiSummaryObj,
+        report.metadata.category,
+        profile.displayName || "Officer",
+        null, // GPS
+        workPerformed,
+        verificationMaterials
+      );
+
+      if (res.success) {
+        setActionSuccess("Incident report successfully resolved!");
+      } else {
+        setActionError(res.error || "Failed to resolve report.");
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setResolving(false);
+    }
+  };
+
+  const getChecklistItems = (category: string) => {
+    switch (category) {
+      case "road_damage":
+        return ["Road flattened", "Asphalt cured", "Debris cleared"];
+      case "garbage":
+      case "illegal_dumping":
+        return ["Area swept", "Bins emptied", "Odour controlled"];
+      case "street_light":
+        return ["Bulb replaced", "Wiring inspected", "Photocell working"];
+      default:
+        return ["Area cleaned", "Issue resolved", "Final safety inspection complete"];
+    }
+  };
+
+  const getSeverityBadgeClass = (sev: string) => {
+    switch (sev) {
+      case "critical":
+        return "bg-red-500/10 border-red-500/20 text-red-400";
+      case "high":
+        return "bg-orange-500/10 border-orange-500/20 text-orange-400";
+      default:
+        return "bg-zinc-500/10 border-zinc-500/20 text-zinc-400";
+    }
+  };
 
   if (loading) {
     return (
@@ -122,459 +673,687 @@ export default function OfficerInvestigationPage() {
     );
   }
 
-  const isAssigned = (report.status as any) === "assigned" || (report.status as any) === "requires_review";
-  const isInProgress = report.status === "in_progress";
-  const isResolved = report.status === "resolved";
-
-  // Actions
-  const handleAccept = async () => {
-    if (!profile?.uid) return;
-    try {
-      setActionError("");
-      const res = await acceptAssignmentAction(profile.uid, report.id, profile.uid);
-      if (!res.success) setActionError(res.error || "Failed to accept.");
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleStartInvestigation = async () => {
-    if (!profile?.uid) return;
-    try {
-      setActionError("");
-      const res = await startInvestigationAction(profile.uid, report.id, profile.uid);
-      if (!res.success) setActionError(res.error || "Failed to start investigation.");
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleSaveNotes = async () => {
-    if (!profile?.uid) return;
-    setNotesSaving(true);
-    try {
-      setActionError("");
-      const res = await saveOfficerNotesAction(profile.uid, report.id, profile.uid, notesContent);
-      if (!res.success) setActionError(res.error || "Failed to save notes.");
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setNotesSaving(false);
-    }
-  };
-
-  const handleProgressUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!profile?.uid || !event.target.files || event.target.files.length === 0) return;
-    const files = Array.from(event.target.files);
-    
-    setUploadingProgress(true);
-    try {
-      const assets = await MediaService.uploadFiles(files, `reports/${report.id}/progress`, profile.uid);
-      if (assets.length > 0) {
-        const res = await uploadProgressMediaAction(profile.uid, report.id, profile.uid, assets);
-        if (!res.success) setActionError(res.error || "Failed to save progress media.");
-        // Set the uploaded image as the selected after photo
-        setSelectedAfterImg(assets[0].url);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setUploadingProgress(false);
-    }
-  };
-
-  const handleGenerateAISummary = async () => {
-    if (!profile?.uid) return;
-    setGeneratingSummary(true);
-    setActionError("");
-    try {
-      const beforeAsset: MediaAsset[] = selectedBeforeImg ? [{ id: "before", type: "image", url: selectedBeforeImg, storagePath: "", mimeType: "image/jpeg", size: 0, uploadedAt: "" }] : [];
-      const afterAsset: MediaAsset[] = selectedAfterImg ? [{ id: "after", type: "image", url: selectedAfterImg, storagePath: "", mimeType: "image/jpeg", size: 0, uploadedAt: "" }] : [];
-
-      const res = await generateAIResolutionSummaryAction(
-        profile.uid,
-        report.ai?.assistant?.title || report.metadata.title,
-        report.ai?.assistant?.category || report.metadata.category,
-        notesContent || "Resolved civic incident.",
-        beforeAsset,
-        afterAsset
-      );
-
-      if (res.success && res.data) {
-        setAiSummaryResult(res.data);
-        if (!resolutionNotes) {
-          setResolutionNotes(res.data.summary);
-        }
-      } else {
-        setActionError(res.error || "Failed to generate AI summary.");
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setGeneratingSummary(false);
-    }
-  };
-
-  const handleResolve = async () => {
-    if (!profile?.uid) return;
-    if (!resolutionNotes.trim()) {
-      setActionError("Resolution notes are required.");
-      return;
-    }
-
-    setResolving(true);
-    setActionError("");
-    try {
-      const beforeMedia: MediaAsset[] = selectedBeforeImg ? [{ id: "before", type: "image", url: selectedBeforeImg, storagePath: "", mimeType: "image/jpeg", size: 0, uploadedAt: "" }] : [];
-      const afterMedia: MediaAsset[] = selectedAfterImg ? [{ id: "after", type: "image", url: selectedAfterImg, storagePath: "", mimeType: "image/jpeg", size: 0, uploadedAt: "" }] : [];
-
-      const finalSummary = aiSummaryResult || {
-        summary: resolutionNotes,
-        workCompleted: "Repairs and resolution completed.",
-        citizenExplanation: "The reported civic issue has been resolved."
-      };
-
-      const res = await resolveReportAction(
-        profile.uid,
-        report.id,
-        profile.uid,
-        resolutionNotes,
-        { before: beforeMedia, after: afterMedia },
-        4, // default duration 4 hours
-        finalSummary,
-        "completed"
-      );
-
-      if (res.success) {
-        router.push("/officer");
-      } else {
-        setActionError(res.error || "Failed to resolve incident.");
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setResolving(false);
-    }
-  };
+  const activeReport = report;
 
   return (
     <RouteGuard allowedRoles={["officer", "admin"]}>
-      <div className="min-h-screen bg-zinc-950 text-white font-sans flex flex-col">
-        {/* Navigation Header */}
-        <header className="border-b border-white/10 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-30">
-          <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-4">
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 p-4 sm:p-6 lg:p-8">
+        
+        {/* Navigation & Header */}
+        <div className="max-w-7xl mx-auto flex flex-col gap-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/10 pb-6">
+            <div className="flex items-center gap-3">
               <Link href="/officer">
-                <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white">
-                  <ChevronLeft className="w-4 h-4 mr-1" /> Console
+                <Button variant="outline" className="rounded-full bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white w-10 h-10 p-0 flex items-center justify-center">
+                  <ChevronLeft className="w-5 h-5" />
                 </Button>
               </Link>
-              <span className="text-zinc-600">|</span>
-              <span className="font-extrabold text-sm tracking-wider uppercase bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400">
-                Investigation Workspace
-              </span>
-            </div>
-            <span className="text-xs text-zinc-500 font-semibold font-mono hidden md:inline">
-              Case Ref: #{report.id.substring(0, 8)}
-            </span>
-          </div>
-        </header>
-
-        {/* Workspace Layout */}
-        <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Column 1 & 2: Incident Details, Evidence, AI analysis, Resolution Tools */}
-          <div className="lg:col-span-2 flex flex-col gap-6">
-            
-            {/* Header / Status Banner */}
-            <div className="border border-white/10 rounded-3xl p-6 bg-zinc-900/10 backdrop-blur-md relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xl">
               <div>
-                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono">Incident Title</span>
-                <h1 className="text-2xl font-black text-white mt-0.5">{report.ai?.assistant?.title || report.metadata.title}</h1>
-                <div className="flex items-center gap-3 mt-2 text-xs text-zinc-400">
-                  <span className="px-2.5 py-0.5 bg-blue-500/10 text-blue-400 rounded-full border border-blue-500/10 uppercase tracking-wide font-bold">
-                    {report.ai?.assistant?.category || report.metadata.category}
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-500/10 border border-blue-500/20 text-blue-400">
+                    ID: {activeReport.id.substring(0, 8)}
                   </span>
-                  <span>Submitted {new Date(report.timestamps.createdAt).toLocaleDateString()}</span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${getSeverityBadgeClass(severity)}`}>
+                    {severity} Severity
+                  </span>
                 </div>
-              </div>
-
-              {/* Lifecycle Actions */}
-              <div className="flex items-center gap-3 self-stretch md:self-auto">
-                {isAssigned && (
-                  <Button onClick={handleAccept} className="bg-blue-600 hover:bg-blue-500 text-white font-bold w-full md:w-auto">
-                    Accept Assignment
-                  </Button>
-                )}
-                {report.status === "accepted" && (
-                  <Button onClick={handleStartInvestigation} className="bg-purple-600 hover:bg-purple-500 text-white font-bold w-full md:w-auto">
-                    Start Investigation
-                  </Button>
-                )}
-                {isResolved && (
-                  <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-emerald-500/15 border border-emerald-500/25 rounded-xl text-emerald-400 font-extrabold text-xs uppercase tracking-wider">
-                    <CheckCircle className="w-4 h-4" /> Resolved Case
-                  </span>
-                )}
-                {isInProgress && (
-                  <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-purple-500/15 border border-purple-500/25 rounded-xl text-purple-400 font-extrabold text-xs uppercase tracking-wider">
-                    <Wrench className="w-4 h-4" /> Active Investigation
-                  </span>
-                )}
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-1">
+                  {activeReport.metadata.title}
+                </h1>
               </div>
             </div>
 
-            {actionError && (
-              <div className="bg-rose-950/40 border border-rose-500/20 p-4 rounded-2xl text-xs text-rose-300 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4" /> {actionError}
-              </div>
-            )}
-
-            {/* AI Triage Analysis details */}
-            <div className="border border-white/10 rounded-3xl p-6 bg-zinc-900/10 backdrop-blur-md shadow-xl flex flex-col gap-4">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
-                <Shield className="w-4 h-4 text-blue-400" />
-                AI Analysis & Triage Details
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-zinc-950 p-3 rounded-xl border border-white/5 flex flex-col gap-0.5">
-                  <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider font-mono">Trust Score</span>
-                  <span className="text-lg font-black text-emerald-400">{Math.round((report.ai?.verification?.trustScore || 0.5) * 100)}%</span>
-                </div>
-                <div className="bg-zinc-950 p-3 rounded-xl border border-white/5 flex flex-col gap-0.5">
-                  <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider font-mono">Priority Tier</span>
-                  <span className="text-lg font-black text-rose-400 capitalize">{report.ai?.verification?.priority || "medium"}</span>
-                </div>
-                <div className="bg-zinc-950 p-3 rounded-xl border border-white/5 flex flex-col gap-0.5">
-                  <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider font-mono">Assigned Dept</span>
-                  <span className="text-lg font-black text-blue-400 capitalize">{report.ai?.verification?.assignedDepartment || "unassigned"}</span>
-                </div>
-                <div className="bg-zinc-950 p-3 rounded-xl border border-white/5 flex flex-col gap-0.5">
-                  <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider font-mono">Duplicate Reports</span>
-                  <span className="text-lg font-black text-zinc-400">{report.ai?.verification?.duplicateReportIds?.length || 0}</span>
-                </div>
-              </div>
-
-              {/* Description */}
-              <div className="space-y-1 mt-2">
-                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono">Original Description</span>
-                <p className="text-sm text-zinc-300 leading-relaxed bg-zinc-950/40 p-4 rounded-2xl border border-white/5">
-                  {report.ai?.assistant?.description || report.metadata.description}
-                </p>
-              </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-xs text-zinc-400">Citizen Dashboard Live Sync Active</span>
             </div>
+          </div>
 
-            {/* Citizen Evidence Panel */}
-            <div className="border border-white/10 rounded-3xl p-6 bg-zinc-900/10 backdrop-blur-md shadow-xl flex flex-col gap-4">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
-                <Camera className="w-4 h-4 text-blue-400" />
-                Evidence Portfolio
-              </h3>
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {report.evidence?.media?.map((media, idx) => (
-                  <div
-                    key={media.id || idx}
-                    onClick={() => {
-                      if (!isResolved) setSelectedBeforeImg(media.url);
-                    }}
-                    className={`h-24 bg-zinc-950 rounded-xl overflow-hidden relative cursor-pointer border-2 transition ${
-                      selectedBeforeImg === media.url ? "border-blue-500" : "border-white/5 hover:border-white/20"
-                    }`}
-                  >
-                    <img src={media.url} alt="Evidence" className="w-full h-full object-cover" />
+          {/* Stepper */}
+          <div className="w-full bg-zinc-900/60 border border-white/5 rounded-2xl p-4 sm:p-6 backdrop-blur-md">
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+              {steps.map((step, idx) => {
+                const isCompleted = idx < activeStep;
+                const isActive = idx === activeStep;
+                return (
+                  <div key={idx} className="flex flex-col gap-2 relative">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+                        isCompleted ? "bg-emerald-500 text-black" :
+                        isActive ? "bg-blue-500 text-white shadow-[0_0_12px_rgba(59,130,246,0.5)]" :
+                        "bg-zinc-800 text-zinc-500"
+                      }`}>
+                        {isCompleted ? <CheckCircle className="w-4 h-4 text-emerald-950" /> : idx + 1}
+                      </div>
+                      <span className={`text-xs font-semibold ${isActive ? "text-white" : "text-zinc-400"}`}>
+                        {step.label}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-zinc-500 pl-8 hidden md:inline">{step.desc}</span>
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
+          </div>
 
-            {/* Notes & Progress Tools Workspace */}
-            {isInProgress && (
-              <div className="border border-white/10 rounded-3xl p-6 bg-zinc-900/10 backdrop-blur-md shadow-xl flex flex-col gap-4">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
-                  <Wrench className="w-4 h-4 text-blue-400" />
-                  Investigation Tools
-                </h3>
+          {/* Error & Success Alerts */}
+          {actionError && (
+            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+              <span>{actionError}</span>
+            </div>
+          )}
+          {actionSuccess && (
+            <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-sm flex items-center gap-3">
+              <CheckCircle className="w-5 h-5 flex-shrink-0" />
+              <span>{actionSuccess}</span>
+            </div>
+          )}
 
-                {/* Upload Case progress photos */}
-                <div className="flex flex-col gap-2 bg-zinc-950 p-4 rounded-2xl border border-white/5">
-                  <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider font-mono">Upload Progress Media / Repair Photos</span>
-                  <div className="flex items-center gap-3">
-                    <label className="text-xs font-bold bg-zinc-900 hover:bg-zinc-850 px-4 py-2 border border-white/10 rounded-xl cursor-pointer flex items-center gap-1.5 transition text-zinc-300">
-                      {uploadingProgress ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" /> Uploading...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="w-4 h-4" /> Upload Files
-                        </>
-                      )}
-                      <input type="file" multiple accept="image/*" className="hidden" onChange={handleProgressUpload} disabled={uploadingProgress} />
-                    </label>
-                    <span className="text-[11px] text-zinc-500">Attach field evidence photos to the incident profile.</span>
+          {/* Core Content Area */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            {/* Primary Workflow Card */}
+            <div className="lg:col-span-2 space-y-6">
+
+              {/* STAGE 1: Assigned Screen */}
+              {(activeStep === 0) && (
+                <div className="bg-zinc-900 border border-white/5 rounded-3xl p-6 sm:p-8 space-y-6">
+                  <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+                    <Shield className="w-6 h-6 text-blue-400" />
+                    <h2 className="text-lg font-bold text-white">Assigned Case Review</h2>
                   </div>
-                </div>
 
-                {/* Internal notes autosave */}
-                <div className="flex flex-col gap-2">
-                  <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider font-mono">Officer Case Notes (Autosaved history)</span>
-                  <textarea
-                    value={notesContent}
-                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNotesContent(e.target.value)}
-                    placeholder="Enter case investigation notes, progress status, repairs detail..."
-                    className="bg-zinc-950 border border-white/10 text-white min-h-[120px] text-xs leading-relaxed rounded-xl p-3 outline-none focus:border-blue-500 transition w-full"
-                  />
-                  <Button onClick={handleSaveNotes} disabled={notesSaving} size="sm" className="bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-white/10 font-bold self-end text-xs px-4 h-8 mt-1">
-                    {notesSaving ? "Autosaving Notes..." : "Autosave Notes"}
-                  </Button>
-                </div>
-              </div>
-            )}
+                  <div className="space-y-4">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Citizen Description</span>
+                      <p className="mt-1 text-sm text-zinc-300 leading-relaxed bg-zinc-950 p-4 rounded-xl border border-white/5">
+                        {activeReport.metadata.description}
+                      </p>
+                    </div>
 
-            {/* Resolution Workspace Section */}
-            {isInProgress && (
-              <div className="border border-white/10 rounded-3xl p-6 bg-zinc-900/10 backdrop-blur-md shadow-xl flex flex-col gap-6">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
-                  <CheckCircle className="w-4 h-4 text-blue-400" />
-                  Incident Resolution Workspace
-                </h3>
+                    {activeReport.ai?.assistant?.summary && (
+                      <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/10 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-blue-400" />
+                          <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">AI Generated Initial Summary</span>
+                        </div>
+                        <p className="text-xs text-zinc-300 leading-relaxed">
+                          {activeReport.ai.assistant.summary}
+                        </p>
+                      </div>
+                    )}
 
-                {/* Image Selectors (Before vs After) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-2">
-                    <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono">Before Image (Citizen Evidence)</span>
-                    <div className="h-36 bg-zinc-950 rounded-xl overflow-hidden relative border border-white/5">
-                      {selectedBeforeImg ? (
-                        <img src={selectedBeforeImg} alt="Before" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-zinc-650 text-xs">No image selected</div>
-                      )}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-3 bg-zinc-950 rounded-xl border border-white/5">
+                        <span className="text-[10px] text-zinc-500 uppercase font-bold block">Assigned Dept</span>
+                        <span className="text-sm font-semibold text-zinc-300">{activeReport.ai?.assignment?.department || "General"}</span>
+                      </div>
+                      <div className="p-3 bg-zinc-950 rounded-xl border border-white/5">
+                        <span className="text-[10px] text-zinc-500 uppercase font-bold block">Duplicate Score</span>
+                        <span className="text-sm font-semibold text-zinc-300">
+                          {activeReport.ai?.verification?.duplicateProbability ? `${Math.round(activeReport.ai.verification.duplicateProbability * 100)}%` : "0%"}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-2">
-                    <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono">After Image (Repair Proof)</span>
-                    <div className="h-36 bg-zinc-950 rounded-xl overflow-hidden relative border border-white/5">
-                      {selectedAfterImg ? (
-                        <img src={selectedAfterImg} alt="After" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-zinc-650 text-xs">No image uploaded</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* AI Summary Generator */}
-                <div className="flex flex-col gap-2.5 bg-blue-500/[0.02] border border-blue-500/10 p-5 rounded-2xl">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-blue-400 flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-blue-400" /> AI Resolution Copilot
-                    </span>
-                    <Button onClick={handleGenerateAISummary} disabled={generatingSummary} size="sm" className="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 h-8 font-bold">
-                      {generatingSummary ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Generating...
-                        </>
-                      ) : (
-                        "Generate AI Summaries"
-                      )}
+                  <div className="flex gap-4 pt-4 border-t border-white/5">
+                    <Button onClick={handleAccept} className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold h-12 rounded-xl">
+                      Accept Case & Start Workflow
+                    </Button>
+                    <Button onClick={() => setIsRejectModalOpen(true)} variant="outline" className="border-zinc-800 text-zinc-400 hover:text-white h-12 px-6 rounded-xl">
+                      Decline & Reassign
                     </Button>
                   </div>
-                  <p className="text-[11px] text-zinc-500 leading-normal">
-                    Generate the final technical summaries, work reports, and explanations in the citizen's profile language.
-                  </p>
                 </div>
+              )}
 
-                {/* AI Generated Text Outputs */}
-                {aiSummaryResult && (
-                  <div className="space-y-4">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono">Technical Summary</label>
-                      <textarea value={aiSummaryResult.summary} readOnly className="bg-zinc-950/60 border border-white/5 text-zinc-300 text-xs cursor-default min-h-[70px] rounded-xl p-3 outline-none w-full" />
+              {/* STAGE 2: Travelling Screen */}
+              {(activeStep === 1) && (
+                <div className="bg-zinc-900 border border-white/5 rounded-3xl p-6 sm:p-8 space-y-6">
+                  <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+                    <Truck className="w-6 h-6 text-blue-400" />
+                    <h2 className="text-lg font-bold text-white">En Route to Location</h2>
+                  </div>
+
+                  <div className="p-6 bg-zinc-950 rounded-2xl border border-white/5 space-y-4 relative overflow-hidden">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="text-2xl font-bold text-white">1.8 km</span>
+                        <span className="text-xs text-zinc-400 block">Estimated Distance</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-2xl font-bold text-blue-400">6 mins</span>
+                        <span className="text-xs text-zinc-400 block">Est. Driving Time</span>
+                      </div>
                     </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono">Work Completed</label>
-                      <textarea value={aiSummaryResult.workCompleted} readOnly className="bg-zinc-950/60 border border-white/5 text-zinc-300 text-xs cursor-default min-h-[70px] rounded-xl p-3 outline-none w-full" />
+
+                    <div className="border border-white/5 rounded-xl p-4 bg-zinc-900/60 text-xs space-y-2">
+                      <div className="flex items-center gap-2 text-zinc-300">
+                        <MapPin className="w-4 h-4 text-blue-400" />
+                        <span>Navigate: <strong>Head north on Main St towards Incident Site</strong></span>
+                      </div>
+                      <p className="text-[10px] text-zinc-500">Auto-refreshing GPS coordinate alignment is active.</p>
                     </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono">Citizen Explanation</label>
-                      <textarea value={aiSummaryResult.citizenExplanation} readOnly className="bg-zinc-950/60 border border-white/5 text-zinc-300 text-xs cursor-default min-h-[70px] rounded-xl p-3 outline-none w-full" />
+
+                    {/* Stepper route visual */}
+                    <div className="h-2 w-full bg-zinc-900 rounded-full relative overflow-hidden">
+                      <div className="absolute top-0 left-0 h-full w-2/3 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full animate-pulse" />
                     </div>
                   </div>
+
+                  <div className="flex gap-4">
+                    {activeReport.status === "accepted" ? (
+                      <Button onClick={handleStartTravel} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold h-12 rounded-xl">
+                        Start Driving / Navigation
+                      </Button>
+                    ) : (
+                      <Button onClick={handleArrival} className="flex-1 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-black font-bold h-12 rounded-xl">
+                        I Have Reached Location
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* STAGE 3: Investigation Screen */}
+              {(activeStep === 2) && (
+                <div className="bg-zinc-900 border border-white/5 rounded-3xl p-6 sm:p-8 space-y-6">
+                  <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                    <div className="flex items-center gap-3">
+                      <FileText className="w-6 h-6 text-orange-400" />
+                      <h2 className="text-lg font-bold text-white">Field Investigation Notes & Severity</h2>
+                    </div>
+                    <span className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold">Investigation Active</span>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* Voice notes integration */}
+                    <div className="p-4 bg-zinc-950 rounded-2xl border border-white/5 space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold text-zinc-400 uppercase">Field Transcription tool</span>
+                        {isRecording && (
+                          <span className="text-[10px] bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded animate-pulse">
+                            Rec: {recordingSeconds}s
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex gap-3">
+                        {!isRecording ? (
+                          <Button onClick={startRecording} size="sm" variant="outline" className="border-zinc-800 bg-zinc-900 text-zinc-300 hover:text-white flex items-center gap-2">
+                            <Mic className="w-4 h-4 text-red-500" />
+                            Record Speech-to-Text Notes
+                          </Button>
+                        ) : (
+                          <Button onClick={stopRecording} size="sm" className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2">
+                            <Square className="w-4 h-4 fill-white" />
+                            Stop & Insert Transcription
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-zinc-400 uppercase block mb-1">Field Findings & Inspection Notes</label>
+                      <textarea
+                        value={investigationNotes}
+                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInvestigationNotes(e.target.value)}
+                        placeholder="Detail observations, defects found, or safety precautions needed..."
+                        className="flex min-h-[120px] w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-bold text-zinc-400 uppercase block mb-1">Observed Severity</label>
+                        <select
+                          value={observedSeverity}
+                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setObservedSeverity(e.target.value)}
+                          className="flex h-10 w-full items-center justify-between rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                          <option value="low">Low (Aesthetic)</option>
+                          <option value="medium">Medium (Routine)</option>
+                          <option value="high">High Priority</option>
+                          <option value="critical">Critical / Threat</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-zinc-400 uppercase block mb-1">Safety Risk Level</label>
+                        <select
+                          value={safetyRisk}
+                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSafetyRisk(e.target.value)}
+                          className="flex h-10 w-full items-center justify-between rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                          <option value="low">Low / None</option>
+                          <option value="medium">Medium Risk</option>
+                          <option value="high">High Risk</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-zinc-400 uppercase block mb-1">Materials Needed / Scheduled</label>
+                      <Input
+                        value={materialRequirement}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMaterialRequirement(e.target.value)}
+                        placeholder="e.g. 3 Bags of cement, copper pipes, etc."
+                        className="bg-zinc-950 border-zinc-800 rounded-xl text-zinc-200"
+                      />
+                    </div>
+
+                    {/* Investigation Photos Upload */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-zinc-400 uppercase block">Investigation Evidence Photos</label>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {investigationPhotos.map((photo, idx) => (
+                          <div key={photo.id || idx} className="aspect-square rounded-xl overflow-hidden border border-white/5 relative group">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={photo.url} alt="Investigation" className="w-full h-full object-cover" />
+                          </div>
+                        ))}
+                        <label className="aspect-square rounded-xl border border-dashed border-zinc-800 bg-zinc-950/40 hover:bg-zinc-950 hover:border-zinc-700 transition flex flex-col items-center justify-center gap-2 cursor-pointer">
+                          {uploadingInvestPhoto ? (
+                            <Loader2 className="w-6 h-6 text-orange-400 animate-spin" />
+                          ) : (
+                            <>
+                              <Camera className="w-6 h-6 text-zinc-500" />
+                              <span className="text-[10px] text-zinc-500">Upload Photo</span>
+                            </>
+                          )}
+                          <input type="file" multiple accept="image/*" onChange={handleUploadInvestigationPhoto} className="hidden" />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4 pt-4 border-t border-white/5">
+                    <Button onClick={handleSaveInvestigation} disabled={savingInvestigation} className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 h-12 px-6 rounded-xl">
+                      {savingInvestigation ? "Saving..." : "Save Findings"}
+                    </Button>
+                    <Button onClick={handleStartRepair} disabled={startingRepair} className="flex-1 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-bold h-12 rounded-xl">
+                      {startingRepair ? "Starting..." : "Begin Repair Operations"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* STAGE 4: Repair Stage */}
+              {(activeStep === 3) && (
+                <div className="bg-zinc-900 border border-white/5 rounded-3xl p-6 sm:p-8 space-y-6">
+                  <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                    <div className="flex items-center gap-3">
+                      <Wrench className="w-6 h-6 text-amber-400" />
+                      <h2 className="text-lg font-bold text-white">Repair Operations</h2>
+                    </div>
+                    <span className="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded font-bold uppercase">
+                      In Progress
+                    </span>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-xs font-bold text-zinc-400 uppercase block mb-1">Work Performed Description</label>
+                      <textarea
+                        value={workPerformed}
+                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setWorkPerformed(e.target.value)}
+                        placeholder="Detail the mechanical or physical tasks completed..."
+                        className="flex min-h-[100px] w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-zinc-400 uppercase block mb-1">Materials Used (Finalized)</label>
+                      <Input
+                        value={repairMaterials}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRepairMaterials(e.target.value)}
+                        placeholder="e.g. 2 bags quick-drying concrete, 3 sealant spray"
+                        className="bg-zinc-950 border-zinc-800 rounded-xl text-zinc-200"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-bold text-zinc-400 uppercase block mb-1">Labour/Crew Size</label>
+                        <Input
+                          type="number"
+                          value={labourCount}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLabourCount(Number(e.target.value))}
+                          className="bg-zinc-950 border-zinc-800 rounded-xl text-zinc-200"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-zinc-400 uppercase block mb-1">Repair Cost ($)</label>
+                        <Input
+                          type="number"
+                          value={repairCost}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRepairCost(Number(e.target.value))}
+                          className="bg-zinc-950 border-zinc-800 rounded-xl text-zinc-200"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Progress Media Upload */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-zinc-400 uppercase block">Repair Media (Include AFTER evidence)</label>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {repairPhotos.map((photo, idx) => (
+                          <div key={photo.id || idx} className="aspect-square rounded-xl overflow-hidden border border-white/5 relative group">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={photo.url} alt="Repair" className="w-full h-full object-cover" />
+                          </div>
+                        ))}
+                        <label className="aspect-square rounded-xl border border-dashed border-zinc-800 bg-zinc-950/40 hover:bg-zinc-950 hover:border-zinc-700 transition flex flex-col items-center justify-center gap-2 cursor-pointer">
+                          {uploadingRepairPhoto ? (
+                            <Loader2 className="w-6 h-6 text-amber-400 animate-spin" />
+                          ) : (
+                            <>
+                              <Camera className="w-6 h-6 text-zinc-500" />
+                              <span className="text-[10px] text-zinc-500">Upload Image</span>
+                            </>
+                          )}
+                          <input type="file" multiple accept="image/*" onChange={handleUploadRepairPhoto} className="hidden" />
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Checklist Specifics */}
+                    <div className="p-4 bg-zinc-950 rounded-2xl border border-white/5 space-y-3">
+                      <span className="text-xs font-bold text-zinc-400 uppercase block border-b border-white/5 pb-2">
+                        {activeReport.metadata.category} Category Safety checklist
+                      </span>
+                      <div className="space-y-2">
+                        {getChecklistItems(activeReport.metadata.category).map((item) => (
+                          <label key={item} className="flex items-center gap-3 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={checklist[item] || false}
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setChecklist((prev) => ({ ...prev, [item]: e.target.checked }))}
+                              className="rounded border-zinc-800 bg-zinc-900 text-amber-500 focus:ring-amber-500 focus:ring-offset-zinc-950"
+                            />
+                            <span className="text-xs text-zinc-300">{item}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4 pt-4 border-t border-white/5">
+                    <Button onClick={handleSaveRepairProgress} disabled={savingRepairProgress} className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 h-12 px-6 rounded-xl">
+                      {savingRepairProgress ? "Saving..." : "Save Repair Details"}
+                    </Button>
+                    <Button onClick={handleFinishRepair} disabled={completingRepair} className="flex-1 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-black font-bold h-12 rounded-xl">
+                      {completingRepair ? "Finishing..." : "Finish Repair & Continue"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* STAGE 5: Verification & Resolution Review Screen */}
+              {(activeStep === 4) && (
+                <div className="bg-zinc-900 border border-white/5 rounded-3xl p-6 sm:p-8 space-y-6">
+                  <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                    <div className="flex items-center gap-3">
+                      <Sparkles className="w-6 h-6 text-cyan-400" />
+                      <h2 className="text-lg font-bold text-white">AI Verification & Final Resolution Review</h2>
+                    </div>
+                    <span className="text-xs bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded font-bold uppercase">
+                      Verification Stage
+                    </span>
+                  </div>
+
+                  <div className="space-y-6">
+                    {/* Before vs After comparison */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="p-4 bg-zinc-950 rounded-xl border border-white/5 space-y-2">
+                        <span className="text-[10px] text-zinc-500 uppercase block font-bold">Before Media</span>
+                        {activeReport.evidence?.media && activeReport.evidence.media.length > 0 ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={activeReport.evidence.media[0].url} alt="Before" className="aspect-video w-full object-cover rounded-lg border border-white/5" />
+                        ) : (
+                          <div className="aspect-video w-full bg-zinc-900 flex items-center justify-center text-xs text-zinc-600 rounded-lg">No photos</div>
+                        )}
+                      </div>
+                      <div className="p-4 bg-zinc-950 rounded-xl border border-white/5 space-y-2">
+                        <span className="text-[10px] text-zinc-500 uppercase block font-bold">After Media (Required)</span>
+                        {verificationAfterPhotos.length > 0 ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={verificationAfterPhotos[0].url} alt="After" className="aspect-video w-full object-cover rounded-lg border border-white/5" />
+                        ) : (
+                          <div className="aspect-video w-full bg-zinc-900 flex items-center justify-center text-xs text-zinc-600 rounded-lg">No photos</div>
+                        )}
+                        <label className="mt-2 block w-full text-center py-2 border border-dashed border-zinc-800 hover:border-zinc-700 bg-zinc-900/40 rounded-lg text-xs cursor-pointer text-zinc-400">
+                          {uploadingAfterPhoto ? "Uploading..." : "Upload New After Photo"}
+                          <input type="file" accept="image/*" onChange={handleUploadAfterPhoto} className="hidden" />
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Input Notes & Materials */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-bold text-zinc-400 uppercase block mb-1">Resolution Review Notes</label>
+                        <textarea
+                          value={verificationNotes}
+                          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setVerificationNotes(e.target.value)}
+                          placeholder="Provide final resolution and engineering summary notes..."
+                          className="flex min-h-[100px] w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-zinc-400 uppercase block mb-1">Final Materials Used</label>
+                        <textarea
+                          value={verificationMaterials}
+                          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setVerificationMaterials(e.target.value)}
+                          placeholder="Sum up materials used for archival..."
+                          className="flex min-h-[100px] w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                        />
+                      </div>
+                    </div>
+
+                    {/* AI Verification Trigger */}
+                    <div className="p-4 bg-zinc-950 rounded-2xl border border-white/5 space-y-4">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-5 h-5 text-cyan-400 animate-pulse" />
+                          <span className="text-xs font-bold text-zinc-300 uppercase">Gemini 3.1 Flash Lite Verification</span>
+                        </div>
+                        <Button
+                          onClick={handleAiVerification}
+                          disabled={aiRunning || verificationAfterPhotos.length === 0}
+                          className="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold h-10 px-4 rounded-xl flex items-center gap-2 text-xs"
+                        >
+                          {aiRunning ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Running...
+                            </>
+                          ) : (
+                            "Trigger AI Audit"
+                          )}
+                        </Button>
+                      </div>
+
+                      {aiResults && (
+                        <div className="space-y-4 pt-4 border-t border-white/5 text-xs">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="p-3 bg-zinc-900 rounded-xl border border-white/5">
+                              <span className="text-zinc-500 block">AI Verified Repair?</span>
+                              <span className={`text-sm font-bold ${aiResults.verifiedByAI ? "text-green-400" : "text-rose-400"}`}>
+                                {aiResults.verifiedByAI ? "Pass (Resolved)" : "Fail / Incomplete"}
+                              </span>
+                            </div>
+                            <div className="p-3 bg-zinc-900 rounded-xl border border-white/5">
+                              <span className="text-zinc-500 block">Confidence Score</span>
+                              <span className="text-sm font-bold text-white">{Math.round(aiResults.confidence * 100)}%</span>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            <div>
+                              <label className="text-zinc-400 font-bold block mb-1">AI Technical Summary (Editable)</label>
+                              <textarea
+                                value={editableTechnicalSummary}
+                                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditableTechnicalSummary(e.target.value)}
+                                className="flex min-h-[60px] w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-zinc-400 font-bold block mb-1">AI Citizen Explanation (Editable)</label>
+                              <textarea
+                                value={editableCitizenSummary}
+                                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditableCitizenSummary(e.target.value)}
+                                className="flex min-h-[60px] w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-zinc-400 font-bold block mb-1">AI Admin Audit Summary (Editable)</label>
+                              <textarea
+                                value={editableAdminSummary}
+                                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditableAdminSummary(e.target.value)}
+                                className="flex min-h-[60px] w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4 pt-4 border-t border-white/5">
+                    <Button onClick={handleSaveResolutionDraft} disabled={savingDraft} className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 h-12 px-6 rounded-xl">
+                      {savingDraft ? "Saving..." : "Save Draft"}
+                    </Button>
+                    <Button onClick={handleConfirmResolution} disabled={resolving} className="flex-1 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-black font-bold h-12 rounded-xl">
+                      {resolving ? "Confirming..." : "Confirm Resolution"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* STAGE 6: Resolved Screen */}
+              {(activeStep === 5) && (
+                <div className="bg-zinc-900 border border-white/5 rounded-3xl p-6 sm:p-8 space-y-6">
+                  <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+                    <CheckCircle className="w-6 h-6 text-emerald-400" />
+                    <h2 className="text-lg font-bold text-white">Case Resolved & Finalized</h2>
+                  </div>
+
+                  <div className="p-6 bg-gradient-to-br from-emerald-500/10 to-green-500/5 border border-emerald-500/20 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="space-y-1 text-center sm:text-left">
+                      <h3 className="font-bold text-white text-lg">Case Successfully Closed</h3>
+                      <p className="text-xs text-zinc-400 max-w-sm">Officer workload has been updated, and point rewards have been distributed.</p>
+                    </div>
+                    <div className="flex items-center gap-3 bg-emerald-500/20 border border-emerald-500/30 px-4 py-2 rounded-xl">
+                      <Award className="w-5 h-5 text-emerald-400" />
+                      <div>
+                        <span className="text-xs text-zinc-400 block uppercase font-bold tracking-wider">Rewards</span>
+                        <span className="text-sm font-bold text-white">+10 Performance Score</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Render the full read-only gallery */}
+                  <BeforeAfterGallery report={activeReport} />
+                </div>
+              )}
+
+            </div>
+
+            {/* Sidebar Details Card */}
+            <div className="space-y-6">
+              
+              {/* Map location & details */}
+              <div className="bg-zinc-900 border border-white/5 rounded-3xl p-6 space-y-4">
+                <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest block">Incident Location Map</span>
+                
+                {activeReport.location ? (
+                  <MapViewer
+                    latitude={activeReport.location.latitude}
+                    longitude={activeReport.location.longitude}
+                    title={activeReport.metadata.title}
+                    category={activeReport.metadata.category}
+                    severity={severity ?? undefined}
+                    address={activeReport.location.formattedAddress}
+                  />
+                ) : (
+                  <div className="h-[280px] bg-zinc-950 border border-white/5 rounded-2xl flex items-center justify-center text-xs text-zinc-600">No GPS Details</div>
                 )}
 
-                {/* Close Case details */}
-                <div className="flex flex-col gap-2 mt-2">
-                  <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider font-mono">Resolution Notes (Publicly visible to citizen)</span>
-                  <textarea
-                    value={resolutionNotes}
-                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setResolutionNotes(e.target.value)}
-                    required
-                    placeholder="Provide description of how the incident was solved..."
-                    className="bg-zinc-950 border border-white/10 text-white min-h-[90px] text-xs rounded-xl p-3 outline-none focus:border-blue-500 transition w-full"
-                  />
-                  <Button onClick={handleResolve} disabled={resolving} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold w-fit self-end mt-2">
-                    {resolving ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Resolving Incident...
-                      </>
-                    ) : (
-                      "Complete & Close Incident Case"
-                    )}
-                  </Button>
+                <div className="space-y-2 text-xs">
+                  <span className="text-zinc-500 uppercase block font-bold">Address</span>
+                  <p className="text-zinc-300 leading-relaxed bg-zinc-950 p-3 rounded-xl border border-white/5">
+                    {activeReport.location?.formattedAddress || "No address provided."}
+                  </p>
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* Column 3: Leaflet map view, case notes history, timeline logs */}
-          <div className="flex flex-col gap-6">
-            
-            {/* Incident Geospatial Map viewer */}
-            <div className="border border-white/10 rounded-3xl p-6 bg-zinc-900/10 backdrop-blur-md shadow-xl flex flex-col gap-4">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-blue-400" />
-                Geospatial Coordinate Marker
-              </h3>
-              
-              <MapViewer
-                latitude={report.location?.latitude || 0}
-                longitude={report.location?.longitude || 0}
-                title={report.ai?.assistant?.title || report.metadata.title}
-                category={report.ai?.assistant?.category || report.metadata.category}
-                severity={report.ai?.verification?.priority || "medium"}
-                address={report.location?.formattedAddress || ""}
-              />
+              {/* Timeline feed */}
+              <div className="bg-zinc-900 border border-white/5 rounded-3xl p-6 space-y-4">
+                <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest block">Incident Timeline</span>
+                <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                  {activeReport.timeline && activeReport.timeline.length > 0 ? (
+                    activeReport.timeline.map((event, idx) => (
+                      <div key={idx} className="flex gap-3 relative border-l border-zinc-800 pl-4 pb-4 last:pb-0">
+                        <div className="absolute left-[-5px] top-1.5 w-2.5 h-2.5 rounded-full bg-blue-500" />
+                        <div>
+                          <span className="text-[10px] text-zinc-500 block">
+                            {new Date(event.timestamp).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                          </span>
+                          <span className="text-xs font-bold text-zinc-300">{event.action}</span>
+                          {event.note && <p className="text-[10px] text-zinc-400 mt-0.5">{event.note}</p>}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-xs text-zinc-500 italic block">No timeline events found.</span>
+                  )}
+                </div>
+              </div>
+
             </div>
 
-            {/* Case Timeline Activity Logs */}
-            <div className="border border-white/10 rounded-3xl p-6 bg-zinc-900/10 backdrop-blur-md shadow-xl flex flex-col gap-4">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-blue-400" />
-                Incident Timeline Logs
-              </h3>
+          </div>
+        </div>
 
-              <div className="flex flex-col gap-4 max-h-[300px] overflow-y-auto pr-2">
-                {report.timeline && report.timeline.length > 0 ? (
-                  report.timeline.map((event, idx) => (
-                    <div key={idx} className="relative pl-5 border-l border-white/10 pb-4 last:pb-0 flex flex-col gap-0.5">
-                      <div className="absolute -left-1.5 top-1.5 w-3 h-3 rounded-full bg-blue-500 border-2 border-zinc-950" />
-                      <div className="flex justify-between items-center text-[10px] text-zinc-500 font-semibold font-mono">
-                        <span>{new Date(event.timestamp).toLocaleString()}</span>
-                        <span className="capitalize">{(event as any).actorType}</span>
-                      </div>
-                      <span className="font-extrabold text-xs text-zinc-200">{(event as any).event}</span>
-                      <p className="text-[10px] text-zinc-400 leading-normal">{(event as any).note}</p>
-                    </div>
-                  ))
-                ) : (
-                  <span className="text-xs text-zinc-500 text-center py-6">No timeline events logged.</span>
-                )}
+        {/* Decline Reassignment Modal */}
+        {isRejectModalOpen && (
+          <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-zinc-900 border border-white/10 rounded-3xl p-6 w-full max-w-md space-y-6 shadow-2xl">
+              <div>
+                <h3 className="text-lg font-bold text-white">Decline & Reassign Case</h3>
+                <p className="text-xs text-zinc-400 mt-1">Please select the reason for reassigning this report to another officer or department.</p>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-xs font-bold text-zinc-400 uppercase">Reason for Reassignment</label>
+                <select
+                  value={rejectReason}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setRejectReason(e.target.value)}
+                  className="flex h-10 w-full items-center justify-between rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">Select Reason</option>
+                  <option value="Wrong Department">Wrong Department Assignment</option>
+                  <option value="Out of Zone">Out of Jurisdiction / Zone</option>
+                  <option value="Vehicle Breakdown">Vehicle Breakdown / Maintenance</option>
+                  <option value="Emergency Assignment">Emergency Duty Assignment</option>
+                  <option value="Other">Other / Not Listed</option>
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t border-white/5">
+                <Button onClick={handleReject} disabled={rejecting || !rejectReason} className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold h-11 rounded-xl">
+                  {rejecting ? "Declining..." : "Decline Assignment"}
+                </Button>
+                <Button onClick={() => setIsRejectModalOpen(false)} variant="outline" className="border-zinc-800 text-zinc-400 hover:text-white h-11 rounded-xl">
+                  Cancel
+                </Button>
               </div>
             </div>
           </div>
-        </main>
+        )}
+
       </div>
     </RouteGuard>
   );

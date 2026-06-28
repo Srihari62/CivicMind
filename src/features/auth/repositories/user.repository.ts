@@ -20,6 +20,13 @@ export interface FirestoreUserProfile extends UserProfile {
   phone?: string;
   photo?: string;
   isActive?: boolean;
+  completedCases?: number;
+  bio?: string;
+  emergencyContact?: string;
+  employeeId?: string;
+  averageResolutionTime?: number;
+  citizenRating?: number;
+  performanceScore?: number;
 }
 
 export class UserRepository {
@@ -170,6 +177,30 @@ export class UserRepository {
       updatedAt: new Date().toISOString(),
     });
   }
+
+  /**
+   * Increments the completed cases count for an officer.
+   * @param uid - Officer UID
+   */
+  public static async incrementCompletedCases(uid: string): Promise<void> {
+    if (typeof window === "undefined") {
+      const { safeDb, adminDb, admin } = await import("@/services/firebase/admin");
+      const useAdmin = await safeDb.checkAdminSupport();
+      if (useAdmin && adminDb) {
+        await adminDb.collection("users").doc(uid).update({
+          completedCases: admin.firestore.FieldValue.increment(1),
+          updatedAt: new Date().toISOString(),
+        });
+        return;
+      }
+    }
+    const docRef = doc(db, COLLECTIONS.USERS, uid);
+    await updateDoc(docRef, {
+      completedCases: increment(1),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
 
   /**
    * Retrieves all registered officers in the platform.

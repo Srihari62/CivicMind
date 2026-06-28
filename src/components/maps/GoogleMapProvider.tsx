@@ -16,7 +16,7 @@ export function GoogleMapsProvider({ children }: GoogleMapsProviderProps) {
   }
 
   return (
-    <APIProvider apiKey={apiKey} libraries={["places", "marker", "visualization"]}>
+    <APIProvider apiKey={apiKey} version="3.64" libraries={["places", "marker", "visualization"]}>
       {children}
     </APIProvider>
   );

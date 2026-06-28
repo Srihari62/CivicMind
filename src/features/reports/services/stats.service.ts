@@ -86,8 +86,12 @@ export class CitizenStatsService {
     if (reportsSubmitted >= 1) addBadgeIfMissing("First Report");
     if (reportsVerified >= 5) addBadgeIfMissing("Community Helper");
     if (points >= 250) addBadgeIfMissing("Trusted Citizen");
-    if (reportsResolved >= 5) addBadgeIfMissing("Neighborhood Guardian");
     if (points >= 1000) addBadgeIfMissing("Civic Champion");
+
+    // Dynamic milestones based on total count of resolved reports
+    if (reportsResolved >= 5) addBadgeIfMissing("Bronze Resolver");
+    if (reportsResolved >= 15) addBadgeIfMissing("Silver Resolver");
+    if (reportsResolved >= 30) addBadgeIfMissing("Gold Resolver");
 
     const updatedStats: GamificationStats = {
       ...currentStats,

@@ -55,9 +55,6 @@ export class ReportVerificationService {
 
     await updateDoc(reportRef, updates);
 
-    // 4. Award points to verifying citizen (+10 points)
-    await CitizenStatsService.awardPoints(userId, 10, "verify");
-
     // 5. Notify the owner of the report
     const reportOwnerId = reportData.metadata?.createdBy;
     if (reportOwnerId && reportOwnerId !== userId) {

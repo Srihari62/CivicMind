@@ -16,6 +16,7 @@ import { Map, AdvancedMarker, InfoWindow, useMap, useMapsLibrary } from "@vis.gl
 export default function IncidentHeatmap({ reports }: { reports: CivicReport[] }) {
   const [mounted, setMounted] = useState(false);
   const [timeFilter, setTimeFilter] = useState<"today" | "week" | "month" | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<"unresolved" | "resolved" | "all">("unresolved");
   const [categoryFilters, setCategoryFilters] = useState<Record<string, boolean>>({
     road_damage: true,
     garbage: true,
@@ -43,6 +44,26 @@ export default function IncidentHeatmap({ reports }: { reports: CivicReport[] })
 
   // Filter reports locally
   const filteredReports = reports.filter((r) => {
+    // 0. Status layer check
+    if (statusFilter === "unresolved") {
+      const activeStatuses = [
+        "submitted",
+        "processing",
+        "verified",
+        "waiting_assignment",
+        "assigned",
+        "accepted",
+        "travelling",
+        "investigating",
+        "repair_in_progress",
+        "awaiting_verification"
+      ];
+      if (!activeStatuses.includes(r.status)) return false;
+    } else if (statusFilter === "resolved") {
+      const resolvedStatuses = ["resolved", "closed"];
+      if (!resolvedStatuses.includes(r.status)) return false;
+    }
+
     // 1. Coordinates check
     if (!r.location?.latitude || !r.location?.longitude) return false;
 
@@ -110,6 +131,20 @@ export default function IncidentHeatmap({ reports }: { reports: CivicReport[] })
             >
               <Layers className="w-3.5 h-3.5" /> Heatmap
             </button>
+          </div>
+
+          {/* Status Layer Filter */}
+          <div className="flex items-center gap-1.5 bg-zinc-900 border border-white/10 rounded-xl px-3 py-1.5 text-zinc-300">
+            <Layers className="w-3.5 h-3.5 text-zinc-400" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as "unresolved" | "resolved" | "all")}
+              className="bg-transparent text-xs font-bold focus:outline-none cursor-pointer"
+            >
+              <option value="unresolved">Active Incidents</option>
+              <option value="resolved">Resolved Incidents</option>
+              <option value="all">All Incidents</option>
+            </select>
           </div>
 
           {/* Time Filter Dropdown */}
@@ -191,43 +226,157 @@ function HeatmapLayer({ data }: HeatmapLayerProps) {
 
   useEffect(() => {
     if (!map || !vizLibrary) return;
+    if (typeof google === "undefined" || !google.maps || !google.maps.LatLng) return;
 
-    const googlePoints = data.map((pt) => new google.maps.LatLng(pt.lat, pt.lng));
+    try {
+      const googlePoints = data
+        .map((pt) => {
+          const lat = Number(pt.lat);
+          const lng = Number(pt.lng);
+          if (isNaN(lat) || isNaN(lng)) return null;
+          return new google.maps.LatLng(lat, lng);
+        })
+        .filter((pt): pt is google.maps.LatLng => pt !== null);
 
-    const heatmap = new vizLibrary.HeatmapLayer();
-    (heatmap as any).setOptions({
-      data: googlePoints,
-      map: map,
-      radius: 35,
-      opacity: 0.85,
-    });
+      const heatmap = new vizLibrary.HeatmapLayer();
+      (heatmap as any).setOptions({
+        data: googlePoints,
+        map: map,
+        radius: 35,
+        opacity: 0.85,
+      });
 
-    return () => {
-      (heatmap as any).setMap(null);
-    };
+      return () => {
+        (heatmap as any).setMap(null);
+      };
+    } catch (e) {
+      console.error("Error rendering HeatmapLayer:", e);
+    }
   }, [map, vizLibrary, data]);
 
   return null;
 }
 
 // MapViewportController helper for Google Maps camera bounds panning
-function MapViewportController({ fitBoundsTrigger, bounds }: { fitBoundsTrigger: number; bounds: [number, number][] }) {
+function MapViewportController({ reports }: { reports: CivicReport[] }) {
   const map = useMap();
   useEffect(() => {
-    if (!map || bounds.length === 0) return;
+    if (!map || reports.length === 0) return;
+    if (typeof google === "undefined" || !google.maps || !google.maps.LatLngBounds) return;
 
-    const gBounds = new google.maps.LatLngBounds();
-    bounds.forEach(([lat, lng]) => {
-      gBounds.extend({ lat, lng });
-    });
-    map.fitBounds(gBounds);
-  }, [fitBoundsTrigger, bounds, map]);
+    try {
+      const gBounds = new google.maps.LatLngBounds();
+      let validCount = 0;
+      reports.forEach((r) => {
+        if (r.location?.latitude && r.location?.longitude) {
+          const lat = Number(r.location.latitude);
+          const lng = Number(r.location.longitude);
+          if (!isNaN(lat) && !isNaN(lng)) {
+            gBounds.extend({ lat, lng });
+            validCount++;
+          }
+        }
+      });
+
+      if (validCount === 0) return;
+
+      if (validCount === 1) {
+        const singleReport = reports.find(r => r.location?.latitude && r.location?.longitude);
+        if (singleReport) {
+          const lat = Number(singleReport.location.latitude);
+          const lng = Number(singleReport.location.longitude);
+          if (!isNaN(lat) && !isNaN(lng)) {
+            map.setCenter({ lat, lng });
+            map.setZoom(14);
+          }
+        }
+      } else {
+        map.fitBounds(gBounds);
+      }
+    } catch (e) {
+      console.error("Error centering map:", e);
+    }
+  }, [reports, map]);
+
   return null;
 }
 
+function ClusterMarkersView({ 
+  clusters, 
+  setSelectedReport, 
+  getSeverityColor 
+}: { 
+  clusters: Record<string, { center: [number, number]; points: CivicReport[]; bounds: [number, number][] }>;
+  setSelectedReport: (r: CivicReport | null) => void;
+  getSeverityColor: (severity?: string | null) => string;
+}) {
+  const map = useMap();
+
+  return (
+    <>
+      {Object.keys(clusters).map((key) => {
+        const cluster = clusters[key];
+        const count = cluster.points.length;
+
+        if (count === 1) {
+          const r = cluster.points[0];
+          const severityColor = getSeverityColor(r.ai?.assistant?.severity || r.ai?.verification?.priority);
+          return (
+            <AdvancedMarker
+              key={r.id}
+              position={{ lat: r.location.latitude, lng: r.location.longitude }}
+              onClick={() => setSelectedReport(r)}
+            >
+              <div 
+                className="w-3.5 h-3.5 rounded-full border border-white shadow-md cursor-pointer hover:scale-110 transition"
+                style={{ backgroundColor: severityColor }}
+              />
+            </AdvancedMarker>
+          );
+        }
+
+        // Cluster marker
+        return (
+          <AdvancedMarker
+            key={key}
+            position={{ lat: cluster.center[0], lng: cluster.center[1] }}
+            onClick={() => {
+              if (typeof google === "undefined" || !google.maps || !google.maps.LatLngBounds) return;
+              try {
+                if (map && cluster.bounds.length > 0) {
+                  const gBounds = new google.maps.LatLngBounds();
+                  cluster.bounds.forEach(([lat, lng]) => {
+                    const latNum = Number(lat);
+                    const lngNum = Number(lng);
+                    if (!isNaN(latNum) && !isNaN(lngNum)) {
+                      gBounds.extend({ lat: latNum, lng: lngNum });
+                    }
+                  });
+                  map.fitBounds(gBounds);
+                }
+              } catch (e) {
+                console.error("Error fitting cluster bounds:", e);
+              }
+            }}
+          >
+            <div 
+              className="flex items-center justify-center rounded-full border border-white font-extrabold text-white text-xs cursor-pointer shadow-lg hover:scale-105 transition"
+              style={{
+                width: `${24 + Math.min(count * 2, 14)}px`,
+                height: `${24 + Math.min(count * 2, 14)}px`,
+                backgroundColor: "#ef4444",
+              }}
+            >
+              {count}
+            </div>
+          </AdvancedMarker>
+        );
+      })}
+    </>
+  );
+}
+
 function InnerMapWrapper({ reports, viewType }: { reports: CivicReport[]; viewType: "markers" | "cluster" | "heatmap" }) {
-  const [zoomTrigger, setZoomTrigger] = useState(0);
-  const [targetBounds, setTargetBounds] = useState<[number, number][]>([]);
   const [selectedReport, setSelectedReport] = useState<CivicReport | null>(null);
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -297,7 +446,7 @@ function InnerMapWrapper({ reports, viewType }: { reports: CivicReport[]; viewTy
         disableDefaultUI={true}
         style={{ width: "100%", height: "100%", background: "#09090b" }}
       >
-        <MapViewportController fitBoundsTrigger={zoomTrigger} bounds={targetBounds} />
+        <MapViewportController reports={reports} />
 
         {/* 1. Markers View */}
         {viewType === "markers" &&
@@ -318,51 +467,13 @@ function InnerMapWrapper({ reports, viewType }: { reports: CivicReport[]; viewTy
           })}
 
         {/* 2. Cluster View */}
-        {viewType === "cluster" &&
-          Object.keys(clusters).map((key) => {
-            const cluster = clusters[key];
-            const count = cluster.points.length;
-
-            if (count === 1) {
-              const r = cluster.points[0];
-              const severityColor = getSeverityColor(r.ai?.assistant?.severity || r.ai?.verification?.priority);
-              return (
-                <AdvancedMarker
-                  key={r.id}
-                  position={{ lat: r.location.latitude, lng: r.location.longitude }}
-                  onClick={() => setSelectedReport(r)}
-                >
-                  <div 
-                    className="w-3.5 h-3.5 rounded-full border border-white shadow-md cursor-pointer hover:scale-110 transition"
-                    style={{ backgroundColor: severityColor }}
-                  />
-                </AdvancedMarker>
-              );
-            }
-
-            // Cluster marker
-            return (
-              <AdvancedMarker
-                key={key}
-                position={{ lat: cluster.center[0], lng: cluster.center[1] }}
-                onClick={() => {
-                  setTargetBounds(cluster.bounds);
-                  setZoomTrigger((prev) => prev + 1);
-                }}
-              >
-                <div 
-                  className="flex items-center justify-center rounded-full bg-red-650 border border-white font-extrabold text-white text-xs cursor-pointer shadow-lg hover:scale-105 transition"
-                  style={{
-                    width: `${24 + Math.min(count * 2, 14)}px`,
-                    height: `${24 + Math.min(count * 2, 14)}px`,
-                    backgroundColor: "#ef4444",
-                  }}
-                >
-                  {count}
-                </div>
-              </AdvancedMarker>
-            );
-          })}
+        {viewType === "cluster" && (
+          <ClusterMarkersView 
+            clusters={clusters} 
+            setSelectedReport={setSelectedReport} 
+            getSeverityColor={getSeverityColor} 
+          />
+        )}
 
         {/* 3. Heatmap View */}
         {viewType === "heatmap" && (

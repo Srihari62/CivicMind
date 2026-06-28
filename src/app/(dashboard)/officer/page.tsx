@@ -43,6 +43,7 @@ export default function OfficerDashboardPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState<"assigned" | "wip" | "resolved" | "dept">("assigned");
 
   useEffect(() => {
     if (!profile?.uid) return;
@@ -86,28 +87,24 @@ export default function OfficerDashboardPage() {
     }
   };
 
-  // Filter reports relevant to this officer:
-  // 1. Reports explicitly assigned to this officer, OR
-  // 2. Reports whose department matches the officer's department
   const officerDept = profile?.department || "";
-  const myReports = reports.filter((r) => {
-    // Explicitly assigned to this officer
-    if (r.ai?.assignment?.officerId === profile?.uid) return true;
-    // Matches officer's department
-    const reportDept = r.ai?.assignment?.department || r.ai?.verification?.assignedDepartment || "";
-    if (officerDept && reportDept && reportDept.toLowerCase() === officerDept.toLowerCase()) return true;
-    return false;
-  });
 
   // 1. Calculate Stats based on this officer's cases
-  const pendingCount = myReports.filter((r) => r.status === "submitted").length;
+  // Pending: Unassigned reports matching officer's department
+  const pendingCount = reports.filter((r) => {
+    const reportDept = r.ai?.assignment?.department || r.ai?.verification?.assignedDepartment || "";
+    const isMyDept = officerDept && reportDept.toLowerCase() === officerDept.toLowerCase();
+    return isMyDept && ["submitted", "verified", "waiting_assignment"].includes(r.status) && !r.ai?.assignment?.officerId;
+  }).length;
   
-  const assignedCount = myReports.filter(
-    (r) => r.status === "investigating" || r.status === "in_progress"
+  // Assigned: Reports assigned to me that are not resolved or closed
+  const assignedCount = reports.filter(
+    (r) => r.ai?.assignment?.officerId === profile?.uid && !["resolved", "closed"].includes(r.status)
   ).length;
 
-  const resolvedTodayCount = myReports.filter((r) => {
+  const resolvedTodayCount = reports.filter((r) => {
     if (r.status !== "resolved") return false;
+    if (r.ai?.assignment?.officerId !== profile?.uid) return false;
     const updatedAt = new Date(r.timestamps.updatedAt);
     const today = new Date();
     return (
@@ -118,7 +115,7 @@ export default function OfficerDashboardPage() {
   }).length;
 
   const calculateAverageResolutionTime = () => {
-    const resolved = myReports.filter((r) => r.status === "resolved");
+    const resolved = reports.filter((r) => r.status === "resolved" && r.ai?.assignment?.officerId === profile?.uid);
     if (resolved.length === 0) return "N/A";
 
     const totalDurationMs = resolved.reduce((sum, r) => {
@@ -140,8 +137,48 @@ export default function OfficerDashboardPage() {
 
   const avgResolutionTime = calculateAverageResolutionTime();
 
+  const assignedTabCount = reports.filter((r) => r.ai?.assignment?.officerId === profile?.uid && r.status === "assigned").length;
+  const wipTabCount = reports.filter((r) => r.ai?.assignment?.officerId === profile?.uid && ["accepted", "travelling", "investigating", "repair_in_progress", "awaiting_verification"].includes(r.status)).length;
+  const resolvedTabCount = reports.filter((r) => r.ai?.assignment?.officerId === profile?.uid && r.status === "resolved").length;
+  const deptTabCount = reports.filter((r) => {
+    const reportDept = r.ai?.assignment?.department || r.ai?.verification?.assignedDepartment || "";
+    const isMyDept = officerDept && reportDept.toLowerCase() === officerDept.toLowerCase();
+    return isMyDept && ["submitted", "verified", "waiting_assignment"].includes(r.status) && !r.ai?.assignment?.officerId;
+  }).length;
+
+  // Get reports for the current active tab
+  const getTabReports = () => {
+    const isMe = (r: CivicReport) => r.ai?.assignment?.officerId === profile?.uid;
+    const isMyDept = (r: CivicReport) => {
+      const reportDept = r.ai?.assignment?.department || r.ai?.verification?.assignedDepartment || "";
+      return officerDept && reportDept.toLowerCase() === officerDept.toLowerCase();
+    };
+
+    if (activeTab === "assigned") {
+      // Assigned tab: Only show reports that officer still owns and are NOT resolved (status: assigned)
+      return reports.filter((r) => isMe(r) && r.status === "assigned");
+    }
+    if (activeTab === "wip") {
+      // Work In Progress tab: accepted, travelling, investigating, repair_in_progress, awaiting_verification
+      const wipStatuses = ["accepted", "travelling", "investigating", "repair_in_progress", "awaiting_verification"];
+      return reports.filter((r) => isMe(r) && wipStatuses.includes(r.status));
+    }
+    if (activeTab === "resolved") {
+      // Resolved tab: Only resolved reports
+      return reports.filter((r) => isMe(r) && r.status === "resolved");
+    }
+    if (activeTab === "dept") {
+      // Department Queue tab: Submitted/verified/waiting reports matching department, not assigned to anyone
+      const unassignedStatuses = ["submitted", "verified", "waiting_assignment"];
+      return reports.filter((r) => isMyDept(r) && unassignedStatuses.includes(r.status) && !r.ai?.assignment?.officerId);
+    }
+    return [];
+  };
+
+  const tabReports = getTabReports();
+
   // 2. Filter Reports List
-  const filteredReports = myReports.filter((r) => {
+  const filteredReports = tabReports.filter((r) => {
     const matchesSearch =
       r.metadata.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.metadata.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -154,44 +191,8 @@ export default function OfficerDashboardPage() {
   });
 
   return (
-    <RouteGuard allowedRoles={["officer"]}>
-      <div className="flex min-h-screen flex-col bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black text-slate-100">
-        {/* Navigation Bar */}
-        <header className="border-b border-slate-800 bg-slate-950/60 backdrop-blur-md sticky top-0 z-10">
-          <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-500 text-lg">
-                CIVICMIND
-              </span>
-              <span className="text-xs bg-indigo-500/20 text-indigo-300 font-mono px-2 py-0.5 rounded border border-indigo-500/30">
-                Staff Console
-              </span>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1.5 bg-slate-900/60 border border-slate-800 rounded-lg px-2.5 py-1 text-xs">
-                <span className="text-slate-450 font-semibold">Duty:</span>
-                <select
-                  value={availability}
-                  onChange={(e) => handleAvailabilityChange(e.target.value as "available" | "busy" | "offline")}
-                  className="bg-transparent text-slate-200 focus:outline-none cursor-pointer font-bold capitalize"
-                >
-                  <option value="available" className="bg-slate-950 text-emerald-400">Available</option>
-                  <option value="busy" className="bg-slate-950 text-amber-400">Busy</option>
-                  <option value="offline" className="bg-slate-950 text-slate-400">Offline</option>
-                </select>
-              </div>
-              <span className="text-xs text-slate-400 font-medium hidden md:inline">
-                {profile?.email} ({profile?.role})
-              </span>
-              <Button variant="outline" size="sm" onClick={() => logout()} className="border-slate-800 hover:bg-slate-900 text-slate-300">
-                Sign Out
-              </Button>
-            </div>
-          </div>
-        </header>
+    <div className="max-w-7xl w-full mx-auto px-6 py-10 flex flex-col gap-8">
 
-        {/* Dashboard Area */}
-        <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-10 flex flex-col gap-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex flex-col gap-1">
               <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-slate-50 to-slate-300 bg-clip-text text-transparent">
@@ -282,11 +283,70 @@ export default function OfficerDashboardPage() {
 
           {/* Interactive Incident Table */}
           <div className="border border-slate-800/80 rounded-2xl bg-slate-950/20 backdrop-blur-md overflow-hidden flex flex-col">
+            {/* Tab Navigation */}
+            <div className="flex flex-wrap border-b border-slate-800 bg-slate-950/40 px-6 gap-6 pt-4">
+              <button
+                onClick={() => { setActiveTab("assigned"); setStatusFilter("all"); }}
+                className={`pb-3 text-xs font-black uppercase tracking-widest border-b-2 transition-all px-1 flex items-center gap-2 ${
+                  activeTab === "assigned"
+                    ? "border-indigo-500 text-indigo-400"
+                    : "border-transparent text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                Assigned
+                <span className="bg-indigo-500/10 text-indigo-300 text-[10px] font-mono px-1.5 py-0.5 rounded border border-indigo-500/20">
+                  {assignedTabCount}
+                </span>
+              </button>
+              <button
+                onClick={() => { setActiveTab("wip"); setStatusFilter("all"); }}
+                className={`pb-3 text-xs font-black uppercase tracking-widest border-b-2 transition-all px-1 flex items-center gap-2 ${
+                  activeTab === "wip"
+                    ? "border-indigo-500 text-indigo-400"
+                    : "border-transparent text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                Work In Progress
+                <span className="bg-indigo-500/10 text-indigo-300 text-[10px] font-mono px-1.5 py-0.5 rounded border border-indigo-500/20">
+                  {wipTabCount}
+                </span>
+              </button>
+              <button
+                onClick={() => { setActiveTab("resolved"); setStatusFilter("all"); }}
+                className={`pb-3 text-xs font-black uppercase tracking-widest border-b-2 transition-all px-1 flex items-center gap-2 ${
+                  activeTab === "resolved"
+                    ? "border-indigo-500 text-indigo-400"
+                    : "border-transparent text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                Resolved
+                <span className="bg-indigo-500/10 text-indigo-300 text-[10px] font-mono px-1.5 py-0.5 rounded border border-indigo-500/20">
+                  {resolvedTabCount}
+                </span>
+              </button>
+              <button
+                onClick={() => { setActiveTab("dept"); setStatusFilter("all"); }}
+                className={`pb-3 text-xs font-black uppercase tracking-widest border-b-2 transition-all px-1 flex items-center gap-2 ${
+                  activeTab === "dept"
+                    ? "border-indigo-500 text-indigo-400"
+                    : "border-transparent text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                Department Queue
+                <span className="bg-indigo-500/10 text-indigo-300 text-[10px] font-mono px-1.5 py-0.5 rounded border border-indigo-500/20">
+                  {deptTabCount}
+                </span>
+              </button>
+            </div>
+
             {/* Table Header Filter Area */}
-            <div className="border-b border-slate-800 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-950/40">
+            <div className="border-b border-slate-800 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-950/20">
               <span className="font-bold text-lg text-slate-100 flex items-center gap-2">
                 <ShieldAlert className="h-5 w-5 text-indigo-400" />
-                My Active Cases
+                {activeTab === "assigned" && "Assigned Cases"}
+                {activeTab === "wip" && "Work In Progress Cases"}
+                {activeTab === "resolved" && "Resolved Case Archives"}
+                {activeTab === "dept" && "Claimable Department Queue"}
               </span>
               <div className="flex flex-wrap items-center gap-3">
                 {/* Search */}
@@ -299,23 +359,6 @@ export default function OfficerDashboardPage() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-9 pr-4 py-1.5 bg-slate-900/60 border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-64 transition-all"
                   />
-                </div>
-
-                {/* Status Filter */}
-                <div className="flex items-center gap-1.5 bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-1.5">
-                  <Filter className="h-3.5 w-3.5 text-slate-400" />
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="bg-transparent text-sm text-slate-300 focus:outline-none cursor-pointer"
-                  >
-                    <option value="all">All Statuses</option>
-                    <option value="assigned">Assigned</option>
-                    <option value="investigating">Investigating</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="resolved">Resolved</option>
-                    <option value="rejected">Rejected</option>
-                  </select>
                 </div>
 
                 {/* Category Filter */}
@@ -459,8 +502,6 @@ export default function OfficerDashboardPage() {
               </div>
             )}
           </div>
-        </main>
-      </div>
-    </RouteGuard>
+    </div>
   );
 }

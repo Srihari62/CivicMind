@@ -48,9 +48,15 @@ export const SUPPORTED_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/web
 export const REPORT_STATUS = {
   DRAFT: "draft",
   SUBMITTED: "submitted",
+  ASSIGNED: "assigned",
+  ACCEPTED: "accepted",
+  TRAVELLING: "travelling",
   INVESTIGATING: "investigating",
-  IN_PROGRESS: "in_progress",
+  REPAIR_IN_PROGRESS: "repair_in_progress",
+  REPAIR_COMPLETED: "repair_completed",
+  AWAITING_VERIFICATION: "awaiting_verification",
   RESOLVED: "resolved",
+  CLOSED: "closed",
   REJECTED: "rejected",
 } as const;
 
@@ -91,9 +97,15 @@ export const URGENCY_LEVELS = [
 export const REPORT_STATUSES = [
   { value: "draft", label: "Draft", badgeVariant: "secondary" },
   { value: "submitted", label: "Submitted", badgeVariant: "secondary" },
+  { value: "assigned", label: "Assigned", badgeVariant: "secondary" },
+  { value: "accepted", label: "Accepted", badgeVariant: "secondary" },
+  { value: "travelling", label: "Travelling to Location", badgeVariant: "info" },
   { value: "investigating", label: "Under Investigation", badgeVariant: "warning" },
-  { value: "in_progress", label: "In Progress", badgeVariant: "info" },
+  { value: "repair_in_progress", label: "Repair In Progress", badgeVariant: "info" },
+  { value: "repair_completed", label: "Repair Completed", badgeVariant: "info" },
+  { value: "awaiting_verification", label: "Awaiting Verification", badgeVariant: "warning" },
   { value: "resolved", label: "Resolved", badgeVariant: "success" },
+  { value: "closed", label: "Closed", badgeVariant: "success" },
   { value: "rejected", label: "Rejected/Spam", badgeVariant: "destructive" },
 ] as const;
 

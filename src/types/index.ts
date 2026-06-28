@@ -30,11 +30,22 @@ export interface UserProfile {
 export type ReportStatus =
   | 'draft'
   | 'submitted'
+  | 'assigned'
   | 'accepted'
+  | 'travelling'
   | 'investigating'
+  | 'investigation_started'
   | 'in_progress'
+  | 'repair_in_progress'
+  | 'repair_completed'
+  | 'pending_verification'
+  | 'awaiting_verification'
+  | 'requires_review'
   | 'resolved'
-  | 'rejected';
+  | 'closed'
+  | 'rejected'
+  | 'waiting_assignment'
+  | 'reopened';
 
 export type AiStatus = 'pending' | 'processed' | 'failed';
 export type VerificationStatus = 'pending' | 'verified' | 'flagged' | 'rejected';
@@ -101,7 +112,11 @@ export interface TimelineEvent {
   actorRole: UserRole | 'system' | 'ai';
   action: string;
   note?: string;
+  actorName?: string;
+  gps?: { latitude: number; longitude: number } | null;
+  media?: MediaAsset[];
 }
+
 
 /**
  * Principal Civic Issue Report document interface.
@@ -164,25 +179,9 @@ export interface CivicReport {
     };
   };
 
-  resolution?: {
-    notes: string;
-    category: string;
-    proofPhotoUrl?: string;
-    resolvedAt: string;
-    resolvedBy?: string;
-    duration?: number; // in hours or days
-    repairEvidence?: {
-      before: MediaAsset[];
-      after: MediaAsset[];
-    };
-    aiSummary?: {
-      summary: string;
-      workCompleted: string;
-      citizenExplanation: string;
-    } | null;
-    generatedAt?: string | null;
-    model?: string | null;
-  } | null;
+  resolution?: ReportResolutionDetails | null;
+  repair?: ReportRepairDetails | null;
+  progress?: ReportProgressItem[] | null;
 
   repairEvidence?: {
     before: MediaAsset[];
@@ -190,6 +189,7 @@ export interface CivicReport {
   } | null;
 
   officerNotes?: OfficerNote | null;
+  progressUpdates?: ProgressUpdate[] | null;
 
   timeline?: TimelineEvent[];
 
@@ -199,11 +199,71 @@ export interface CivicReport {
   };
 }
 
+export interface ReportProgressItem {
+  title: string;
+  description: string;
+  media: MediaAsset[];
+  createdAt: string;
+  createdBy: string;
+  status: ReportStatus;
+}
+
+export interface ReportRepairDetails {
+  materials: string;
+  startedAt: string;
+  completedAt: string;
+  duration: number;
+  labourCount: number;
+  cost?: number;
+  notes: string;
+}
+
+export interface ReportResolutionDetails {
+  notes: string;
+  category: string;
+  proofPhotoUrl?: string;
+  resolvedAt: string;
+  resolvedBy?: string;
+  duration?: number; // in hours or days
+  repairEvidence?: {
+    before: MediaAsset[];
+    after: MediaAsset[];
+  };
+  aiSummary?: {
+    summary: string;
+    workCompleted: string;
+    citizenExplanation: string;
+  } | null;
+  generatedAt?: string | null;
+  model?: string | null;
+  materialsUsed?: string;
+  workCompleted?: string;
+  // Sprint 12C additions
+  technicalSummary?: string;
+  citizenSummary?: string;
+  adminSummary?: string;
+  verifiedByAI?: boolean;
+  confidence?: number;
+  beforeMedia?: MediaAsset[];
+  afterMedia?: MediaAsset[];
+}
+
 export interface OfficerNote {
   content: string;
   updatedAt: string;
   history: { content: string; updatedAt: string }[];
 }
+
+export interface ProgressUpdate {
+  id: string;
+  title: string;
+  description: string;
+  images: MediaAsset[];
+  timestamp: string;
+  officerId: string;
+  officerName: string;
+}
+
 
 /**
  * Threaded comments/updates on reports.

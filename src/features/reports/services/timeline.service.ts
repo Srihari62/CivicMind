@@ -5,7 +5,7 @@
  */
 
 import { ReportRepository } from "../repositories/report.repository";
-import { TimelineEvent, UserRole } from "@/types";
+import { TimelineEvent, UserRole, MediaAsset } from "@/types";
 
 export class TimelineService {
   /**
@@ -16,16 +16,25 @@ export class TimelineService {
     actorId: string,
     actorRole: UserRole | "system" | "ai",
     action: string,
-    note?: string
+    note?: string,
+    actorName?: string,
+    gps?: { latitude: number; longitude: number } | null,
+    media?: MediaAsset[]
   ): Promise<void> {
-    const event: TimelineEvent = {
+    const event: any = {
       timestamp: new Date().toISOString(),
       actorId,
       actorRole,
       action,
-      note,
     };
+
+    if (note !== undefined) event.note = note;
+    if (actorName !== undefined) event.actorName = actorName;
+    if (gps !== undefined) event.gps = gps;
+    if (media !== undefined) event.media = media;
+
     await ReportRepository.appendTimelineEvent(reportId, event);
   }
+
 }
 export default TimelineService;

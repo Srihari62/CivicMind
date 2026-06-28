@@ -39,6 +39,14 @@ export class OfficerService {
   }
 
   /**
+   * Increments the completed cases count for an officer.
+   */
+  public static async incrementCompletedCases(uid: string): Promise<void> {
+    await UserRepository.incrementCompletedCases(uid);
+  }
+
+
+  /**
    * Gets all officers in a department.
    */
   public static async getOfficerByDepartment(department: string): Promise<FirestoreUserProfile[]> {

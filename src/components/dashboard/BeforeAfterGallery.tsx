@@ -20,7 +20,7 @@ export default function BeforeAfterGallery({ report }: BeforeAfterGalleryProps) 
 
   // Extract Resolution Details safely
   const reportExtended = report as unknown as Record<string, unknown>;
-  const resolution = report.resolution || (reportExtended.resolutionPayload as Record<string, unknown> | undefined);
+  const resolution = (report.resolution || reportExtended.resolutionPayload) as any;
   const officerNotes = (resolution ? String(resolution.notes || "") : "") || "No notes provided.";
   
   // Extract Before / After Assets safely
@@ -142,30 +142,63 @@ export default function BeforeAfterGallery({ report }: BeforeAfterGalleryProps) 
         </div>
       </div>
 
-      {/* Officer Notes & AI Summary */}
+      {/* Resolution Parameters, Officer Notes & AI Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-white/5 pt-6 text-sm">
-        {/* Officer Notes */}
-        <div className="space-y-2">
-          <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Field Officer Notes</span>
-          <p className="p-4 rounded-xl bg-white/5 border border-white/5 text-zinc-200 min-h-[100px] leading-relaxed whitespace-pre-wrap">
-            {officerNotes}
-          </p>
+        {/* Details and Materials */}
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+              <span className="text-[10px] font-bold text-zinc-500 uppercase block tracking-wider">Assigned Department</span>
+              <span className="text-sm font-semibold text-zinc-200">{report.ai?.assignment?.department || "General Operations"}</span>
+            </div>
+            <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+              <span className="text-[10px] font-bold text-zinc-500 uppercase block tracking-wider">Resolved By</span>
+              <span className="text-sm font-semibold text-zinc-200">{resolution?.resolvedBy || "Field Officer"}</span>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Materials Used</span>
+            <p className="p-4 rounded-xl bg-white/5 border border-white/5 text-zinc-200 leading-relaxed min-h-[50px] whitespace-pre-wrap">
+              {resolution?.materialsUsed || "None specified."}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Work Completed</span>
+            <p className="p-4 rounded-xl bg-white/5 border border-white/5 text-zinc-200 leading-relaxed min-h-[50px] whitespace-pre-wrap">
+              {resolution?.workCompleted || aiSummary?.workCompleted || "None specified."}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Field Officer Notes</span>
+            <p className="p-4 rounded-xl bg-white/5 border border-white/5 text-zinc-200 min-h-[80px] leading-relaxed whitespace-pre-wrap">
+              {officerNotes}
+            </p>
+          </div>
         </div>
 
         {/* AI Resolution Summary */}
         <div className="space-y-2">
           <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">AI Resolution Audit</span>
-          <div className="p-4 rounded-xl bg-white/5 border border-white/5 text-zinc-200 min-h-[100px] space-y-2 leading-relaxed">
+          <div className="p-4 rounded-xl bg-white/5 border border-white/5 text-zinc-200 min-h-[250px] space-y-4 leading-relaxed">
             {aiSummary ? (
               <>
                 <div>
-                  <span className="text-[10px] font-bold text-blue-400 uppercase block tracking-wider">Work Completed</span>
-                  <span className="text-xs text-zinc-300">{aiSummary.workCompleted || aiSummary.summary}</span>
+                  <span className="text-[10px] font-bold text-blue-400 uppercase block tracking-wider">Technical Summary</span>
+                  <span className="text-xs text-zinc-300 block mt-1">{aiSummary.summary || "No technical summary calculated."}</span>
                 </div>
+                {aiSummary.workCompleted && (
+                  <div>
+                    <span className="text-[10px] font-bold text-amber-400 uppercase block tracking-wider">AI Work Summary</span>
+                    <span className="text-xs text-zinc-300 block mt-1">{aiSummary.workCompleted}</span>
+                  </div>
+                )}
                 {aiSummary.citizenExplanation && (
                   <div>
                     <span className="text-[10px] font-bold text-emerald-400 uppercase block tracking-wider">Citizen Explanation</span>
-                    <span className="text-xs text-zinc-300">{aiSummary.citizenExplanation}</span>
+                    <span className="text-xs text-zinc-300 block mt-1">{aiSummary.citizenExplanation}</span>
                   </div>
                 )}
               </>

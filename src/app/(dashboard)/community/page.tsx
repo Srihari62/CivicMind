@@ -91,8 +91,24 @@ export default function CommunityFeedPage() {
       q,
       (snapshot) => {
         const reportsList: CivicReport[] = [];
+        const activeStatuses = [
+          "submitted",
+          "processing",
+          "verified",
+          "waiting_assignment",
+          "assigned",
+          "accepted",
+          "travelling",
+          "investigating",
+          "repair_in_progress",
+          "awaiting_verification",
+          "reopened"
+        ];
         snapshot.forEach((docSnap) => {
-          reportsList.push({ id: docSnap.id, ...docSnap.data() } as CivicReport);
+          const r = { id: docSnap.id, ...docSnap.data() } as CivicReport;
+          if (activeStatuses.includes(r.status)) {
+            reportsList.push(r);
+          }
         });
         setReports(reportsList);
         setLoading(false);

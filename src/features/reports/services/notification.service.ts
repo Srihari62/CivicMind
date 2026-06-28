@@ -31,6 +31,47 @@ export class NotificationService {
     reportId: string
   ): Promise<void> {
     const now = new Date().toISOString();
+
+    // Deduplication check: if there is an unread notification of same type/report/user, update it instead of creating a duplicate
+    if (typeof window === "undefined") {
+      const { adminDb, safeDb } = await import("@/services/firebase/admin");
+      const useAdmin = await safeDb.checkAdminSupport();
+      if (useAdmin && adminDb) {
+        const existing = await adminDb.collection("notifications")
+          .where("userId", "==", userId)
+          .where("reportId", "==", reportId)
+          .where("type", "==", type)
+          .where("read", "==", false)
+          .get();
+        if (!existing.empty) {
+          const existingId = existing.docs[0].id;
+          await adminDb.collection("notifications").doc(existingId).update({
+            createdAt: now,
+            message: message
+          });
+          return;
+        }
+      }
+    } else {
+      const { getDocs, query, where, collection, updateDoc } = await import("firebase/firestore");
+      const q = query(
+        collection(db, "notifications"),
+        where("userId", "==", userId),
+        where("reportId", "==", reportId),
+        where("type", "==", type),
+        where("read", "==", false)
+      );
+      const existing = await getDocs(q);
+      if (!existing.empty) {
+        const existingDoc = existing.docs[0];
+        await updateDoc(doc(db, "notifications", existingDoc.id), {
+          createdAt: now,
+          message: message
+        });
+        return;
+      }
+    }
+
     const notificationId = doc(collection(db, "notifications")).id;
     const notificationData: DbNotification = {
       id: notificationId,
@@ -53,6 +94,42 @@ export class NotificationService {
     }
     const docRef = doc(db, "notifications", notificationId);
     await setDoc(docRef, notificationData);
+  }
+
+  /**
+   * Cleans up (deletes) irrelevant notifications for a report.
+   * e.g., when a report's status moves past assignment/triage, or when resolved.
+   */
+  public static async cleanupNotifications(reportId: string, typesToClean: string[]): Promise<void> {
+    if (typeof window === "undefined") {
+      const { adminDb, safeDb } = await import("@/services/firebase/admin");
+      const useAdmin = await safeDb.checkAdminSupport();
+      if (useAdmin && adminDb) {
+        const snap = await adminDb.collection("notifications")
+          .where("reportId", "==", reportId)
+          .where("type", "in", typesToClean)
+          .get();
+        const batch = adminDb.batch();
+        snap.forEach((docSnap) => {
+          batch.delete(docSnap.ref);
+        });
+        await batch.commit();
+        return;
+      }
+    }
+
+    const { getDocs, query, where, collection, writeBatch } = await import("firebase/firestore");
+    const q = query(
+      collection(db, "notifications"),
+      where("reportId", "==", reportId),
+      where("type", "in", typesToClean)
+    );
+    const snap = await getDocs(q);
+    const batch = writeBatch(db);
+    snap.forEach((docSnap) => {
+      batch.delete(docSnap.ref);
+    });
+    await batch.commit();
   }
 
   /**
@@ -170,6 +247,9 @@ export class NotificationService {
       "assigned_to_officer",
       reportId
     );
+
+    // Clean up department backlog/assignment failed notifications for this report since it's now assigned
+    await this.cleanupNotifications(reportId, ["department_backlog", "assignment_failed"]);
   }
 
   /**
@@ -248,6 +328,9 @@ export class NotificationService {
       "investigation_started",
       reportId
     );
+
+    // Clean up assignment notifications since officer has started the investigation
+    await this.cleanupNotifications(reportId, ["new_assignment", "high_priority_report"]);
   }
 
   /**
@@ -283,6 +366,28 @@ export class NotificationService {
       "resolved",
       reportId
     );
+
+    // Clean up SLA risk, assignment, and priority notifications since report is resolved
+    await this.cleanupNotifications(reportId, ["sla_risk", "new_assignment", "high_priority_report"]);
+  }
+
+  /**
+   * Notify admins when report is resolved.
+   */
+  public static async notifyAdminResolved(reportId: string, officerName?: string): Promise<void> {
+    const report = await this.getReportData(reportId);
+    if (!report) return;
+    const title = report.ai?.assistant?.title || report.metadata.title || "Report";
+    const admins = await this.getAdminUserIds();
+    for (const adminId of admins) {
+      await this.createNotification(
+        adminId,
+        "Incident Resolved Alert",
+        `Incident "${title}" has been successfully resolved by ${officerName || "an officer"}.`,
+        "resolved_admin",
+        reportId
+      );
+    }
   }
 
   /**

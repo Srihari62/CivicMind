@@ -16,7 +16,11 @@ import {
   TrendingUp, 
   TrendingDown, 
   Cpu, 
-  Users 
+  Users,
+  Clock,
+  UserCheck,
+  Wrench,
+  Eye
 } from "lucide-react";
 import { CivicReport } from "@/types";
 
@@ -115,13 +119,19 @@ function StatCard({ label, value, icon: Icon, trend, trendText, subtext, glowCol
 }
 
 export default function ExecutiveOverview({ reports, officersCount, busyOfficersCount }: ExecutiveOverviewProps) {
-  // 1. Total reports
-  const totalReports = reports.length;
+  // 1. Pending: submitted, processing, verified, waiting_assignment
+  const pendingCount = reports.filter((r) => ["submitted", "processing", "verified", "waiting_assignment"].includes(r.status)).length;
 
-  // 2. Active reports (submitted, investigating, in_progress)
-  const activeReports = reports.filter((r) => ["submitted", "investigating", "in_progress", "accepted"].includes(r.status)).length;
+  // 2. Assigned: assigned
+  const assignedCount = reports.filter((r) => r.status === "assigned").length;
 
-  // 3. Resolved Today
+  // 3. In Progress: accepted, travelling, investigating, repair_in_progress
+  const inProgressCount = reports.filter((r) => ["accepted", "travelling", "investigating", "repair_in_progress"].includes(r.status)).length;
+
+  // 4. Awaiting Verification: awaiting_verification
+  const awaitingVerificationCount = reports.filter((r) => r.status === "awaiting_verification").length;
+
+  // 5. Resolved Today
   const resolvedToday = reports.filter((r) => {
     if (r.status !== "resolved") return false;
     const updatedAt = new Date(r.timestamps.updatedAt);
@@ -133,10 +143,10 @@ export default function ExecutiveOverview({ reports, officersCount, busyOfficers
     );
   }).length;
 
-  // 4. Average Resolution Time
+  // 6. Average Resolution Time
   const calculateAverageResolutionTime = () => {
     const resolved = reports.filter((r) => r.status === "resolved");
-    if (resolved.length === 0) return { label: "0h", hours: 0 };
+    if (resolved.length === 0) return { label: "N/A", hours: 0 };
 
     const totalDurationMs = resolved.reduce((sum, r) => {
       const start = new Date(r.timestamps.createdAt).getTime();
@@ -149,60 +159,60 @@ export default function ExecutiveOverview({ reports, officersCount, busyOfficers
     const averageHours = averageMs / (1000 * 60 * 60);
 
     if (averageHours < 24) {
-      return { label: `${averageHours.toFixed(1)}h`, hours: averageHours };
+      return { label: `${averageHours.toFixed(1)} hrs`, hours: averageHours };
     }
     const averageDays = averageHours / 24;
-    return { label: `${averageDays.toFixed(1)}d`, hours: averageHours };
+    return { label: `${averageDays.toFixed(1)} days`, hours: averageHours };
   };
 
   const avgResTime = calculateAverageResolutionTime();
 
-  // 5. Verification Success Rate (percentage of reports successfully verified vs submitted/processing/failed/rejected)
-  const verifiedCount = reports.filter(
-    (r) => r.ai?.verification?.status === "verified" || !["submitted", "processing", "rejected", "failed"].includes(r.status)
-  ).length;
-  const verificationSuccessRate = totalReports > 0 ? Math.round((verifiedCount / totalReports) * 100) : 100;
-
-  // 6. Average Trust Score
-  const verifiedReportsWithScores = reports.filter((r) => r.ai?.verification?.trustScore !== undefined && r.ai.verification.trustScore !== null);
-  const avgTrustScore = verifiedReportsWithScores.length > 0 
-    ? Math.round(verifiedReportsWithScores.reduce((sum, r) => sum + (r.ai?.verification?.trustScore || 0), 0) / verifiedReportsWithScores.length)
+  // 7. Average Trust Score
+  const reportsWithTrust = reports.filter((r) => r.ai?.verification?.trustScore !== undefined && r.ai?.verification?.trustScore !== null);
+  const avgTrustScore = reportsWithTrust.length > 0 
+    ? Math.round((reportsWithTrust.reduce((sum, r) => sum + (r.ai?.verification?.trustScore || 0), 0) / reportsWithTrust.length) * 100)
     : 85;
 
-  // 7. Average AI Confidence
-  const reportsWithConfidence = reports.filter((r) => r.ai?.assistant?.confidence !== undefined && r.ai?.assistant?.confidence !== null);
-  const avgAiConfidence = reportsWithConfidence.length > 0
-    ? Math.round(
-        (reportsWithConfidence.reduce((sum, r) => {
-          const confidence = r.ai?.assistant?.confidence ?? 0;
-          return sum + (confidence <= 1 ? confidence * 100 : confidence);
-        }, 0) /
-          reportsWithConfidence.length)
-      )
-    : 90;
-
-  // 8. Officer Utilization % (percentage of busy officers out of total officers)
+  // 8. Officer Utilization
   const utilizationRate = officersCount > 0 ? Math.round((busyOfficersCount / officersCount) * 100) : 0;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       <StatCard
-        label="Total Reports"
-        value={totalReports}
-        icon={FileText}
-        trend="up"
-        trendText="↑ 8%"
-        subtext="vs previous month"
+        label="Pending Review"
+        value={pendingCount}
+        icon={Clock}
+        trend="stable"
+        trendText="Active"
+        subtext="awaiting triage"
+        glowColor="rgba(245,158,11,0.15)"
+      />
+      <StatCard
+        label="Assigned Cases"
+        value={assignedCount}
+        icon={UserCheck}
+        trend="stable"
+        trendText="Queued"
+        subtext="pending acceptance"
         glowColor="rgba(59,130,246,0.15)"
       />
       <StatCard
-        label="Active Incidents"
-        value={activeReports}
-        icon={Activity}
-        trend={activeReports > 15 ? "up" : "down"}
-        trendText={activeReports > 15 ? "↑ 12%" : "↓ 4%"}
-        subtext="currently outstanding"
-        glowColor="rgba(245,158,11,0.15)"
+        label="In Progress"
+        value={inProgressCount}
+        icon={Wrench}
+        trend={inProgressCount > 0 ? "up" : "stable"}
+        trendText="Active"
+        subtext="field service work"
+        glowColor="rgba(20,184,166,0.15)"
+      />
+      <StatCard
+        label="Awaiting Verification"
+        value={awaitingVerificationCount}
+        icon={Eye}
+        trend="stable"
+        trendText="Reviewing"
+        subtext="completed repairs"
+        glowColor="rgba(139,92,246,0.15)"
       />
       <StatCard
         label="Resolved Today"
@@ -210,7 +220,7 @@ export default function ExecutiveOverview({ reports, officersCount, busyOfficers
         icon={CheckCircle}
         trend={resolvedToday > 0 ? "up" : "stable"}
         trendText={resolvedToday > 0 ? "↑ Active" : "Stable"}
-        subtext="SLA resolutions"
+        subtext="SLA completions"
         glowColor="rgba(16,185,129,0.15)"
       />
       <StatCard
@@ -223,34 +233,14 @@ export default function ExecutiveOverview({ reports, officersCount, busyOfficers
         glowColor="rgba(139,92,246,0.15)"
       />
       <StatCard
-        label="AI Verification Rate"
-        value={verificationSuccessRate}
-        icon={ShieldCheck}
-        trend="up"
-        trendText="↑ 2.1%"
-        subtext="automated passes"
-        suffix="%"
-        glowColor="rgba(20,184,166,0.15)"
-      />
-      <StatCard
-        label="Avg Integrity Trust"
+        label="Avg Trust Score"
         value={avgTrustScore}
         icon={ShieldCheck}
         trend="up"
         trendText="↑ 5 pts"
-        subtext="data validity score"
-        suffix="/100"
-        glowColor="rgba(59,130,246,0.15)"
-      />
-      <StatCard
-        label="Avg AI Confidence"
-        value={avgAiConfidence}
-        icon={Cpu}
-        trend="stable"
-        trendText="Stable"
-        subtext="model classification accuracy"
+        subtext="triage verification accuracy"
         suffix="%"
-        glowColor="rgba(245,158,11,0.15)"
+        glowColor="rgba(59,130,246,0.15)"
       />
       <StatCard
         label="Officer Utilization"
