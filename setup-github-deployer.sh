@@ -78,6 +78,7 @@ ROLES=(
   "roles/storage.objectAdmin"
   "roles/iam.serviceAccountUser"
   "roles/serviceusage.serviceUsageConsumer"
+  "roles/viewer"
 )
 
 for ROLE in "${ROLES[@]}"; do
