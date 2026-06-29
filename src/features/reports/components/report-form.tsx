@@ -32,6 +32,7 @@ import {
 } from "@/constants";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { VoiceInput } from "@/components/voice/VoiceInput";
 import dynamic from "next/dynamic";
 
 import { AlertCircle } from "lucide-react";
@@ -604,24 +605,19 @@ export function ReportForm() {
           {...register("title")}
         />
 
-        {/* Description */}
-        <div className="flex flex-col gap-1.5 w-full">
-          <label className="text-xs font-medium text-muted-foreground select-none">
-            Detailed Description
-          </label>
-          <textarea
-            placeholder="Please describe the issue in detail so dispatchers understand the urgency..."
-            rows={4}
-            disabled={isFormDisabled}
-            {...register("description")}
-            className="w-full px-3.5 py-2.5 bg-background border border-border text-sm rounded-md transition-all duration-200 outline-none placeholder:text-muted-foreground/60 text-foreground focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-50"
-          />
-          {errors.description && (
-            <span className="text-xs text-destructive font-medium mt-0.5" role="alert">
-              {errors.description.message}
-            </span>
-          )}
-        </div>
+        {/* Description — Voice Enabled */}
+        <VoiceInput
+          id="report-description"
+          label="Detailed Description"
+          multiline
+          rows={4}
+          placeholder="Please describe the issue in detail so dispatchers understand the urgency..."
+          disabled={isFormDisabled}
+          value={getValues("description") || ""}
+          onChange={(val) => setValue("description", val, { shouldValidate: true })}
+          language={(profile as any)?.preferredLanguage || "English"}
+          error={errors.description?.message}
+        />
 
         {/* Category Dropdown */}
         <div className="flex flex-col gap-1.5 w-full">

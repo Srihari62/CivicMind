@@ -30,10 +30,11 @@ import {
 } from "@/app/actions/officer.actions";
 import { MediaService } from "@/features/media/services/media.service";
 import {
-  FileText, Shield, MapPin, Camera, CheckCircle, AlertCircle, Wrench, Sparkles, Loader2, ChevronLeft, Mic, Square, Award, Truck
+  FileText, Shield, MapPin, Camera, CheckCircle, AlertCircle, Wrench, Sparkles, Loader2, ChevronLeft, Award, Truck
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import BeforeAfterGallery from "@/components/dashboard/BeforeAfterGallery";
+import { VoiceInput } from "@/components/voice/VoiceInput";
 
 // Load Leaflet Map dynamically
 const MapViewer = dynamic(() => import("@/components/maps/MapViewer"), {
@@ -60,9 +61,10 @@ export default function OfficerInvestigationPage() {
   const [rejectReason, setRejectReason] = useState("");
   const [rejecting, setRejecting] = useState(false);
 
-  // Voice Notes Simulation state
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  // Voice Notes state (now real via VoiceInput — no fake simulation needed)
+  // isRecording / recordingSeconds kept for backwards compat with timer ref cleanup
+  const [isRecording] = useState(false);
+  const [recordingSeconds] = useState(0);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // State for Investigation Stage
@@ -213,23 +215,9 @@ export default function OfficerInvestigationPage() {
   const activeStep = report ? getActiveStep(report.status) : 0;
   const severity = report?.ai?.assistant?.severity || report?.ai?.verification?.priority || "medium";
 
-  // Timers and Simulations
-  const startRecording = () => {
-    setIsRecording(true);
-    setRecordingSeconds(0);
-    recordingTimerRef.current = setInterval(() => {
-      setRecordingSeconds((prev) => prev + 1);
-    }, 1000);
-  };
-
-  const stopRecording = () => {
-    setIsRecording(false);
-    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
-    
-    // Add dummy text to notes
-    const transcript = "\n[Voice Note Transcript]: Found moderate structural fatigue. Requiring standard departmental concrete sealant and 2 hours curing time. Clear signs of minor water undermining.";
-    setInvestigationNotes((prev) => prev + transcript);
-  };
+  // startRecording / stopRecording replaced by VoiceInput component below
+  const startRecording = () => {};
+  const stopRecording  = () => {};
 
   // Handlers
   const handleAccept = async () => {
@@ -869,40 +857,18 @@ export default function OfficerInvestigationPage() {
                   </div>
 
                   <div className="space-y-4">
-                    {/* Voice notes integration */}
-                    <div className="p-4 bg-zinc-950 rounded-2xl border border-white/5 space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-zinc-400 uppercase">Field Transcription tool</span>
-                        {isRecording && (
-                          <span className="text-[10px] bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded animate-pulse">
-                            Rec: {recordingSeconds}s
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex gap-3">
-                        {!isRecording ? (
-                          <Button onClick={startRecording} size="sm" variant="outline" className="border-zinc-800 bg-zinc-900 text-zinc-300 hover:text-white flex items-center gap-2">
-                            <Mic className="w-4 h-4 text-red-500" />
-                            Record Speech-to-Text Notes
-                          </Button>
-                        ) : (
-                          <Button onClick={stopRecording} size="sm" className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2">
-                            <Square className="w-4 h-4 fill-white" />
-                            Stop & Insert Transcription
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-
                     <div>
-                      <label className="text-xs font-bold text-zinc-400 uppercase block mb-1">Field Findings & Inspection Notes</label>
-                      <textarea
-                        value={investigationNotes}
-                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInvestigationNotes(e.target.value)}
+                      <label className="text-xs font-bold text-zinc-400 uppercase block mb-1">Field Findings &amp; Inspection Notes</label>
+                      <VoiceInput
+                        multiline
+                        rows={4}
                         placeholder="Detail observations, defects found, or safety precautions needed..."
-                        className="flex min-h-[120px] w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                        value={investigationNotes}
+                        onChange={setInvestigationNotes}
+                        language={(profile as any)?.preferredLanguage || "English"}
                       />
                     </div>
+
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
@@ -995,11 +961,13 @@ export default function OfficerInvestigationPage() {
                   <div className="space-y-4">
                     <div>
                       <label className="text-xs font-bold text-zinc-400 uppercase block mb-1">Work Performed Description</label>
-                      <textarea
-                        value={workPerformed}
-                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setWorkPerformed(e.target.value)}
+                      <VoiceInput
+                        multiline
+                        rows={3}
                         placeholder="Detail the mechanical or physical tasks completed..."
-                        className="flex min-h-[100px] w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                        value={workPerformed}
+                        onChange={setWorkPerformed}
+                        language={(profile as any)?.preferredLanguage || "English"}
                       />
                     </div>
 
@@ -1134,20 +1102,24 @@ export default function OfficerInvestigationPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="text-xs font-bold text-zinc-400 uppercase block mb-1">Resolution Review Notes</label>
-                        <textarea
-                          value={verificationNotes}
-                          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setVerificationNotes(e.target.value)}
+                        <VoiceInput
+                          multiline
+                          rows={4}
                           placeholder="Provide final resolution and engineering summary notes..."
-                          className="flex min-h-[100px] w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                          value={verificationNotes}
+                          onChange={setVerificationNotes}
+                          language={(profile as any)?.preferredLanguage || "English"}
                         />
                       </div>
                       <div>
                         <label className="text-xs font-bold text-zinc-400 uppercase block mb-1">Final Materials Used</label>
-                        <textarea
-                          value={verificationMaterials}
-                          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setVerificationMaterials(e.target.value)}
+                        <VoiceInput
+                          multiline
+                          rows={4}
                           placeholder="Sum up materials used for archival..."
-                          className="flex min-h-[100px] w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                          value={verificationMaterials}
+                          onChange={setVerificationMaterials}
+                          language={(profile as any)?.preferredLanguage || "English"}
                         />
                       </div>
                     </div>

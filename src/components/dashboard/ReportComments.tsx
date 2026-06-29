@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AlertCircle, Camera, Edit2, Reply, Trash2, X, Send, Loader2, CornerDownRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { VoiceInput } from "@/components/voice/VoiceInput";
 
 interface CommentData {
   id: string;
@@ -408,12 +409,13 @@ export default function ReportComments({ reportId }: ReportCommentsProps) {
                 <CornerDownRight className="w-3.5 h-3.5 text-zinc-400" />
               </div>
               <div className="flex-1 bg-zinc-950 border border-white/10 p-3.5 rounded-2xl flex flex-col gap-2.5">
-                <textarea
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  placeholder={`Reply to ${comment.userName}...`}
-                  className="w-full bg-transparent text-sm text-white outline-none placeholder:text-zinc-600 resize-none"
+                <VoiceInput
+                  multiline
                   rows={2}
+                  placeholder={`Reply to ${comment.userName}...`}
+                  value={replyText}
+                  onChange={setReplyText}
+                  language={(profile as any)?.preferredLanguage || "English"}
                 />
 
                 {/* Reply Photo Preview */}
@@ -507,12 +509,13 @@ export default function ReportComments({ reportId }: ReportCommentsProps) {
           </div>
 
           <div className="flex-1 flex flex-col gap-3">
-            <textarea
-              value={newCommentText}
-              onChange={(e) => setNewCommentText(e.target.value)}
-              placeholder="Post a comment or verification report update..."
-              className="w-full bg-transparent text-sm text-white outline-none placeholder:text-zinc-600 resize-none"
+            <VoiceInput
+              multiline
               rows={2}
+              placeholder="Post a comment or verification report update..."
+              value={newCommentText}
+              onChange={setNewCommentText}
+              language={(profile as any)?.preferredLanguage || "English"}
             />
 
             {/* Root Photo Preview */}

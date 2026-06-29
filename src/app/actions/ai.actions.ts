@@ -13,6 +13,7 @@ import { EvidenceAnalysisResult } from "@/ai/types/ai.types";
 import { getGeminiModel } from "@/services/gemini/config";
 import { AssistantContextService } from "@/services/analytics/assistant-context.service";
 import { AI_MODELS } from "@/config/ai-models";
+import { TranscriptPolisherAgent } from "@/ai/agents/transcript-polisher.agent";
 
 import { authorizeAction } from "./auth-guard";
 
@@ -501,3 +502,39 @@ Analyze the attached photo and determine if it represents a valid verification p
   }
 }
 
+// ─── Transcript Polishing ─────────────────────────────────────────────────────
+
+export interface PolishTranscriptResponse {
+  success: boolean;
+  polished?: string;
+  error?: string;
+}
+
+/**
+ * Polishes and moderates a completed speech-to-text transcript using Gemini.
+ * Runs ONLY after recording is complete. Never streams live audio.
+ * Preserves original language. Sanitizes offensive language while keeping civic intent.
+ *
+ * @param rawTranscript - The completed transcript from the browser's Web Speech API
+ * @param languageCode  - BCP-47 language tag (e.g. "te-IN", "hi-IN", "en-IN")
+ */
+export async function polishTranscriptAction(
+  rawTranscript: string,
+  languageCode = "en-IN"
+): Promise<PolishTranscriptResponse> {
+  if (!rawTranscript || rawTranscript.trim().length < 15) {
+    return { success: true, polished: rawTranscript };
+  }
+
+  try {
+    const agent = new TranscriptPolisherAgent();
+    const polished = await agent.polish(rawTranscript.trim(), languageCode);
+    return { success: true, polished };
+  } catch (err) {
+    console.error("[polishTranscriptAction] Error:", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Transcript polishing failed.",
+    };
+  }
+}
