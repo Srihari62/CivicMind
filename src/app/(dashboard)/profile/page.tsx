@@ -20,7 +20,7 @@ import { CitizenStatsService } from "@/features/reports/services/stats.service";
 import { MediaService } from "@/features/media/services/media.service";
 import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
 import { auth } from "@/services/firebase/auth";
-import { Award, Shield, CheckCircle, FileText, Globe, Calendar, Phone, Loader2, Sparkles, MapPin, Camera, Lock, History } from "lucide-react";
+import { Award, Shield, CheckCircle, FileText, Globe, Calendar, Phone, Loader2, Sparkles, MapPin, Camera, Lock, History, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import MapPicker from "@/components/maps/MapPicker";
 
@@ -262,12 +262,24 @@ export default function ProfilePage() {
   // Gamification properties helper
   const stats = (profile as any)?.gamification || {
     points: 0,
+    contributionScore: 0,
+    civicScore: 0,
     level: 1,
+    contributionLevel: 1,
+    civicLevel: 1,
     badges: [] as string[],
     reportsSubmitted: 0,
+    reportsAssigned: 0,
     reportsResolved: 0,
+    reportsDuplicate: 0,
+    reportsFake: 0,
     reportsVerified: 0,
     streakDays: 0,
+    longestStreak: 0,
+    likesReceived: 0,
+    commentsPosted: 0,
+    feedReputation: 0,
+    achievementProgress: 0,
   };
 
   const allBadges = [
@@ -555,7 +567,23 @@ export default function ProfilePage() {
             )}
 
             {/* Achievement / Points Overview Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              {/* Contribution Points */}
+              <div
+                className="border border-white/10 rounded-2xl p-4 bg-zinc-900/10 backdrop-blur flex flex-col gap-1 shadow-lg cursor-pointer hover:bg-zinc-900/35 transition duration-200 select-none group"
+                onClick={() => setShowPointsModal(true)}
+                title="View Gamification scoring breakdown"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono group-hover:text-emerald-400 transition-colors">Contrib Points</span>
+                  <History className="w-3.5 h-3.5 text-zinc-500 group-hover:text-emerald-400 group-hover:rotate-12 transition-all" />
+                </div>
+                <span className="text-2xl font-black text-emerald-400 flex items-center gap-1.5 mt-0.5">
+                  <Zap className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform" /> {stats.contributionScore || 0}
+                </span>
+              </div>
+
+              {/* Civic Points */}
               <div
                 className="border border-white/10 rounded-2xl p-4 bg-zinc-900/10 backdrop-blur flex flex-col gap-1 shadow-lg cursor-pointer hover:bg-zinc-900/35 transition duration-200 select-none group"
                 onClick={() => setShowPointsModal(true)}
@@ -566,46 +594,67 @@ export default function ProfilePage() {
                   <History className="w-3.5 h-3.5 text-zinc-500 group-hover:text-blue-400 group-hover:rotate-12 transition-all" />
                 </div>
                 <span className="text-2xl font-black text-blue-500 flex items-center gap-1.5 mt-0.5">
-                  <Sparkles className="w-5 h-5 text-blue-500 group-hover:scale-110 transition-transform" /> {stats.points || 0}
+                  <Sparkles className="w-5 h-5 text-blue-500 group-hover:scale-110 transition-transform" /> {stats.civicScore || 0}
                 </span>
               </div>
+
+              {/* Contrib Level */}
               <div
                 className="border border-white/10 rounded-2xl p-4 bg-zinc-900/10 backdrop-blur flex flex-col gap-1 shadow-lg cursor-pointer hover:bg-zinc-900/35 transition duration-200 select-none group"
                 onClick={() => setShowLevelModal(true)}
                 title="View Level Progress"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono group-hover:text-indigo-400 transition-colors">Level Status</span>
-                  <History className="w-3.5 h-3.5 text-zinc-500 group-hover:text-indigo-400 group-hover:rotate-12 transition-all" />
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono group-hover:text-emerald-400 transition-colors">Contrib Level</span>
+                  <History className="w-3.5 h-3.5 text-zinc-500 group-hover:text-emerald-400 group-hover:rotate-12 transition-all" />
                 </div>
-                <span className="text-2xl font-black text-indigo-400 flex items-center gap-1.5 mt-0.5">
-                  <Shield className="w-5 h-5 text-indigo-400 group-hover:scale-110 transition-transform" /> Lvl {stats.level || 1}
+                <span className="text-2xl font-black text-emerald-400 flex items-center gap-1.5 mt-0.5">
+                  <Shield className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform" /> Lvl {stats.contributionLevel || 1}
                 </span>
               </div>
+
+              {/* Civic Level */}
+              <div
+                className="border border-white/10 rounded-2xl p-4 bg-zinc-900/10 backdrop-blur flex flex-col gap-1 shadow-lg cursor-pointer hover:bg-zinc-900/35 transition duration-200 select-none group"
+                onClick={() => setShowLevelModal(true)}
+                title="View Level Progress"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono group-hover:text-blue-400 transition-colors">Civic Level</span>
+                  <History className="w-3.5 h-3.5 text-zinc-500 group-hover:text-blue-400 group-hover:rotate-12 transition-all" />
+                </div>
+                <span className="text-2xl font-black text-blue-400 flex items-center gap-1.5 mt-0.5">
+                  <Award className="w-5 h-5 text-blue-400 group-hover:scale-110 transition-transform" /> Lvl {stats.civicLevel || 1}
+                </span>
+              </div>
+
+              {/* Submitted Reports */}
               <div
                 className="border border-white/10 rounded-2xl p-4 bg-zinc-900/10 backdrop-blur flex flex-col gap-1 shadow-lg cursor-pointer hover:bg-zinc-900/35 transition duration-200 select-none group"
                 onClick={() => setShowSubmittedModal(true)}
                 title="View Submitted Reports History"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono group-hover:text-emerald-400 transition-colors">Reports submitted</span>
-                  <History className="w-3.5 h-3.5 text-zinc-500 group-hover:text-emerald-400 group-hover:rotate-12 transition-all" />
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono group-hover:text-amber-400 transition-colors">Submitted</span>
+                  <History className="w-3.5 h-3.5 text-zinc-500 group-hover:text-amber-400 group-hover:rotate-12 transition-all" />
                 </div>
-                <span className="text-2xl font-black text-emerald-400 flex items-center gap-1.5 mt-0.5">
-                  <FileText className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform" /> {reports.length}
+                <span className="text-2xl font-black text-amber-400 flex items-center gap-1.5 mt-0.5">
+                  <FileText className="w-5 h-5 text-amber-400 group-hover:scale-110 transition-transform" /> {stats.reportsSubmitted || 0}
                 </span>
               </div>
+
+              {/* Resolved Reports */}
               <div
                 className="border border-white/10 rounded-2xl p-4 bg-zinc-900/10 backdrop-blur flex flex-col gap-1 shadow-lg cursor-pointer hover:bg-zinc-900/35 transition duration-200 select-none group"
                 onClick={() => setShowResolvedModal(true)}
                 title="View Resolved Reports History"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono group-hover:text-purple-400 transition-colors">Reports resolved</span>
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono group-hover:text-purple-400 transition-colors">Resolved</span>
                   <History className="w-3.5 h-3.5 text-zinc-500 group-hover:text-purple-400 group-hover:rotate-12 transition-all" />
                 </div>
                 <span className="text-2xl font-black text-purple-400 flex items-center gap-1.5 mt-0.5">
-                  <CheckCircle className="w-5 h-5 text-purple-400 group-hover:scale-110 transition-transform" /> {reports.filter((r) => r.status === "resolved").length}
+                  <CheckCircle className="w-5 h-5 text-purple-400 group-hover:scale-110 transition-transform" /> {stats.reportsResolved || 0}
                 </span>
               </div>
             </div>
@@ -623,26 +672,54 @@ export default function ProfilePage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                <div className="sm:col-span-2 space-y-3.5">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-zinc-400">Total Civic Points</span>
+                <div className="sm:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-xs">
+                  <div className="flex justify-between items-center py-1 border-b border-white/5">
+                    <span className="text-zinc-400">Total XP Points</span>
                     <span className="font-mono font-bold text-white text-sm">{stats.points || 0} PTS</span>
                   </div>
-                  <div className="flex justify-between items-center text-xs">
+                  <div className="flex justify-between items-center py-1 border-b border-white/5">
+                    <span className="text-zinc-400">Contribution Score</span>
+                    <span className="font-mono font-bold text-emerald-400 text-sm">{stats.contributionScore || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1 border-b border-white/5">
+                    <span className="text-zinc-400">Civic Score</span>
+                    <span className="font-mono font-bold text-blue-400 text-sm">{stats.civicScore || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1 border-b border-white/5">
                     <span className="text-zinc-400">Reports Submitted</span>
-                    <span className="font-mono font-bold text-white text-sm">{reports.length}</span>
+                    <span className="font-mono font-bold text-white text-sm">{stats.reportsSubmitted || 0}</span>
                   </div>
-                  <div className="flex justify-between items-center text-xs">
+                  <div className="flex justify-between items-center py-1 border-b border-white/5">
                     <span className="text-zinc-400">Reports Resolved</span>
-                    <span className="font-mono font-bold text-white text-sm">{reports.filter((r) => r.status === "resolved").length}</span>
+                    <span className="font-mono font-bold text-white text-sm">{stats.reportsResolved || 0}</span>
                   </div>
-                  <div className="flex justify-between items-center text-xs">
+                  <div className="flex justify-between items-center py-1 border-b border-white/5">
                     <span className="text-zinc-400">Community Verifications</span>
                     <span className="font-mono font-bold text-white text-sm">{stats.reportsVerified || 0}</span>
                   </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-zinc-400">Active Reporting Streak</span>
+                  <div className="flex justify-between items-center py-1 border-b border-white/5">
+                    <span className="text-zinc-400">Active Streak</span>
                     <span className="font-mono font-bold text-amber-400 text-sm">🔥 {stats.streakDays || 0} Days</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1 border-b border-white/5">
+                    <span className="text-zinc-400">Longest Streak</span>
+                    <span className="font-mono font-bold text-amber-400 text-sm">🔥 {stats.longestStreak || 0} Days</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1 border-b border-white/5">
+                    <span className="text-zinc-400">Likes Received</span>
+                    <span className="font-mono font-bold text-zinc-300 text-sm">{stats.likesReceived || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1 border-b border-white/5">
+                    <span className="text-zinc-400">Comments Posted</span>
+                    <span className="font-mono font-bold text-zinc-300 text-sm">{stats.commentsPosted || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1 border-b border-white/5">
+                    <span className="text-zinc-400">Feed Reputation</span>
+                    <span className="font-mono font-bold text-indigo-400 text-sm">⭐ {stats.feedReputation || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1 border-b border-white/5">
+                    <span className="text-zinc-400">Duplicate / Fake</span>
+                    <span className="font-mono font-bold text-zinc-400 text-sm">{stats.reportsDuplicate || 0} / {stats.reportsFake || 0}</span>
                   </div>
                 </div>
 
@@ -826,12 +903,12 @@ export default function ProfilePage() {
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="relative w-full max-w-lg border border-white/10 rounded-3xl p-6 bg-zinc-900 shadow-2xl flex flex-col gap-4 max-h-[80vh] overflow-hidden"
+                className="relative w-full max-w-2xl border border-white/10 rounded-3xl p-6 bg-zinc-900 shadow-2xl flex flex-col gap-4 max-h-[85vh] overflow-hidden"
               >
                 <div className="flex items-center justify-between border-b border-white/10 pb-4">
                   <div className="flex items-center gap-2">
                     <Shield className="w-5 h-5 text-indigo-400" />
-                    <h2 className="text-lg font-bold text-white">Level Progression</h2>
+                    <h2 className="text-lg font-bold text-white">Gamification Level Progression</h2>
                   </div>
                   <button
                     onClick={() => setShowLevelModal(false)}
@@ -841,42 +918,90 @@ export default function ProfilePage() {
                   </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto space-y-3 pr-1 py-1">
-                  {[
-                    { lvl: 1, name: "Level 1: Civic Rookie", xp: 0 },
-                    { lvl: 2, name: "Level 2: Active Citizen", xp: 100 },
-                    { lvl: 3, name: "Level 3: Neighborhood Watch", xp: 250 },
-                    { lvl: 4, name: "Level 4: Community Guardian", xp: 500 },
-                    { lvl: 5, name: "Level 5: Civic Champion", xp: 1000 },
-                  ].map((levelObj) => {
-                    const isUnlocked = (stats.points || 0) >= levelObj.xp;
-                    return (
-                      <div
-                        key={levelObj.lvl}
-                        className={`border rounded-2xl p-4 transition flex items-center justify-between gap-4 ${
-                          isUnlocked
-                            ? "border-emerald-500/20 bg-emerald-500/5"
-                            : "border-white/5 bg-zinc-950/40 opacity-60"
-                        }`}
-                      >
-                        <div>
-                          <h4 className="font-extrabold text-sm text-zinc-200">
-                            {levelObj.name}
-                          </h4>
-                          <p className="text-[10px] text-zinc-500 font-mono mt-1">
-                            Required: {levelObj.xp} PTS
-                          </p>
+                <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-6 pr-1 py-1">
+                  {/* Contribution Level */}
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wider border-b border-white/5 pb-1">
+                      Contribution Level Status (Lvl {stats.contributionLevel || 1})
+                    </h3>
+                    {[
+                      { lvl: 1, name: "Level 1: Novice Contributor", xp: 0 },
+                      { lvl: 2, name: "Level 2: Active Helper", xp: 100 },
+                      { lvl: 3, name: "Level 3: Neighborhood Watch", xp: 250 },
+                      { lvl: 4, name: "Level 4: Community Guardian", xp: 500 },
+                      { lvl: 5, name: "Level 5: Civic Vanguard", xp: 1000 },
+                    ].map((levelObj) => {
+                      const isUnlocked = (stats.contributionScore || 0) >= levelObj.xp;
+                      return (
+                        <div
+                          key={levelObj.lvl}
+                          className={`border rounded-2xl p-3.5 transition flex items-center justify-between gap-3 ${
+                            isUnlocked
+                              ? "border-emerald-500/20 bg-emerald-500/5"
+                              : "border-white/5 bg-zinc-950/40 opacity-60"
+                          }`}
+                        >
+                          <div>
+                            <h4 className="font-extrabold text-xs text-zinc-200">
+                              {levelObj.name}
+                            </h4>
+                            <p className="text-[9px] text-zinc-500 font-mono mt-0.5">
+                              Required: {levelObj.xp} PTS
+                            </p>
+                          </div>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            isUnlocked
+                              ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/25"
+                              : "text-zinc-500 bg-zinc-800/40 border border-white/5"
+                          }`}>
+                            {isUnlocked ? "Unlocked ✅" : "Locked 🔒"}
+                          </span>
                         </div>
-                        <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
-                          isUnlocked
-                            ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/25"
-                            : "text-zinc-500 bg-zinc-800/40 border border-white/5"
-                        }`}>
-                          {isUnlocked ? "Unlocked ✅" : "Locked 🔒"}
-                        </span>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
+
+                  {/* Civic Level */}
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider border-b border-white/5 pb-1">
+                      Civic Level Status (Lvl {stats.civicLevel || 1})
+                    </h3>
+                    {[
+                      { lvl: 1, name: "Level 1: Civic Rookie", xp: 0 },
+                      { lvl: 2, name: "Level 2: Active Citizen", xp: 100 },
+                      { lvl: 3, name: "Level 3: Trusted Citizen", xp: 250 },
+                      { lvl: 4, name: "Level 4: Civic Pillar", xp: 500 },
+                      { lvl: 5, name: "Level 5: Civic Champion", xp: 1000 },
+                    ].map((levelObj) => {
+                      const isUnlocked = (stats.civicScore || 0) >= levelObj.xp;
+                      return (
+                        <div
+                          key={levelObj.lvl}
+                          className={`border rounded-2xl p-3.5 transition flex items-center justify-between gap-3 ${
+                            isUnlocked
+                              ? "border-blue-500/20 bg-blue-500/5"
+                              : "border-white/5 bg-zinc-950/40 opacity-60"
+                          }`}
+                        >
+                          <div>
+                            <h4 className="font-extrabold text-xs text-zinc-200">
+                              {levelObj.name}
+                            </h4>
+                            <p className="text-[9px] text-zinc-500 font-mono mt-0.5">
+                              Required: {levelObj.xp} PTS
+                            </p>
+                          </div>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            isUnlocked
+                              ? "text-blue-400 bg-blue-500/10 border border-blue-500/25"
+                              : "text-zinc-500 bg-zinc-800/40 border border-white/5"
+                          }`}>
+                            {isUnlocked ? "Unlocked ✅" : "Locked 🔒"}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </motion.div>
             </div>

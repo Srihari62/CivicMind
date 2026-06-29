@@ -154,6 +154,13 @@ export class AssignmentService {
       reportId,
       "accepted"
     );
+
+    try {
+      const { CitizenStatsService } = await import("./stats.service");
+      await CitizenStatsService.syncStats(report.metadata.createdBy);
+    } catch (e) {
+      console.error("Failed to sync citizen stats on assignment acceptance:", e);
+    }
   }
 
   /**

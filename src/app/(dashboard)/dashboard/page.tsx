@@ -213,7 +213,7 @@ export default function CitizenDashboardPage() {
           </div>
 
           {/* 6. Citizen Impact Stats Card */}
-          {!loading && <CitizenStatsCard reports={reports} />}
+          {!loading && <CitizenStatsCard reports={reports} stats={(profile as any)?.gamification} />}
 
           {/* Active Citizen Profile Card */}
           <div className="border border-white/10 rounded-2xl p-6 bg-black/40 backdrop-blur-md flex flex-col gap-4 shadow-xl">

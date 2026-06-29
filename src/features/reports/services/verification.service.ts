@@ -118,6 +118,23 @@ export class ReportVerificationService {
     } catch (err) {
       console.error("Failed to create verification notification:", err);
     }
+
+    // Award verification points and sync stats for both verifier and reporter
+    try {
+      const { CitizenStatsService } = await import("./stats.service");
+      await CitizenStatsService.awardPoints(userId, 15, "verify");
+
+      const reportSnap = await getDoc(reportRef);
+      if (reportSnap.exists()) {
+        const reportData = reportSnap.data();
+        const reportOwnerId = reportData.metadata?.createdBy;
+        if (reportOwnerId && reportOwnerId !== userId) {
+          await CitizenStatsService.syncStats(reportOwnerId);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to update gamification stats after verification:", err);
+    }
   }
 }
 
