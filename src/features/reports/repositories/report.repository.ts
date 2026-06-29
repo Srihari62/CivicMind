@@ -4,7 +4,7 @@
  * Implements the grouped schema matching production AI layouts.
  */
 
-import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, arrayUnion } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, arrayUnion, where } from "firebase/firestore";
 import { db, COLLECTIONS } from "@/services/firebase/firestore";
 import { CivicReport, MediaAsset, ReportLocation, TimelineEvent } from "@/types";
 import { REPORT_STATUS } from "@/constants";
@@ -62,6 +62,9 @@ export class ReportRepository {
         editedAfterAI: draftData.metadata.editedAfterAI ?? false,
       },
       location: draftData.location,
+      state: draftData.location.state || "",
+      city: draftData.location.city || "",
+      locality: draftData.location.locality || "",
       evidence: {
         media: [],
       },
@@ -284,6 +287,37 @@ export class ReportRepository {
     }
     const docRef = doc(db, COLLECTIONS.REPORTS, reportId);
     await updateDoc(docRef, updates);
+  }
+
+  public static async getReportsByState(state: string): Promise<CivicReport[]> {
+    if (typeof window === "undefined") {
+      const { safeDb } = await import("@/services/firebase/admin");
+      return await safeDb.getReportsByState(state);
+    }
+    const q = query(collection(db, COLLECTIONS.REPORTS), where("state", "==", state));
+    const snapshot = await getDocs(q);
+    const reports: CivicReport[] = [];
+    snapshot.forEach((docSnap) => {
+      reports.push({ id: docSnap.id, ...docSnap.data() } as CivicReport);
+    });
+    return reports;
+  }
+
+  /**
+   * Retrieves all reports for a specific city.
+   */
+  public static async getReportsByCity(city: string): Promise<CivicReport[]> {
+    if (typeof window === "undefined") {
+      const { safeDb } = await import("@/services/firebase/admin");
+      return await safeDb.getReportsByCity(city);
+    }
+    const q = query(collection(db, COLLECTIONS.REPORTS), where("city", "==", city));
+    const snapshot = await getDocs(q);
+    const reports: CivicReport[] = [];
+    snapshot.forEach((docSnap) => {
+      reports.push({ id: docSnap.id, ...docSnap.data() } as CivicReport);
+    });
+    return reports;
   }
 }
 export default ReportRepository;

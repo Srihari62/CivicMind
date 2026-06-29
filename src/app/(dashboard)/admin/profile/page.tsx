@@ -43,6 +43,9 @@ export default function AdminProfilePage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [preferredLanguage, setPreferredLanguage] = useState("en");
+  const [adminState, setAdminState] = useState("");
+  const [adminCity, setAdminCity] = useState("");
   
   // Password change states
   const [newPassword, setNewPassword] = useState("");
@@ -68,6 +71,9 @@ export default function AdminProfilePage() {
       setName(profile.displayName || "");
       setPhone(profile.phone || profile.phoneNumber || "");
       setAvatarUrl(profile.photoURL || profile.photo || "");
+      setPreferredLanguage(profile.preferredLanguage || "en");
+      setAdminState(profile.state || "");
+      setAdminCity(profile.city || "");
     }
   }, [profile]);
 
@@ -122,6 +128,9 @@ export default function AdminProfilePage() {
         phoneNumber: phone,
         photoURL: avatarUrl,
         photo: avatarUrl,
+        preferredLanguage: preferredLanguage,
+        state: adminState,
+        city: adminCity,
       });
 
       showToast("Profile settings saved successfully.", "success");
@@ -315,6 +324,51 @@ export default function AdminProfilePage() {
                   placeholder="+91..."
                   className="bg-black/45 border-white/10 text-xs h-9 text-zinc-150 font-semibold"
                 />
+              </div>
+
+              {/* State */}
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] uppercase font-bold text-zinc-450">Jurisdiction State</label>
+                <Input
+                  value={adminState}
+                  onChange={(e) => setAdminState(e.target.value)}
+                  placeholder="State"
+                  className="bg-black/45 border-white/10 text-xs h-9 text-zinc-150 font-semibold"
+                />
+              </div>
+
+              {/* City */}
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] uppercase font-bold text-zinc-450">Jurisdiction City</label>
+                <Input
+                  value={adminCity}
+                  onChange={(e) => setAdminCity(e.target.value)}
+                  placeholder="City"
+                  className="bg-black/45 border-white/10 text-xs h-9 text-zinc-150 font-semibold"
+                />
+              </div>
+
+              {/* Preferred Language */}
+              <div className="flex flex-col gap-1 md:col-span-2">
+                <label className="text-[10px] uppercase font-bold text-zinc-450">Preferred Language</label>
+                <select
+                  value={preferredLanguage}
+                  onChange={(e) => setPreferredLanguage(e.target.value)}
+                  className="w-full bg-black/45 border border-white/10 rounded-lg px-3 h-9 text-xs text-zinc-150 font-semibold focus:outline-none focus:border-red-500/50"
+                >
+                  <option value="English">English</option>
+                  <option value="Hindi">Hindi</option>
+                  <option value="Telugu">Telugu</option>
+                  <option value="Tamil">Tamil</option>
+                  <option value="Kannada">Kannada</option>
+                  <option value="Malayalam">Malayalam</option>
+                  <option value="Marathi">Marathi</option>
+                  <option value="Gujarati">Gujarati</option>
+                  <option value="Punjabi">Punjabi</option>
+                  <option value="Bengali">Bengali</option>
+                  <option value="Odia">Odia</option>
+                  <option value="Urdu">Urdu</option>
+                </select>
               </div>
 
               {/* Profile Image URL */}

@@ -59,6 +59,9 @@ export async function updateOfficerProfileAdminAction(
     photo?: string;
     isActive?: boolean;
     activeCases?: number;
+    state?: string;
+    city?: string;
+    preferredLanguage?: string;
   }
 ): Promise<ActionResponse<void>> {
   try {

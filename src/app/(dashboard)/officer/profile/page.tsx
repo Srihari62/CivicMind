@@ -9,7 +9,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { doc, onSnapshot, collection } from "firebase/firestore";
+import { doc, onSnapshot, collection, query, where } from "firebase/firestore";
 import { db, COLLECTIONS } from "@/services/firebase/firestore";
 import { FirestoreUserProfile, UserRepository } from "@/features/auth/repositories/user.repository";
 import { updatePasswordAction } from "@/app/actions/admin.actions";
@@ -48,6 +48,9 @@ export default function OfficerProfilePage() {
   const [emergencyContact, setEmergencyContact] = useState("");
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [preferredLanguage, setPreferredLanguage] = useState("en");
+  const [officerState, setOfficerState] = useState("");
+  const [officerCity, setOfficerCity] = useState("");
 
   // Password Form State
   const [newPassword, setNewPassword] = useState("");
@@ -83,6 +86,9 @@ export default function OfficerProfilePage() {
         setEmergencyContact(data.emergencyContact || "");
         setBio(data.bio || "");
         setAvatarUrl(data.photoURL || data.photo || "");
+        setPreferredLanguage(data.preferredLanguage || "en");
+        setOfficerState(data.state || "");
+        setOfficerCity(data.city || "");
 
         // Load stats from profile if they exist
         if (data.activeCases !== undefined) setActiveCount(data.activeCases);
@@ -91,7 +97,9 @@ export default function OfficerProfilePage() {
     });
 
     // Real-time listener for reports to calculate dynamic metrics
-    const unsubReports = onSnapshot(collection(db, COLLECTIONS.REPORTS), (snap) => {
+    const unsubReports = onSnapshot(
+      query(collection(db, COLLECTIONS.REPORTS), where("city", "==", profile.city || "")),
+      (snap) => {
       let assigned = 0;
       let completed = 0;
       let active = 0;
@@ -122,7 +130,7 @@ export default function OfficerProfilePage() {
       unsub();
       unsubReports();
     };
-  }, [profile?.uid, profile?.department]);
+  }, [profile?.uid, profile?.department, profile?.city]);
 
   const showToast = (message: string, type: "success" | "error") => {
     setToast({ message, type });
@@ -145,6 +153,9 @@ export default function OfficerProfilePage() {
         bio: bio,
         photoURL: avatarUrl,
         photo: avatarUrl,
+        preferredLanguage: preferredLanguage,
+        state: officerState,
+        city: officerCity,
       });
       showToast("Profile updated successfully.", "success");
     } catch (err: any) {
@@ -364,6 +375,17 @@ export default function OfficerProfilePage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">State</label>
+                <Input value={officerState} onChange={(e) => setOfficerState(e.target.value)} placeholder="State" className="bg-slate-900 border-slate-800 text-slate-250 focus:border-indigo-500/50" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">City</label>
+                <Input value={officerCity} onChange={(e) => setOfficerCity(e.target.value)} placeholder="City" className="bg-slate-900 border-slate-800 text-slate-250 focus:border-indigo-500/50" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Duty Status</label>
                 <select
                   value={availability}
@@ -376,8 +398,35 @@ export default function OfficerProfilePage() {
                 </select>
               </div>
               <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Preferred Language</label>
+                <select
+                  value={preferredLanguage}
+                  onChange={(e) => setPreferredLanguage(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-250 focus:outline-none focus:border-indigo-500/50"
+                >
+                  <option value="English">English</option>
+                  <option value="Hindi">Hindi</option>
+                  <option value="Telugu">Telugu</option>
+                  <option value="Tamil">Tamil</option>
+                  <option value="Kannada">Kannada</option>
+                  <option value="Malayalam">Malayalam</option>
+                  <option value="Marathi">Marathi</option>
+                  <option value="Gujarati">Gujarati</option>
+                  <option value="Punjabi">Punjabi</option>
+                  <option value="Bengali">Bengali</option>
+                  <option value="Odia">Odia</option>
+                  <option value="Urdu">Urdu</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Emergency Contact</label>
                 <Input value={emergencyContact} onChange={(e) => setEmergencyContact(e.target.value)} placeholder="Name / Phone" className="bg-slate-900 border-slate-800 text-slate-250 focus:border-indigo-500/50" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {/* Empty cell */}
               </div>
             </div>
 

@@ -138,6 +138,9 @@ export interface CivicReport {
   };
 
   location: ReportLocation;
+  state?: string;
+  city?: string;
+  locality?: string;
 
   evidence: {
     media: MediaAsset[];

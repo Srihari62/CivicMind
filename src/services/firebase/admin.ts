@@ -265,4 +265,48 @@ To run the server-side AI Verification Pipeline locally:
       return users;
     }
   },
+
+  async getReportsByState(state: string): Promise<CivicReport[]> {
+    const useAdmin = await this.checkAdminSupport();
+    if (useAdmin && adminDb) {
+      const snapshot = await adminDb.collection("reports")
+        .where("state", "==", state)
+        .get();
+      const reports: CivicReport[] = [];
+      snapshot.forEach((doc) => {
+        reports.push({ id: doc.id, ...doc.data() } as CivicReport);
+      });
+      return reports;
+    } else {
+      const q = cQuery(cCollection(clientDb, "reports"), cWhere("state", "==", state));
+      const snapshot = await cGetDocs(q);
+      const reports: CivicReport[] = [];
+      snapshot.forEach((doc) => {
+        reports.push({ id: doc.id, ...doc.data() } as CivicReport);
+      });
+      return reports;
+    }
+  },
+
+  async getReportsByCity(city: string): Promise<CivicReport[]> {
+    const useAdmin = await this.checkAdminSupport();
+    if (useAdmin && adminDb) {
+      const snapshot = await adminDb.collection("reports")
+        .where("city", "==", city)
+        .get();
+      const reports: CivicReport[] = [];
+      snapshot.forEach((doc) => {
+        reports.push({ id: doc.id, ...doc.data() } as CivicReport);
+      });
+      return reports;
+    } else {
+      const q = cQuery(cCollection(clientDb, "reports"), cWhere("city", "==", city));
+      const snapshot = await cGetDocs(q);
+      const reports: CivicReport[] = [];
+      snapshot.forEach((doc) => {
+        reports.push({ id: doc.id, ...doc.data() } as CivicReport);
+      });
+      return reports;
+    }
+  },
 };

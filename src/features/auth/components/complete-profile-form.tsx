@@ -91,6 +91,32 @@ export function CompleteProfileForm() {
   }
 
   const onSubmit = async (data: CompleteProfileInput) => {
+    // Custom role-based validation
+    if (profile?.role === "citizen") {
+      if (!data.homeLocation) {
+        setGlobalError("Home/Community Location selection is required.");
+        return;
+      }
+    } else if (profile?.role === "officer") {
+      if (!data.state) {
+        setGlobalError("State is required for Officer registration.");
+        return;
+      }
+      if (!data.city?.trim()) {
+        setGlobalError("City is required for Officer registration.");
+        return;
+      }
+      if (!data.department) {
+        setGlobalError("Department is required for Officer registration.");
+        return;
+      }
+    } else if (profile?.role === "admin") {
+      if (!data.state) {
+        setGlobalError("State is required for Admin registration.");
+        return;
+      }
+    }
+
     setIsLoading(true);
     setGlobalError(null);
     try {
@@ -160,21 +186,86 @@ export function CompleteProfileForm() {
         )}
       </div>
 
-      <div className="flex flex-col gap-1.5 w-full">
-        <label className="text-xs font-medium text-muted-foreground select-none">
-          Home/Community Location *
-        </label>
-        <MapPicker
-          onLocationChange={(location) => {
-            setValue("homeLocation", location, { shouldValidate: true });
-          }}
-        />
-        {errors.homeLocation && (
-          <span className="text-xs text-destructive font-medium mt-0.5" role="alert">
-            {errors.homeLocation.message || "Location selection is required"}
-          </span>
-        )}
-      </div>
+      {/* Citizen role gets MapPicker */}
+      {profile?.role === "citizen" && (
+        <div className="flex flex-col gap-1.5 w-full">
+          <label className="text-xs font-medium text-muted-foreground select-none">
+            Home/Community Location *
+          </label>
+          <MapPicker
+            onLocationChange={(location) => {
+              setValue("homeLocation", location, { shouldValidate: true });
+            }}
+          />
+          {errors.homeLocation && (
+            <span className="text-xs text-destructive font-medium mt-0.5" role="alert">
+              {errors.homeLocation.message || "Location selection is required"}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Officer and Admin roles require State selection */}
+      {(profile?.role === "officer" || profile?.role === "admin") && (
+        <div className="flex flex-col gap-1.5 w-full">
+          <label className="text-xs font-medium text-muted-foreground select-none">
+            Jurisdiction State *
+          </label>
+          <select
+            {...register("state")}
+            className="w-full px-3.5 py-2.5 bg-background border border-border text-sm rounded-md transition-all duration-200 outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground"
+          >
+            <option value="">Select State...</option>
+            <option value="Andhra Pradesh">Andhra Pradesh</option>
+            <option value="Telangana">Telangana</option>
+            <option value="Karnataka">Karnataka</option>
+            <option value="Tamil Nadu">Tamil Nadu</option>
+            <option value="Maharashtra">Maharashtra</option>
+            <option value="Delhi">Delhi</option>
+          </select>
+          {errors.state && (
+            <span className="text-xs text-destructive font-medium mt-0.5" role="alert">
+              {errors.state.message}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Officer role also requires City and Department */}
+      {profile?.role === "officer" && (
+        <>
+          <Input
+            label="Jurisdiction City *"
+            placeholder="e.g. Hyderabad"
+            error={errors.city?.message}
+            {...register("city")}
+          />
+
+          <div className="flex flex-col gap-1.5 w-full">
+            <label className="text-xs font-medium text-muted-foreground select-none">
+              Department *
+            </label>
+            <select
+              {...register("department")}
+              className="w-full px-3.5 py-2.5 bg-background border border-border text-sm rounded-md transition-all duration-200 outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground"
+            >
+              <option value="">Select Department...</option>
+              <option value="Roads">Roads</option>
+              <option value="Sanitation">Sanitation</option>
+              <option value="Electrical">Electrical</option>
+              <option value="Water Supply">Water Supply</option>
+              <option value="Drainage">Drainage</option>
+              <option value="Parks">Parks</option>
+              <option value="Traffic">Traffic</option>
+            </select>
+            {errors.department && (
+              <span className="text-xs text-destructive font-medium mt-0.5" role="alert">
+                {errors.department.message}
+              </span>
+            )}
+          </div>
+        </>
+      )}
 
       <Button type="submit" isLoading={isLoading} className="w-full mt-2">
         Complete Registration

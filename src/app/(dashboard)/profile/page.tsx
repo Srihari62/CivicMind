@@ -37,6 +37,9 @@ export default function ProfilePage() {
   const [preferredLanguage, setPreferredLanguage] = useState("English");
   const [community, setCommunity] = useState("");
   const [homeLocation, setHomeLocation] = useState<any>(null);
+  const [state, setState] = useState("");
+  const [city, setCity] = useState("");
+  const [department, setDepartment] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Password fields
@@ -125,6 +128,9 @@ export default function ProfilePage() {
       setPreferredLanguage((profile as any).preferredLanguage || "English");
       setCommunity((profile as any).community || "");
       setHomeLocation((profile as any).homeLocation || null);
+      setState((profile as any).state || "");
+      setCity((profile as any).city || "");
+      setDepartment((profile as any).department || "");
       
       // Auto-initialize gamification stats if not present
       if (!(profile as any).gamification) {
@@ -185,8 +191,13 @@ export default function ProfilePage() {
         preferredLanguage,
         community,
         homeLocation,
+        state,
+        city,
+        department,
       } as any);
       setIsEditing(false);
+      await refreshProfile();
+      window.location.reload();
     } catch (err) {
       console.error("Failed to update profile:", err);
     } finally {
@@ -466,27 +477,81 @@ export default function ProfilePage() {
                         <option value="Urdu">Urdu</option>
                       </select>
                     </div>
-                    <div className="flex flex-col gap-1.5 md:col-span-2">
-                      <label className="text-xs text-zinc-400 font-semibold">Neighborhood / Community Name</label>
-                      <Input value={community} onChange={(e) => setCommunity(e.target.value)} placeholder="e.g. Downtown / Indiranagar" className="bg-zinc-950 border-white/10 text-white" />
-                    </div>
-                    <div className="flex flex-col gap-1.5 md:col-span-2 font-sans">
-                      <label className="text-xs text-zinc-400 font-semibold">Home / Community Location Address</label>
-                      {homeLocation?.formattedAddress && (
-                        <div className="p-3 text-xs bg-zinc-950 border border-white/10 rounded-xl text-zinc-300 font-medium leading-relaxed">
-                          {homeLocation.formattedAddress}
+                    {/* Citizen role options */}
+                    {profile?.role === "citizen" && (
+                      <>
+                        <div className="flex flex-col gap-1.5 md:col-span-2">
+                          <label className="text-xs text-zinc-400 font-semibold">Neighborhood / Community Name</label>
+                          <Input value={community} onChange={(e) => setCommunity(e.target.value)} placeholder="e.g. Downtown / Indiranagar" className="bg-zinc-950 border-white/10 text-white" />
                         </div>
-                      )}
-                      <MapPicker
-                        initialLocation={homeLocation}
-                        onLocationChange={(loc) => {
-                          setHomeLocation(loc);
-                          if (!community) {
-                            setCommunity(loc.locality || loc.subLocality || loc.city || "");
-                          }
-                        }}
-                      />
-                    </div>
+                        <div className="flex flex-col gap-1.5 md:col-span-2 font-sans">
+                          <label className="text-xs text-zinc-400 font-semibold">Home / Community Location Address</label>
+                          {homeLocation?.formattedAddress && (
+                            <div className="p-3 text-xs bg-zinc-950 border border-white/10 rounded-xl text-zinc-300 font-medium leading-relaxed">
+                              {homeLocation.formattedAddress}
+                            </div>
+                          )}
+                          <MapPicker
+                            initialLocation={homeLocation}
+                            onLocationChange={(loc) => {
+                              setHomeLocation(loc);
+                              if (!community) {
+                                setCommunity(loc.locality || loc.subLocality || loc.city || "");
+                              }
+                            }}
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {/* Officer & Admin options */}
+                    {(profile?.role === "officer" || profile?.role === "admin") && (
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs text-zinc-400 font-semibold">Jurisdiction State *</label>
+                        <select
+                          value={state}
+                          onChange={(e) => setState(e.target.value)}
+                          required
+                          className="bg-zinc-950 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                        >
+                          <option value="">Select State...</option>
+                          <option value="Andhra Pradesh">Andhra Pradesh</option>
+                          <option value="Telangana">Telangana</option>
+                          <option value="Karnataka">Karnataka</option>
+                          <option value="Tamil Nadu">Tamil Nadu</option>
+                          <option value="Maharashtra">Maharashtra</option>
+                          <option value="Delhi">Delhi</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Officer specific options */}
+                    {profile?.role === "officer" && (
+                      <>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs text-zinc-400 font-semibold">Jurisdiction City *</label>
+                          <Input value={city} onChange={(e) => setCity(e.target.value)} required placeholder="e.g. Hyderabad" className="bg-zinc-950 border-white/10 text-white" />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs text-zinc-400 font-semibold">Department *</label>
+                          <select
+                            value={department}
+                            onChange={(e) => setDepartment(e.target.value)}
+                            required
+                            className="bg-zinc-950 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                          >
+                            <option value="">Select Department...</option>
+                            <option value="Roads">Roads</option>
+                            <option value="Sanitation">Sanitation</option>
+                            <option value="Electrical">Electrical</option>
+                            <option value="Water Supply">Water Supply</option>
+                            <option value="Drainage">Drainage</option>
+                            <option value="Parks">Parks</option>
+                            <option value="Traffic">Traffic</option>
+                          </select>
+                        </div>
+                      </>
+                    )}
                   </div>
                   <Button type="submit" size="sm" disabled={saving} className="bg-blue-600 hover:bg-blue-500 text-white font-bold w-fit mt-2">
                     {saving ? "Saving Changes..." : "Save Preferences"}

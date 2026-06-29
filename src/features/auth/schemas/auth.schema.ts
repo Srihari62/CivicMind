@@ -73,7 +73,10 @@ export const completeProfileSchema = z.object({
     state: z.string().optional(),
     country: z.string().optional(),
     postalCode: z.string().optional(),
-  }, { message: "Home/Community location is required" }),
+  }, { message: "Home/Community location is required" }).optional(),
+  state: z.string().optional(),
+  city: z.string().optional(),
+  department: z.string().optional(),
 });
 
 export type CompleteProfileInput = z.infer<typeof completeProfileSchema>;

@@ -53,9 +53,17 @@ export class AssignmentService {
     // Determine target category
     const category = report.metadata.category;
     const department = this.mapCategoryToDepartment(category);
+    const reportCity = report.city || (report as any).location?.city || "";
 
     // 1. Fetch available officers in department
-    const availableOfficers = await OfficerService.getAvailableOfficers(department);
+    let availableOfficers = await OfficerService.getAvailableOfficers(department);
+
+    // Filter by city to avoid cross-city assignments
+    if (reportCity) {
+      availableOfficers = availableOfficers.filter(
+        (officer) => officer.city && officer.city.toLowerCase() === reportCity.toLowerCase()
+      );
+    }
 
     if (availableOfficers.length === 0) {
       // No officer exists - leave assignedOfficerId null and mark status as waiting_assignment

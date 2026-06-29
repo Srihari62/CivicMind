@@ -308,7 +308,7 @@ export async function askMunicipalAssistant(
   try {
     await authorizeAction(callerUid, ["admin"]);
     // 1. Retrieve the cached or fresh municipal context
-    const analytics = await AssistantContextService.getMunicipalContext(forceRefresh);
+    const analytics = await AssistantContextService.getMunicipalContext(forceRefresh, callerUid);
     const compactContext = AssistantContextService.buildCompactContext(analytics);
 
     const model = getGeminiModel();

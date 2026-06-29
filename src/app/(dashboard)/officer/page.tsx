@@ -27,7 +27,7 @@ import {
 import Link from "next/link";
 import { updateOfficerAvailabilityAction } from "@/app/actions/officer.actions";
 
-import { collection, query, onSnapshot } from "firebase/firestore";
+import { collection, query, onSnapshot, where } from "firebase/firestore";
 import { db, COLLECTIONS } from "@/services/firebase/firestore";
 
 export const dynamic = "force-dynamic";
@@ -46,10 +46,13 @@ export default function OfficerDashboardPage() {
   const [activeTab, setActiveTab] = useState<"assigned" | "wip" | "resolved" | "dept">("assigned");
 
   useEffect(() => {
-    if (!profile?.uid) return;
+    if (!profile?.uid || !profile?.city) return;
     
     setLoading(true);
-    const q = query(collection(db, COLLECTIONS.REPORTS));
+    const q = query(
+      collection(db, COLLECTIONS.REPORTS),
+      where("city", "==", profile.city)
+    );
     
     const unsubscribe = onSnapshot(
       q,
@@ -69,7 +72,7 @@ export default function OfficerDashboardPage() {
     );
 
     return () => unsubscribe();
-  }, [profile?.uid]);
+  }, [profile?.uid, profile?.city]);
 
   useEffect(() => {
     if (profile?.availability) {

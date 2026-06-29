@@ -29,7 +29,7 @@ import Link from "next/link";
 import { FirestoreUserProfile } from "@/features/auth/repositories/user.repository";
 import { OfficerService } from "@/features/reports/services/officer.service";
 
-import { collection, query, onSnapshot } from "firebase/firestore";
+import { collection, query, onSnapshot, where } from "firebase/firestore";
 import { db, COLLECTIONS } from "@/services/firebase/firestore";
 
 // SPRINT 10 Component Imports
@@ -75,9 +75,14 @@ export default function AdminDashboardPage() {
   const [smartLocation, setSmartLocation] = useState("");
 
   useEffect(() => {
-    // 1. Subscribe to reports
+    if (!profile?.uid || !profile?.state) return;
+
+    // 1. Subscribe to reports (filtered by admin's state)
     setLoading(true);
-    const reportsQuery = query(collection(db, COLLECTIONS.REPORTS));
+    const reportsQuery = query(
+      collection(db, COLLECTIONS.REPORTS),
+      where("state", "==", profile.state)
+    );
     const unsubscribeReports = onSnapshot(
       reportsQuery,
       (snapshot: any) => {
@@ -118,7 +123,7 @@ export default function AdminDashboardPage() {
       unsubscribeReports();
       unsubscribeUsers();
     };
-  }, []);
+  }, [profile?.uid, profile?.state]);
 
 
 

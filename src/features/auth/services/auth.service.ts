@@ -108,6 +108,10 @@ export class AuthService {
         preferredLanguage: input.preferredLanguage,
         homeLocation: input.homeLocation,
         isProfileComplete: true,
+        state: input.state || input.homeLocation?.state || "",
+        city: input.city || input.homeLocation?.city || "",
+        locality: input.homeLocation?.locality || "",
+        department: input.department || "",
       });
     } catch (error) {
       const parsed = parseFirebaseError(error);

@@ -17,6 +17,9 @@ export interface FirestoreUserProfile extends UserProfile {
     formattedAddress?: string;
   };
   preferredLanguage?: string;
+  state?: string;
+  city?: string;
+  locality?: string;
 
   // Officer-specific profile fields
   department?: string;

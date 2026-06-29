@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { CivicReport } from "@/types";
 import { Clock, AlertCircle, RefreshCw, Search, Filter, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { collection, query, onSnapshot } from "firebase/firestore";
+import { collection, query, onSnapshot, where } from "firebase/firestore";
 import { db, COLLECTIONS } from "@/services/firebase/firestore";
 
 export const dynamic = "force-dynamic";
@@ -28,10 +28,13 @@ export default function AssignedCasesPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
 
   useEffect(() => {
-    if (!profile?.uid) return;
+    if (!profile?.uid || !profile?.city) return;
 
     setLoading(true);
-    const q = query(collection(db, COLLECTIONS.REPORTS));
+    const q = query(
+      collection(db, COLLECTIONS.REPORTS),
+      where("city", "==", profile.city)
+    );
 
     const unsubscribe = onSnapshot(
       q,
@@ -51,7 +54,7 @@ export default function AssignedCasesPage() {
     );
 
     return () => unsubscribe();
-  }, [profile?.uid]);
+  }, [profile?.uid, profile?.city]);
 
   // Filter reports: only show reports that the officer still owns and are NOT resolved
   const myActiveReports = reports.filter((r) => {

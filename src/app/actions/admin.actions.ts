@@ -32,6 +32,9 @@ export async function createNewUserAction(
     phoneNumber?: string;
     photoURL?: string;
     isActive: boolean;
+    state?: string;
+    city?: string;
+    preferredLanguage?: string;
   }
 ): Promise<ActionResponse<string>> {
   try {
@@ -64,6 +67,9 @@ export async function createNewUserAction(
       activeCases: input.role === "officer" ? 0 : undefined,
       phone: input.phoneNumber || "",
       isActive: input.isActive,
+      state: input.state || "",
+      city: input.city || "",
+      preferredLanguage: input.preferredLanguage || "en",
     });
 
     return { success: true, data: userRecord.uid };

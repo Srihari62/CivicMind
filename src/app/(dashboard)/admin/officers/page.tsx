@@ -64,6 +64,9 @@ export default function OfficerDirectoryPage() {
     phone: "",
     photoURL: "",
     isActive: true,
+    state: "",
+    city: "",
+    preferredLanguage: "en",
   });
 
   // Edit User Form State
@@ -76,6 +79,9 @@ export default function OfficerDirectoryPage() {
     photoURL: "",
     availability: "available" as "available" | "busy" | "offline",
     isActive: true,
+    state: "",
+    city: "",
+    preferredLanguage: "en",
   });
 
   // Toast / Status messages
@@ -126,6 +132,9 @@ export default function OfficerDirectoryPage() {
         phoneNumber: addForm.phone,
         photoURL: addForm.photoURL,
         isActive: addForm.isActive,
+        state: addForm.state,
+        city: addForm.city,
+        preferredLanguage: addForm.preferredLanguage,
       });
 
       if (response.success) {
@@ -142,6 +151,9 @@ export default function OfficerDirectoryPage() {
           phone: "",
           photoURL: "",
           isActive: true,
+          state: "",
+          city: "",
+          preferredLanguage: "en",
         });
       } else {
         showToast(response.error || "Failed to create user.", "error");
@@ -165,6 +177,9 @@ export default function OfficerDirectoryPage() {
       photoURL: user.photoURL || user.photo || "",
       availability: user.availability || "available",
       isActive: user.isActive !== false,
+      state: user.state || "",
+      city: user.city || "",
+      preferredLanguage: user.preferredLanguage || "en",
     });
     setIsEditModalOpen(true);
   };
@@ -184,6 +199,9 @@ export default function OfficerDirectoryPage() {
         photo: editForm.photoURL,
         availability: editForm.availability,
         isActive: editForm.isActive,
+        state: editForm.state,
+        city: editForm.city,
+        preferredLanguage: editForm.preferredLanguage,
       });
 
       if (response.success) {
@@ -642,6 +660,57 @@ export default function OfficerDirectoryPage() {
                   </select>
                 </div>
 
+                {/* State, City & Language for Officer / Admin */}
+                {(addForm.role === "officer" || addForm.role === "admin") && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    className="grid grid-cols-1 md:grid-cols-3 gap-3 border-t border-white/5 pt-3"
+                  >
+                    <div className="flex flex-col gap-1">
+                      <label className="font-semibold text-zinc-400">State</label>
+                      <Input
+                        required
+                        value={addForm.state}
+                        onChange={(e) => setAddForm({ ...addForm, state: e.target.value })}
+                        placeholder="State"
+                        className="bg-black/50 border-white/10 text-xs h-9 text-zinc-100"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="font-semibold text-zinc-400">City</label>
+                      <Input
+                        required={addForm.role === "officer"}
+                        value={addForm.city}
+                        onChange={(e) => setAddForm({ ...addForm, city: e.target.value })}
+                        placeholder="City"
+                        className="bg-black/50 border-white/10 text-xs h-9 text-zinc-100"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="font-semibold text-zinc-400">Language</label>
+                      <select
+                        value={addForm.preferredLanguage}
+                        onChange={(e) => setAddForm({ ...addForm, preferredLanguage: e.target.value })}
+                        className="bg-black/50 border border-white/10 rounded-lg text-xs h-9 px-3 text-zinc-300 font-semibold focus:outline-none"
+                      >
+                        <option value="English">English</option>
+                        <option value="Hindi">Hindi</option>
+                        <option value="Telugu">Telugu</option>
+                        <option value="Tamil">Tamil</option>
+                        <option value="Kannada">Kannada</option>
+                        <option value="Malayalam">Malayalam</option>
+                        <option value="Marathi">Marathi</option>
+                        <option value="Gujarati">Gujarati</option>
+                        <option value="Punjabi">Punjabi</option>
+                        <option value="Bengali">Bengali</option>
+                        <option value="Odia">Odia</option>
+                        <option value="Urdu">Urdu</option>
+                      </select>
+                    </div>
+                  </motion.div>
+                )}
+
                 {/* Officer specific fields */}
                 {addForm.role === "officer" && (
                   <motion.div
@@ -651,13 +720,21 @@ export default function OfficerDirectoryPage() {
                   >
                     <div className="flex flex-col gap-1">
                       <label className="font-semibold text-zinc-400">Department</label>
-                      <Input
+                      <select
                         required
                         value={addForm.department}
                         onChange={(e) => setAddForm({ ...addForm, department: e.target.value })}
-                        placeholder="e.g. Sanitation, Water, Traffic"
-                        className="bg-black/50 border-white/10 text-xs h-9 text-zinc-100"
-                      />
+                        className="bg-black/50 border border-white/10 rounded-lg text-xs h-9 px-3 text-zinc-300 font-semibold focus:outline-none"
+                      >
+                        <option value="">Select Department...</option>
+                        <option value="Roads">Roads</option>
+                        <option value="Sanitation">Sanitation</option>
+                        <option value="Electrical">Electrical</option>
+                        <option value="Water Supply">Water Supply</option>
+                        <option value="Drainage">Drainage</option>
+                        <option value="Parks">Parks</option>
+                        <option value="Traffic">Traffic</option>
+                      </select>
                     </div>
                     <div className="flex flex-col gap-1">
                       <label className="font-semibold text-zinc-400">Zone / Sector Bounds</label>
@@ -836,6 +913,57 @@ export default function OfficerDirectoryPage() {
                   </div>
                 </div>
 
+                {/* State, City & Language for Officer / Admin */}
+                {(editForm.role === "officer" || editForm.role === "admin") && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    className="grid grid-cols-1 md:grid-cols-3 gap-3 border-t border-white/5 pt-3"
+                  >
+                    <div className="flex flex-col gap-1">
+                      <label className="font-semibold text-zinc-400">State</label>
+                      <Input
+                        required
+                        value={editForm.state}
+                        onChange={(e) => setEditForm({ ...editForm, state: e.target.value })}
+                        placeholder="State"
+                        className="bg-black/50 border-white/10 text-xs h-9 text-zinc-100"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="font-semibold text-zinc-400">City</label>
+                      <Input
+                        required={editForm.role === "officer"}
+                        value={editForm.city}
+                        onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                        placeholder="City"
+                        className="bg-black/50 border-white/10 text-xs h-9 text-zinc-100"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="font-semibold text-zinc-400">Language</label>
+                      <select
+                        value={editForm.preferredLanguage}
+                        onChange={(e) => setEditForm({ ...editForm, preferredLanguage: e.target.value })}
+                        className="bg-black/50 border border-white/10 rounded-lg text-xs h-9 px-3 text-zinc-300 font-semibold focus:outline-none"
+                      >
+                        <option value="English">English</option>
+                        <option value="Hindi">Hindi</option>
+                        <option value="Telugu">Telugu</option>
+                        <option value="Tamil">Tamil</option>
+                        <option value="Kannada">Kannada</option>
+                        <option value="Malayalam">Malayalam</option>
+                        <option value="Marathi">Marathi</option>
+                        <option value="Gujarati">Gujarati</option>
+                        <option value="Punjabi">Punjabi</option>
+                        <option value="Bengali">Bengali</option>
+                        <option value="Odia">Odia</option>
+                        <option value="Urdu">Urdu</option>
+                      </select>
+                    </div>
+                  </motion.div>
+                )}
+
                 {/* Officer specific fields */}
                 {editForm.role === "officer" && (
                   <motion.div
@@ -845,13 +973,21 @@ export default function OfficerDirectoryPage() {
                   >
                     <div className="flex flex-col gap-1">
                       <label className="font-semibold text-zinc-400">Department</label>
-                      <Input
+                      <select
                         required
                         value={editForm.department}
                         onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
-                        placeholder="e.g. Sanitation, Water, Traffic"
-                        className="bg-black/50 border-white/10 text-xs h-9 text-zinc-100"
-                      />
+                        className="bg-black/50 border border-white/10 rounded-lg text-xs h-9 px-3 text-zinc-300 font-semibold focus:outline-none"
+                      >
+                        <option value="">Select Department...</option>
+                        <option value="Roads">Roads</option>
+                        <option value="Sanitation">Sanitation</option>
+                        <option value="Electrical">Electrical</option>
+                        <option value="Water Supply">Water Supply</option>
+                        <option value="Drainage">Drainage</option>
+                        <option value="Parks">Parks</option>
+                        <option value="Traffic">Traffic</option>
+                      </select>
                     </div>
                     <div className="flex flex-col gap-1">
                       <label className="font-semibold text-zinc-400">Zone / Sector Bounds</label>
