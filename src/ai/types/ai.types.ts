@@ -22,6 +22,8 @@ export interface EvidenceAnalysisResult {
   detectedObjects?: string[];
   analyzedAt: string;
   isCivicIssue?: boolean;
+  multipleIssuesDetected?: boolean;
+  nonCivicMixed?: boolean;
 }
 
 export interface FakeMediaResult {

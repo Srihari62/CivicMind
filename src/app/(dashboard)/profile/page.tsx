@@ -12,7 +12,7 @@ import { RouteGuard } from "@/features/auth/components/route-guard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot, getDocs } from "firebase/firestore";
 import { db, COLLECTIONS } from "@/services/firebase/firestore";
 import { CivicReport } from "@/types";
 import { UserRepository } from "@/features/auth/repositories/user.repository";
@@ -20,11 +20,12 @@ import { CitizenStatsService } from "@/features/reports/services/stats.service";
 import { MediaService } from "@/features/media/services/media.service";
 import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
 import { auth } from "@/services/firebase/auth";
-import { Award, Shield, CheckCircle, FileText, Globe, Calendar, Phone, Loader2, Sparkles, MapPin, Camera, Lock } from "lucide-react";
-import { motion } from "framer-motion";
+import { Award, Shield, CheckCircle, FileText, Globe, Calendar, Phone, Loader2, Sparkles, MapPin, Camera, Lock, History } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import MapPicker from "@/components/maps/MapPicker";
 
 export default function ProfilePage() {
-  const { profile, logout } = useAuth();
+  const { profile, logout, refreshProfile } = useAuth();
   const [reports, setReports] = useState<CivicReport[]>([]);
   const [loadingReports, setLoadingReports] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -33,8 +34,9 @@ export default function ProfilePage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
-  const [preferredLanguage, setPreferredLanguage] = useState("english");
+  const [preferredLanguage, setPreferredLanguage] = useState("English");
   const [community, setCommunity] = useState("");
+  const [homeLocation, setHomeLocation] = useState<any>(null);
   const [saving, setSaving] = useState(false);
 
   // Password fields
@@ -48,14 +50,81 @@ export default function ProfilePage() {
   // Upload state
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
+  // Points history state
+  const [pointsHistory, setPointsHistory] = useState<any[]>([]);
+  const [loadingPointsHistory, setLoadingPointsHistory] = useState(false);
+  const [showPointsModal, setShowPointsModal] = useState(false);
+
+  const [showLevelModal, setShowLevelModal] = useState(false);
+  const [showSubmittedModal, setShowSubmittedModal] = useState(false);
+  const [showResolvedModal, setShowResolvedModal] = useState(false);
+
+  useEffect(() => {
+    if (!profile?.uid || !showPointsModal) return;
+    
+    setLoadingPointsHistory(true);
+    const fetchHistory = async () => {
+      try {
+        const q = query(
+          collection(db, "users", profile.uid, "pointsTransactions")
+        );
+        const snap = await getDocs(q);
+        const items: any[] = [];
+        snap.forEach((docSnap) => {
+          items.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        
+        // Sort by timestamp desc
+        items.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+        
+        // If history is empty, generate derived/mock history matching user's current points
+        if (items.length === 0) {
+          // Derived from resolved reports
+          const resolvedCount = reports.filter((r) => r.status === "resolved").length;
+          for (let i = 0; i < resolvedCount; i++) {
+            items.push({
+              id: `derived-resolved-${i}`,
+              points: 100,
+              action: "resolve",
+              timestamp: new Date().toISOString(),
+              description: "Report Resolved (+100 Points)",
+            });
+          }
+          
+          // Remaining points as initial signup/badge rewards
+          const currentPoints = (profile as any).gamification?.points || 0;
+          const derivedSum = items.reduce((sum, item) => sum + item.points, 0);
+          const diff = currentPoints - derivedSum;
+          if (diff > 0) {
+            items.push({
+              id: "derived-welcome",
+              points: diff,
+              action: "welcome",
+              timestamp: new Date((profile as any).timestamps?.createdAt || Date.now()).toISOString(),
+              description: `Civic Welcome & Milestone Rewards (+${diff} Points)`,
+            });
+          }
+        }
+        
+        setPointsHistory(items);
+      } catch (err) {
+        console.error("Error fetching points history:", err);
+      } finally {
+        setLoadingPointsHistory(false);
+      }
+    };
+    fetchHistory();
+  }, [profile?.uid, showPointsModal, reports, profile]);
+
   // Sync profile fields into local state when profile changes
   useEffect(() => {
     if (profile) {
       setName(profile.displayName || "");
       setPhone(profile.phoneNumber || "");
       setAvatarUrl(profile.avatarUrl || "");
-      setPreferredLanguage((profile as any).preferredLanguage || "english");
+      setPreferredLanguage((profile as any).preferredLanguage || "English");
       setCommunity((profile as any).community || "");
+      setHomeLocation((profile as any).homeLocation || null);
       
       // Auto-initialize gamification stats if not present
       if (!(profile as any).gamification) {
@@ -87,6 +156,12 @@ export default function ProfilePage() {
         list.sort((a, b) => new Date(b.timestamps?.createdAt || 0).getTime() - new Date(a.timestamps?.createdAt || 0).getTime());
         setReports(list);
         setLoadingReports(false);
+        
+        CitizenStatsService.syncStats(profile.uid)
+          .then(() => refreshProfile())
+          .catch((err) => {
+            console.error("Failed to sync gamification stats on snapshot update:", err);
+          });
       },
       (error) => {
         console.error("Error reading reports for profile timeline:", error);
@@ -109,6 +184,7 @@ export default function ProfilePage() {
         avatarUrl,
         preferredLanguage,
         community,
+        homeLocation,
       } as any);
       setIsEditing(false);
     } catch (err) {
@@ -194,16 +270,15 @@ export default function ProfilePage() {
     streakDays: 0,
   };
 
-  const badgeDescriptions: Record<string, string> = {
-    "First Report": "Awarded for reporting your first community incident.",
-    "Community Helper": "Verified 5 or more reports submitted by fellow citizens.",
-    "Trusted Citizen": "Reached a score of 250 points in civic participation.",
-    "Neighborhood Guardian": "Had 5 of your submitted reports successfully resolved.",
-    "Civic Champion": "Elite civic contributor with over 1,000 points.",
-    "Bronze Resolver": "Successfully resolved 5 community reports.",
-    "Silver Resolver": "Successfully resolved 15 community reports.",
-    "Gold Resolver": "Successfully resolved 30 community reports.",
-  };
+  const allBadges = [
+    { name: "First Report", requirement: "Submit 1 or more community reports", description: "Awarded for reporting your first community incident.", icon: "🌱" },
+    { name: "Community Helper", requirement: "Verify 5 or more community reports", description: "Verified 5 or more reports submitted by fellow citizens.", icon: "🤝" },
+    { name: "Trusted Citizen", requirement: "Reach 250 or more Civic Points", description: "Reached a score of 250 points in civic participation.", icon: "🛡️" },
+    { name: "Civic Champion", requirement: "Reach 1,000 or more Civic Points", description: "Elite civic contributor with over 1,000 points.", icon: "👑" },
+    { name: "Bronze Resolver", requirement: "Have 5 of your reports successfully resolved", description: "Successfully resolved 5 community reports.", icon: "🥉" },
+    { name: "Silver Resolver", requirement: "Have 15 of your reports successfully resolved", description: "Successfully resolved 15 community reports.", icon: "🥈" },
+    { name: "Gold Resolver", requirement: "Have 30 of your reports successfully resolved", description: "Successfully resolved 30 community reports.", icon: "🥇" },
+  ];
 
   return (
     <RouteGuard allowedRoles={["citizen", "officer", "admin"]}>
@@ -280,9 +355,9 @@ export default function ProfilePage() {
                   <span className="flex items-center gap-1">
                     <Globe className="w-3.5 h-3.5 text-zinc-500" /> {preferredLanguage.toUpperCase()}
                   </span>
-                  {community && (
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-zinc-500" /> {community}
+                  {(homeLocation?.formattedAddress || community) && (
+                    <span className="flex items-center gap-1 max-w-[280px] md:max-w-[400px] truncate" title={homeLocation?.formattedAddress || community}>
+                      <MapPin className="w-3.5 h-3.5 text-zinc-500 shrink-0" /> {homeLocation?.formattedAddress || community}
                     </span>
                   )}
                 </div>
@@ -365,17 +440,40 @@ export default function ProfilePage() {
                         onChange={(e) => setPreferredLanguage(e.target.value)}
                         className="bg-zinc-950 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
                       >
-                        <option value="english">English</option>
-                        <option value="spanish">Spanish</option>
-                        <option value="spanish_mx">Spanish (MX)</option>
-                        <option value="arabic">Arabic</option>
-                        <option value="chinese">Chinese</option>
-                        <option value="french">French</option>
+                        <option value="English">English</option>
+                        <option value="Hindi">Hindi</option>
+                        <option value="Telugu">Telugu</option>
+                        <option value="Tamil">Tamil</option>
+                        <option value="Kannada">Kannada</option>
+                        <option value="Malayalam">Malayalam</option>
+                        <option value="Marathi">Marathi</option>
+                        <option value="Gujarati">Gujarati</option>
+                        <option value="Punjabi">Punjabi</option>
+                        <option value="Bengali">Bengali</option>
+                        <option value="Odia">Odia</option>
+                        <option value="Urdu">Urdu</option>
                       </select>
                     </div>
                     <div className="flex flex-col gap-1.5 md:col-span-2">
-                      <label className="text-xs text-zinc-400 font-semibold">Neighborhood / Community</label>
-                      <Input value={community} onChange={(e) => setCommunity(e.target.value)} placeholder="Downtown / North District" className="bg-zinc-950 border-white/10 text-white" />
+                      <label className="text-xs text-zinc-400 font-semibold">Neighborhood / Community Name</label>
+                      <Input value={community} onChange={(e) => setCommunity(e.target.value)} placeholder="e.g. Downtown / Indiranagar" className="bg-zinc-950 border-white/10 text-white" />
+                    </div>
+                    <div className="flex flex-col gap-1.5 md:col-span-2 font-sans">
+                      <label className="text-xs text-zinc-400 font-semibold">Home / Community Location Address</label>
+                      {homeLocation?.formattedAddress && (
+                        <div className="p-3 text-xs bg-zinc-950 border border-white/10 rounded-xl text-zinc-300 font-medium leading-relaxed">
+                          {homeLocation.formattedAddress}
+                        </div>
+                      )}
+                      <MapPicker
+                        initialLocation={homeLocation}
+                        onLocationChange={(loc) => {
+                          setHomeLocation(loc);
+                          if (!community) {
+                            setCommunity(loc.locality || loc.subLocality || loc.city || "");
+                          }
+                        }}
+                      />
                     </div>
                   </div>
                   <Button type="submit" size="sm" disabled={saving} className="bg-blue-600 hover:bg-blue-500 text-white font-bold w-fit mt-2">
@@ -458,57 +556,163 @@ export default function ProfilePage() {
 
             {/* Achievement / Points Overview Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="border border-white/10 rounded-2xl p-4 bg-zinc-900/10 backdrop-blur flex flex-col gap-1 shadow-lg">
-                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono">Civic Points</span>
-                <span className="text-2xl font-black text-blue-500 flex items-center gap-1.5">
-                  <Sparkles className="w-5 h-5 text-blue-500" /> {stats.points || 0}
+              <div
+                className="border border-white/10 rounded-2xl p-4 bg-zinc-900/10 backdrop-blur flex flex-col gap-1 shadow-lg cursor-pointer hover:bg-zinc-900/35 transition duration-200 select-none group"
+                onClick={() => setShowPointsModal(true)}
+                title="View Civic Points History"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono group-hover:text-blue-400 transition-colors">Civic Points</span>
+                  <History className="w-3.5 h-3.5 text-zinc-500 group-hover:text-blue-400 group-hover:rotate-12 transition-all" />
+                </div>
+                <span className="text-2xl font-black text-blue-500 flex items-center gap-1.5 mt-0.5">
+                  <Sparkles className="w-5 h-5 text-blue-500 group-hover:scale-110 transition-transform" /> {stats.points || 0}
                 </span>
               </div>
-              <div className="border border-white/10 rounded-2xl p-4 bg-zinc-900/10 backdrop-blur flex flex-col gap-1 shadow-lg">
-                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono">Level Status</span>
-                <span className="text-2xl font-black text-indigo-400 flex items-center gap-1.5">
-                  <Shield className="w-5 h-5 text-indigo-400" /> Lvl {stats.level || 1}
+              <div
+                className="border border-white/10 rounded-2xl p-4 bg-zinc-900/10 backdrop-blur flex flex-col gap-1 shadow-lg cursor-pointer hover:bg-zinc-900/35 transition duration-200 select-none group"
+                onClick={() => setShowLevelModal(true)}
+                title="View Level Progress"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono group-hover:text-indigo-400 transition-colors">Level Status</span>
+                  <History className="w-3.5 h-3.5 text-zinc-500 group-hover:text-indigo-400 group-hover:rotate-12 transition-all" />
+                </div>
+                <span className="text-2xl font-black text-indigo-400 flex items-center gap-1.5 mt-0.5">
+                  <Shield className="w-5 h-5 text-indigo-400 group-hover:scale-110 transition-transform" /> Lvl {stats.level || 1}
                 </span>
               </div>
-              <div className="border border-white/10 rounded-2xl p-4 bg-zinc-900/10 backdrop-blur flex flex-col gap-1 shadow-lg">
-                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono">Reports submitted</span>
-                <span className="text-2xl font-black text-emerald-400 flex items-center gap-1.5">
-                  <FileText className="w-5 h-5 text-emerald-400" /> {reports.length}
+              <div
+                className="border border-white/10 rounded-2xl p-4 bg-zinc-900/10 backdrop-blur flex flex-col gap-1 shadow-lg cursor-pointer hover:bg-zinc-900/35 transition duration-200 select-none group"
+                onClick={() => setShowSubmittedModal(true)}
+                title="View Submitted Reports History"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono group-hover:text-emerald-400 transition-colors">Reports submitted</span>
+                  <History className="w-3.5 h-3.5 text-zinc-500 group-hover:text-emerald-400 group-hover:rotate-12 transition-all" />
+                </div>
+                <span className="text-2xl font-black text-emerald-400 flex items-center gap-1.5 mt-0.5">
+                  <FileText className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform" /> {reports.length}
                 </span>
               </div>
-              <div className="border border-white/10 rounded-2xl p-4 bg-zinc-900/10 backdrop-blur flex flex-col gap-1 shadow-lg">
-                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono">Reports resolved</span>
-                <span className="text-2xl font-black text-purple-400 flex items-center gap-1.5">
-                  <CheckCircle className="w-5 h-5 text-purple-400" /> {reports.filter((r) => r.status === "resolved").length}
+              <div
+                className="border border-white/10 rounded-2xl p-4 bg-zinc-900/10 backdrop-blur flex flex-col gap-1 shadow-lg cursor-pointer hover:bg-zinc-900/35 transition duration-200 select-none group"
+                onClick={() => setShowResolvedModal(true)}
+                title="View Resolved Reports History"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono group-hover:text-purple-400 transition-colors">Reports resolved</span>
+                  <History className="w-3.5 h-3.5 text-zinc-500 group-hover:text-purple-400 group-hover:rotate-12 transition-all" />
+                </div>
+                <span className="text-2xl font-black text-purple-400 flex items-center gap-1.5 mt-0.5">
+                  <CheckCircle className="w-5 h-5 text-purple-400 group-hover:scale-110 transition-transform" /> {reports.filter((r) => r.status === "resolved").length}
                 </span>
+              </div>
+            </div>
+
+            {/* Citizen Gamification Details Card */}
+            <div className="border border-white/10 rounded-3xl p-6 bg-gradient-to-br from-indigo-950/20 via-zinc-900/30 to-zinc-950/45 backdrop-blur-md shadow-xl flex flex-col gap-5">
+              <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-indigo-400 fill-indigo-400/10" />
+                  Civic Standing Portfolio
+                </h3>
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400">
+                  Lvl {stats.level || 1}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div className="sm:col-span-2 space-y-3.5">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-zinc-400">Total Civic Points</span>
+                    <span className="font-mono font-bold text-white text-sm">{stats.points || 0} PTS</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-zinc-400">Reports Submitted</span>
+                    <span className="font-mono font-bold text-white text-sm">{reports.length}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-zinc-400">Reports Resolved</span>
+                    <span className="font-mono font-bold text-white text-sm">{reports.filter((r) => r.status === "resolved").length}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-zinc-400">Community Verifications</span>
+                    <span className="font-mono font-bold text-white text-sm">{stats.reportsVerified || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-zinc-400">Active Reporting Streak</span>
+                    <span className="font-mono font-bold text-amber-400 text-sm">🔥 {stats.streakDays || 0} Days</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-center justify-center border-l border-white/5 pl-6 gap-2 shrink-0">
+                  <div className="relative w-20 h-20 flex items-center justify-center bg-zinc-950/40 rounded-full border border-white/5">
+                    <div className="absolute inset-1 rounded-full border-2 border-zinc-800" />
+                    <span className="text-xl font-black text-white font-mono">{stats.level || 1}</span>
+                  </div>
+                  <span className="text-[10px] text-zinc-400 text-center uppercase tracking-wider font-semibold">
+                    Current Level
+                  </span>
+                </div>
               </div>
             </div>
 
             {/* Badges Collection Section */}
             <div className="border border-white/10 rounded-3xl p-6 bg-zinc-900/20 backdrop-blur-md shadow-xl flex flex-col gap-4">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Award className="w-5 h-5 text-blue-500" />
-                Badges Portfolio
-              </h2>
-              {stats.badges && stats.badges.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {stats.badges.map((badgeName: string) => (
-                    <div key={badgeName} className="border border-white/5 rounded-2xl p-4 bg-zinc-900/40 hover:bg-zinc-900/60 transition flex gap-3.5 items-center">
-                      <div className="w-10 h-10 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-lg shadow-inner">
-                        🏆
+              <div className="flex flex-col gap-1">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Award className="w-5 h-5 text-blue-500" />
+                  Badges Portfolio
+                </h2>
+                <p className="text-xs text-zinc-400">
+                  Earn unique badges by actively participating in municipal reporting and verification.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {allBadges.map((badge) => {
+                  const isEarned = (stats.badges || []).includes(badge.name);
+                  return (
+                    <div
+                      key={badge.name}
+                      className={`border rounded-2xl p-4 transition flex gap-3.5 items-center relative ${
+                        isEarned
+                          ? "border-blue-500/20 bg-zinc-900/40 hover:bg-zinc-900/60"
+                          : "border-white/5 bg-zinc-950/20 opacity-50"
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg shadow-inner shrink-0 ${
+                        isEarned
+                          ? "bg-blue-500/10 border border-blue-500/20 text-blue-400"
+                          : "bg-zinc-800/40 border border-white/5 text-zinc-500"
+                      }`}>
+                        {badge.icon || "🏆"}
                       </div>
-                      <div className="min-w-0">
-                        <h4 className="font-extrabold text-sm text-zinc-200">{badgeName}</h4>
-                        <p className="text-[11px] text-zinc-500 leading-normal mt-0.5">{badgeDescriptions[badgeName] || "Achievement earned."}</p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <h4 className={`font-extrabold text-sm ${isEarned ? "text-zinc-200" : "text-zinc-400"}`}>
+                            {badge.name}
+                          </h4>
+                          <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                            isEarned
+                              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                              : "bg-zinc-800/50 text-zinc-550 border border-white/5"
+                          }`}>
+                            {isEarned ? "Earned" : "Locked"}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-zinc-400 leading-normal mt-0.5">
+                          {badge.description}
+                        </p>
+                        <p className="text-[10px] text-zinc-500 font-medium mt-1 font-mono">
+                          Requirement: {badge.requirement}
+                        </p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="border border-dashed border-white/5 rounded-2xl p-8 text-center text-zinc-500 text-xs">
-                  No badges earned yet. Submit reports, confirm community incidents, and verify events to build your portfolio.
-                </div>
-              )}
+                  );
+                })}
+              </div>
             </div>
           </div>
 
@@ -550,6 +754,242 @@ export default function ProfilePage() {
             )}
           </div>
         </main>
+
+        {/* Civic Points History Modal */}
+        <AnimatePresence>
+          {showPointsModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="relative w-full max-w-lg border border-white/10 rounded-3xl p-6 bg-zinc-900 shadow-2xl flex flex-col gap-4 max-h-[80vh] overflow-hidden"
+              >
+                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-blue-500" />
+                    <h2 className="text-lg font-bold text-white">Civic Points Ledger</h2>
+                  </div>
+                  <button
+                    onClick={() => setShowPointsModal(false)}
+                    className="text-zinc-400 hover:text-white transition text-xs font-semibold px-3 py-1.5 rounded-xl bg-zinc-800"
+                  >
+                    Close
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto space-y-3 pr-1 py-1">
+                  {loadingPointsHistory ? (
+                    <div className="flex flex-col items-center justify-center py-12 gap-3 text-zinc-400">
+                      <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                      <span className="text-xs font-medium">Retrieving points ledger...</span>
+                    </div>
+                  ) : pointsHistory.length === 0 ? (
+                    <div className="text-center py-12 text-zinc-500 text-xs">
+                      No transactions found. Points are earned through community actions.
+                    </div>
+                  ) : (
+                    pointsHistory.map((item) => (
+                      <div
+                        key={item.id}
+                        className="border border-white/5 rounded-2xl p-4 bg-zinc-950/40 hover:bg-zinc-950/60 transition flex items-center justify-between gap-4"
+                      >
+                        <div className="min-w-0">
+                          <h4 className="font-extrabold text-sm text-zinc-200">
+                            {item.description}
+                          </h4>
+                          <p className="text-[10px] text-zinc-500 font-mono mt-1">
+                            Date: {new Date(item.timestamp).toLocaleString()}
+                          </p>
+                        </div>
+                        <span className={`text-xs font-black font-mono shrink-0 px-2.5 py-1 rounded-lg ${
+                          item.points >= 0
+                            ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/10"
+                            : "text-red-400 bg-red-500/10 border border-red-500/10"
+                        }`}>
+                          {item.points >= 0 ? `+${item.points}` : item.points} PTS
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Level Status History Modal */}
+        <AnimatePresence>
+          {showLevelModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="relative w-full max-w-lg border border-white/10 rounded-3xl p-6 bg-zinc-900 shadow-2xl flex flex-col gap-4 max-h-[80vh] overflow-hidden"
+              >
+                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-indigo-400" />
+                    <h2 className="text-lg font-bold text-white">Level Progression</h2>
+                  </div>
+                  <button
+                    onClick={() => setShowLevelModal(false)}
+                    className="text-zinc-400 hover:text-white transition text-xs font-semibold px-3 py-1.5 rounded-xl bg-zinc-800"
+                  >
+                    Close
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto space-y-3 pr-1 py-1">
+                  {[
+                    { lvl: 1, name: "Level 1: Civic Rookie", xp: 0 },
+                    { lvl: 2, name: "Level 2: Active Citizen", xp: 100 },
+                    { lvl: 3, name: "Level 3: Neighborhood Watch", xp: 250 },
+                    { lvl: 4, name: "Level 4: Community Guardian", xp: 500 },
+                    { lvl: 5, name: "Level 5: Civic Champion", xp: 1000 },
+                  ].map((levelObj) => {
+                    const isUnlocked = (stats.points || 0) >= levelObj.xp;
+                    return (
+                      <div
+                        key={levelObj.lvl}
+                        className={`border rounded-2xl p-4 transition flex items-center justify-between gap-4 ${
+                          isUnlocked
+                            ? "border-emerald-500/20 bg-emerald-500/5"
+                            : "border-white/5 bg-zinc-950/40 opacity-60"
+                        }`}
+                      >
+                        <div>
+                          <h4 className="font-extrabold text-sm text-zinc-200">
+                            {levelObj.name}
+                          </h4>
+                          <p className="text-[10px] text-zinc-500 font-mono mt-1">
+                            Required: {levelObj.xp} PTS
+                          </p>
+                        </div>
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
+                          isUnlocked
+                            ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/25"
+                            : "text-zinc-500 bg-zinc-800/40 border border-white/5"
+                        }`}>
+                          {isUnlocked ? "Unlocked ✅" : "Locked 🔒"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Reports Submitted History Modal */}
+        <AnimatePresence>
+          {showSubmittedModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="relative w-full max-w-lg border border-white/10 rounded-3xl p-6 bg-zinc-900 shadow-2xl flex flex-col gap-4 max-h-[80vh] overflow-hidden"
+              >
+                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-emerald-400" />
+                    <h2 className="text-lg font-bold text-white">Reports Submitted History</h2>
+                  </div>
+                  <button
+                    onClick={() => setShowSubmittedModal(false)}
+                    className="text-zinc-400 hover:text-white transition text-xs font-semibold px-3 py-1.5 rounded-xl bg-zinc-800"
+                  >
+                    Close
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto space-y-3 pr-1 py-1">
+                  {reports.length === 0 ? (
+                    <div className="text-center py-12 text-zinc-500 text-xs">
+                      No reports submitted yet.
+                    </div>
+                  ) : (
+                    reports.map((report) => (
+                      <div
+                        key={report.id}
+                        className="border border-white/5 rounded-2xl p-4 bg-zinc-950/40 hover:bg-zinc-950/60 transition flex items-center justify-between gap-4"
+                      >
+                        <div className="min-w-0 animate-none">
+                          <h4 className="font-extrabold text-sm text-zinc-200 truncate max-w-[240px] block">
+                            {report.ai?.assistant?.title || report.metadata.title}
+                          </h4>
+                          <p className="text-[10px] text-zinc-500 font-mono mt-1">
+                            Submitted: {new Date(report.timestamps?.createdAt || 0).toLocaleString()}
+                          </p>
+                        </div>
+                        <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 capitalize border border-white/5">
+                          {report.status}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Reports Resolved History Modal */}
+        <AnimatePresence>
+          {showResolvedModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="relative w-full max-w-lg border border-white/10 rounded-3xl p-6 bg-zinc-900 shadow-2xl flex flex-col gap-4 max-h-[80vh] overflow-hidden"
+              >
+                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-purple-400" />
+                    <h2 className="text-lg font-bold text-white">Reports Resolved History</h2>
+                  </div>
+                  <button
+                    onClick={() => setShowResolvedModal(false)}
+                    className="text-zinc-400 hover:text-white transition text-xs font-semibold px-3 py-1.5 rounded-xl bg-zinc-800"
+                  >
+                    Close
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto space-y-3 pr-1 py-1">
+                  {reports.filter((r) => r.status === "resolved").length === 0 ? (
+                    <div className="text-center py-12 text-zinc-500 text-xs">
+                      No resolved reports yet.
+                    </div>
+                  ) : (
+                    reports.filter((r) => r.status === "resolved").map((report) => (
+                      <div
+                        key={report.id}
+                        className="border border-white/5 rounded-2xl p-4 bg-zinc-950/40 hover:bg-zinc-950/60 transition flex items-center justify-between gap-4"
+                      >
+                        <div className="min-w-0">
+                          <h4 className="font-extrabold text-sm text-zinc-200 truncate max-w-[240px] block">
+                            {report.ai?.assistant?.title || report.metadata.title}
+                          </h4>
+                          <p className="text-[10px] text-zinc-500 font-mono mt-1">
+                            Resolved: {new Date((report.timestamps as any)?.resolvedAt || report.timestamps?.updatedAt || 0).toLocaleString()}
+                          </p>
+                        </div>
+                        <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/25">
+                          Resolved
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </RouteGuard>
   );

@@ -13,7 +13,7 @@ export default function CompleteProfilePage() {
   return (
     <RouteGuard requireAuth={true}>
       <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-background">
-        <div className="w-full max-w-sm flex flex-col gap-6">
+        <div className="w-full max-w-xl flex flex-col gap-6">
           {/* Branding header */}
           <div className="flex flex-col gap-2 text-center sm:text-left">
             <span className="text-xl font-bold tracking-tight text-primary">

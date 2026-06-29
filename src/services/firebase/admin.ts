@@ -32,9 +32,12 @@ if (!admin.apps.length) {
 
   if (!hasAdminCredentials) {
     try {
-      admin.initializeApp({
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "civicmind-dev",
-      });
+      const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT;
+      if (projectId) {
+        admin.initializeApp({ projectId });
+      } else {
+        admin.initializeApp();
+      }
       hasAdminCredentials = true;
       console.info("[FirebaseAdmin] Initialized with default credentials.");
     } catch (e) {

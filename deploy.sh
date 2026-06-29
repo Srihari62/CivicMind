@@ -170,7 +170,7 @@ echo -e "Starting deployment of ${GREEN}$SERVICE_NAME${NC} to ${GREEN}$REGION${N
 # Construct deploy command with environment variables
 # Note: we use a custom delimiter '^|^' to separate environment variables,
 # because FIREBASE_SERVICE_ACCOUNT_KEY is a JSON string containing commas.
-ENV_VARS="^|^GEMINI_API_KEY=$GEMINI_API_KEY"
+ENV_VARS="^|^GEMINI_API_KEY=$GEMINI_API_KEY|NEXT_PUBLIC_FIREBASE_PROJECT_ID=$NEXT_PUBLIC_FIREBASE_PROJECT_ID"
 if [ -n "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then
   ENV_VARS="$ENV_VARS|FIREBASE_SERVICE_ACCOUNT_KEY=$FIREBASE_SERVICE_ACCOUNT_KEY"
 fi

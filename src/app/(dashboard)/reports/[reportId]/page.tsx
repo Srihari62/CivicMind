@@ -25,6 +25,9 @@ import ReportTimeline from "@/components/dashboard/ReportTimeline";
 import AIAnalysisCard from "@/components/dashboard/AIAnalysisCard";
 import VerificationProgress from "@/components/dashboard/VerificationProgress";
 import BeforeAfterGallery from "@/components/dashboard/BeforeAfterGallery";
+import ReportComments from "@/components/dashboard/ReportComments";
+import ReportVerificationsList from "@/components/dashboard/ReportVerificationsList";
+import ReporterBadge from "@/components/dashboard/ReporterBadge";
 
 const MapViewer = dynamic(() => import("@/components/maps/MapViewer"), {
   ssr: false,
@@ -95,8 +98,12 @@ export default function ReportDetailsPage() {
               CivicMind
             </span>
             <div className="flex items-center gap-4">
+              <Link href="/community" className="text-xs text-zinc-400 hover:text-white font-semibold transition-colors flex items-center gap-1.5">
+                <ArrowLeft className="w-3.5 h-3.5" /> Community Feed
+              </Link>
+              <span className="text-zinc-700">|</span>
               <Link href="/dashboard" className="text-xs text-zinc-400 hover:text-white font-semibold transition-colors flex items-center gap-1.5">
-                <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
+                Back to Dashboard
               </Link>
             </div>
           </div>
@@ -142,6 +149,9 @@ export default function ReportDetailsPage() {
                   <span className="text-xs uppercase tracking-wider font-semibold px-2.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
                     Status: {getStatusDetails(report.status).label}
                   </span>
+                  {report.metadata.createdBy && (
+                    <ReporterBadge userId={report.metadata.createdBy} />
+                  )}
                 </div>
                 <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
                   {report.ai?.assistant?.title || report.metadata.title}
@@ -276,10 +286,23 @@ export default function ReportDetailsPage() {
                 </div>
               )}
 
+              {/* Community Verifications */}
+              <ReportVerificationsList reportId={report.id} />
+
+              {/* Comments Section */}
+              <ReportComments reportId={report.id} />
+
               {/* Navigation Back */}
-              <div className="flex items-center justify-end border-t border-white/10 pt-6 mt-4">
+              <div className="flex items-center justify-end gap-3 border-t border-white/10 pt-6 mt-4">
+                <Link href="/community">
+                  <Button variant="outline" size="sm" className="border-white/10 hover:bg-zinc-900 text-zinc-300">
+                    Go to Community Feed
+                  </Button>
+                </Link>
                 <Link href="/dashboard">
-                  <Button size="sm">Return to Dashboard</Button>
+                  <Button size="sm" className="bg-blue-600 hover:bg-blue-500 text-white font-bold">
+                    Return to Dashboard
+                  </Button>
                 </Link>
               </div>
             </div>

@@ -103,6 +103,89 @@ export class CitizenStatsService {
       reportsVerified,
     };
 
+    try {
+      const { db } = await import("@/services/firebase/firestore");
+      const { collection, addDoc } = await import("firebase/firestore");
+      await addDoc(collection(db, "users", uid, "pointsTransactions"), {
+        points: pointsDelta,
+        action,
+        timestamp: new Date().toISOString(),
+        description: action === "resolve" 
+          ? "Report Resolved (+100 Points)" 
+          : action === "verify" 
+          ? "Community Verification Submitted (+15 Points)" 
+          : action === "duplicate" 
+          ? "Linked Duplicate Report Matched (+10 Points)"
+          : `Civic Activity Reward (+${pointsDelta} Points)`,
+      });
+    } catch (e) {
+      console.error("Failed to log points transaction:", e);
+    }
+
+    await UserRepository.updateUserProfile(uid, { gamification: updatedStats } as any);
+    return updatedStats;
+  }
+
+  /**
+   * Recalculates and updates gamification stats based on actual reports database state.
+   */
+  public static async syncStats(uid: string): Promise<GamificationStats> {
+    const profile = await UserRepository.getUserProfile(uid);
+    if (!profile) {
+      throw new Error("User profile not found for stats sync.");
+    }
+
+    const currentStats: GamificationStats = (profile as any).gamification || {
+      points: 0,
+      level: 1,
+      badges: [],
+      reportsSubmitted: 0,
+      reportsResolved: 0,
+      reportsVerified: 0,
+      streakDays: 0,
+    };
+
+    // Get all user reports
+    const { ReportRepository } = await import("../repositories/report.repository");
+    const allReports = await ReportRepository.getAllReports();
+    const userReports = allReports.filter(r => r.metadata.createdBy === uid);
+    
+    const reportsSubmitted = userReports.length;
+    const reportsResolved = userReports.filter(r => r.status === "resolved").length;
+
+    // Recalculate level based on points
+    let level = 1;
+    const points = currentStats.points || 0;
+    if (points >= 1000) level = 5;
+    else if (points >= 500) level = 4;
+    else if (points >= 250) level = 3;
+    else if (points >= 100) level = 2;
+
+    // Recalculate badges
+    const badges = [...(currentStats.badges || [])];
+    const addBadgeIfMissing = (badge: string) => {
+      if (!badges.includes(badge)) {
+        badges.push(badge);
+      }
+    };
+
+    if (reportsSubmitted >= 1) addBadgeIfMissing("First Report");
+    if (currentStats.reportsVerified >= 5) addBadgeIfMissing("Community Helper");
+    if (points >= 250) addBadgeIfMissing("Trusted Citizen");
+    if (points >= 1000) addBadgeIfMissing("Civic Champion");
+
+    if (reportsResolved >= 5) addBadgeIfMissing("Bronze Resolver");
+    if (reportsResolved >= 15) addBadgeIfMissing("Silver Resolver");
+    if (reportsResolved >= 30) addBadgeIfMissing("Gold Resolver");
+
+    const updatedStats: GamificationStats = {
+      ...currentStats,
+      level,
+      badges,
+      reportsSubmitted,
+      reportsResolved,
+    };
+
     await UserRepository.updateUserProfile(uid, { gamification: updatedStats } as any);
     return updatedStats;
   }

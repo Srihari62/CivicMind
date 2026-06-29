@@ -58,6 +58,22 @@ export const completeProfileSchema = z.object({
     .refine((val) => !val || /^\+?[1-9]\d{1,14}$/.test(val), {
       message: "Please enter a valid phone number (E.164 format)",
     }),
+  preferredLanguage: z
+    .string()
+    .min(1, "Preferred language is required"),
+  homeLocation: z.object({
+    latitude: z.number({ message: "Latitude is required" }),
+    longitude: z.number({ message: "Longitude is required" }),
+    formattedAddress: z.string().min(1, "Address is required"),
+    placeId: z.string().optional(),
+    locality: z.string().optional(),
+    subLocality: z.string().optional(),
+    city: z.string().optional(),
+    district: z.string().optional(),
+    state: z.string().optional(),
+    country: z.string().optional(),
+    postalCode: z.string().optional(),
+  }, { message: "Home/Community location is required" }),
 });
 
 export type CompleteProfileInput = z.infer<typeof completeProfileSchema>;

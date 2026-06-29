@@ -6,6 +6,7 @@
 
 import { collection, doc, setDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/services/firebase/firestore";
+import { auth } from "@/services/firebase/auth";
 import { CivicReport } from "@/types";
 
 export interface DbNotification {
@@ -53,22 +54,29 @@ export class NotificationService {
         }
       }
     } else {
-      const { getDocs, query, where, collection, updateDoc } = await import("firebase/firestore");
-      const q = query(
-        collection(db, "notifications"),
-        where("userId", "==", userId),
-        where("reportId", "==", reportId),
-        where("type", "==", type),
-        where("read", "==", false)
-      );
-      const existing = await getDocs(q);
-      if (!existing.empty) {
-        const existingDoc = existing.docs[0];
-        await updateDoc(doc(db, "notifications", existingDoc.id), {
-          createdAt: now,
-          message: message
-        });
-        return;
+      const currentUid = auth.currentUser?.uid;
+      if (currentUid === userId) {
+        try {
+          const { getDocs, query, where, collection, updateDoc } = await import("firebase/firestore");
+          const q = query(
+            collection(db, "notifications"),
+            where("userId", "==", userId),
+            where("reportId", "==", reportId),
+            where("type", "==", type),
+            where("read", "==", false)
+          );
+          const existing = await getDocs(q);
+          if (!existing.empty) {
+            const existingDoc = existing.docs[0];
+            await updateDoc(doc(db, "notifications", existingDoc.id), {
+              createdAt: now,
+              message: message
+            });
+            return;
+          }
+        } catch (err) {
+          console.warn("Deduplication notification check skipped or failed:", err);
+        }
       }
     }
 

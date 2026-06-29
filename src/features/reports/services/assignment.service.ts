@@ -735,9 +735,35 @@ export class AssignmentService {
     // Award citizen contribution points (only after successful resolution)
     try {
       const { CitizenStatsService } = await import("./stats.service");
-      await CitizenStatsService.awardPoints(report.metadata.createdBy, 50, "resolve");
+      // Original submitter gets +100 XP
+      await CitizenStatsService.awardPoints(report.metadata.createdBy, 100, "resolve");
+
+      // Award helper points to verifying citizens
+      const verificationsList: any[] = [];
+      if (typeof window === "undefined") {
+        const { adminDb } = await import("@/services/firebase/admin");
+        if (adminDb) {
+          const snapshot = await adminDb.collection("reports").doc(reportId).collection("reportVerifications").get();
+          snapshot.forEach((d) => verificationsList.push(d.data()));
+        }
+      } else {
+        const { getDocs, collection } = await import("firebase/firestore");
+        const snapshot = await getDocs(collection(db, "reports", reportId, "reportVerifications"));
+        snapshot.forEach((d) => verificationsList.push(d.data()));
+      }
+
+      for (const verification of verificationsList) {
+        const helperUid = verification.verifiedBy || verification.userId;
+        if (helperUid && helperUid !== report.metadata.createdBy) {
+          let points = 20; // +20 XP for helper
+          if (verification.verificationPhoto || verification.imageUrl) {
+            points += 30; // +30 XP if verification photo is attached
+          }
+          await CitizenStatsService.awardPoints(helperUid, points, "verify");
+        }
+      }
     } catch (e) {
-      console.error("Failed to award points to citizen:", e);
+      console.error("Failed to award points to citizen helpers:", e);
     }
 
     // Award officer performance metrics

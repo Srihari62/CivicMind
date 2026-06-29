@@ -77,6 +77,14 @@ export class ReportCreationWorkflow {
       // 4. Submit Report (link media and update status to submitted)
       await ReportRepository.submitReport(reportId, mediaAssets);
 
+      // Award points for report submission
+      try {
+        const { CitizenStatsService } = await import('@/features/reports/services/stats.service');
+        await CitizenStatsService.awardPoints(userId, 50, 'submit');
+      } catch (err) {
+        console.error('Failed to award points for submitting report:', err);
+      }
+
       // 5. Verification Orchestrator is triggered via Server Action asynchronously after submission
 
       // 6. Return Report ID

@@ -125,6 +125,9 @@ export interface CivicReport {
   id: string;
   status: ReportStatus;
   reportedCount?: number;
+  supportCount?: number;
+  notFoundCount?: number;
+  commentsCount?: number;
 
   metadata: {
     title: string;

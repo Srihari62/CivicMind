@@ -15,6 +15,17 @@ import { completeProfileSchema, CompleteProfileInput } from "../schemas/auth.sch
 import { AuthService } from "../services/auth.service";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import dynamic from "next/dynamic";
+
+// Load MapPicker dynamically to avoid SSR window issues
+const MapPicker = dynamic(() => import("@/components/maps/MapPicker"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[280px] bg-slate-900/40 animate-pulse rounded-2xl flex items-center justify-center border border-slate-800">
+      <span className="text-xs text-slate-500">Initializing location picker...</span>
+    </div>
+  ),
+});
 
 export function CompleteProfileForm() {
   const router = useRouter();
@@ -32,6 +43,8 @@ export function CompleteProfileForm() {
     defaultValues: {
       displayName: "",
       phoneNumber: "",
+      preferredLanguage: "",
+      homeLocation: undefined,
     },
   });
 
@@ -62,7 +75,7 @@ export function CompleteProfileForm() {
       <div className="flex items-center justify-center p-8">
         <svg
           className="animate-spin h-6 w-6 text-primary"
-          xmlns="http://www.w3.org/2000/svg"
+          xmlns="http://www.w3.org/2500/svg"
           fill="none"
           viewBox="0 0 24 24"
         >
@@ -94,7 +107,7 @@ export function CompleteProfileForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 w-full max-w-sm">
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 w-full max-w-xl">
       {globalError && (
         <div
           className="p-3.5 text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-md font-medium"
@@ -105,7 +118,7 @@ export function CompleteProfileForm() {
       )}
 
       <Input
-        label="Full Name"
+        label="Full Name *"
         placeholder="Jane Doe"
         error={errors.displayName?.message}
         {...register("displayName")}
@@ -113,10 +126,55 @@ export function CompleteProfileForm() {
 
       <Input
         label="Phone Number (Optional)"
-        placeholder="+15551234567"
+        placeholder="+919876543210"
         error={errors.phoneNumber?.message}
         {...register("phoneNumber")}
       />
+
+      <div className="flex flex-col gap-1.5 w-full">
+        <label className="text-xs font-medium text-muted-foreground select-none">
+          Preferred Language *
+        </label>
+        <select
+          {...register("preferredLanguage")}
+          className="w-full px-3.5 py-2.5 bg-background border border-border text-sm rounded-md transition-all duration-200 outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground"
+        >
+          <option value="">Select language...</option>
+          <option value="English">English</option>
+          <option value="Hindi">Hindi</option>
+          <option value="Telugu">Telugu</option>
+          <option value="Tamil">Tamil</option>
+          <option value="Kannada">Kannada</option>
+          <option value="Malayalam">Malayalam</option>
+          <option value="Marathi">Marathi</option>
+          <option value="Gujarati">Gujarati</option>
+          <option value="Punjabi">Punjabi</option>
+          <option value="Bengali">Bengali</option>
+          <option value="Odia">Odia</option>
+          <option value="Urdu">Urdu</option>
+        </select>
+        {errors.preferredLanguage && (
+          <span className="text-xs text-destructive font-medium mt-0.5" role="alert">
+            {errors.preferredLanguage.message}
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-1.5 w-full">
+        <label className="text-xs font-medium text-muted-foreground select-none">
+          Home/Community Location *
+        </label>
+        <MapPicker
+          onLocationChange={(location) => {
+            setValue("homeLocation", location, { shouldValidate: true });
+          }}
+        />
+        {errors.homeLocation && (
+          <span className="text-xs text-destructive font-medium mt-0.5" role="alert">
+            {errors.homeLocation.message || "Location selection is required"}
+          </span>
+        )}
+      </div>
 
       <Button type="submit" isLoading={isLoading} className="w-full mt-2">
         Complete Registration

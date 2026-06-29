@@ -12,6 +12,7 @@ import { CivicReport, MediaAsset } from "@/types";
 import { EvidenceAnalysisResult } from "@/ai/types/ai.types";
 import { getGeminiModel } from "@/services/gemini/config";
 import { AssistantContextService } from "@/services/analytics/assistant-context.service";
+import { AI_MODELS } from "@/config/ai-models";
 
 import { authorizeAction } from "./auth-guard";
 
@@ -415,3 +416,88 @@ ${compactContext}`
     };
   }
 }
+
+/**
+ * Server Action to verify a community verification photo against the original report description/context.
+ */
+export async function verifyVerificationPhoto(
+  callerUid: string,
+  reportId: string,
+  verificationPhotoUrl: string,
+  verificationComment?: string
+): Promise<{ success: boolean; matches: boolean; confidence: number; reason: string }> {
+  try {
+    await authorizeAction(callerUid, ["citizen", "officer", "admin"]);
+    
+    // 1. Retrieve original report details
+    const { safeDb } = await import("@/services/firebase/admin");
+    const report = await safeDb.getReport(reportId);
+    if (!report) {
+      throw new Error("Original report not found.");
+    }
+
+    const reportTitle = report.ai?.assistant?.title || report.metadata.title;
+    const reportDesc = report.ai?.assistant?.description || report.metadata.description;
+    const reportCat = report.ai?.assistant?.category || report.metadata.category;
+
+    // 2. Build system instructions and prompt
+    const systemInstruction = `You are a Smart City Civic Verification AI agent.
+Your task is to analyze a new photo uploaded by a citizen attempting to verify/confirm an existing civic issue report.
+You must compare the uploaded image against the original report details (title, description, and category) to verify if the photo indeed displays the same issue or a highly related situation at the same site.
+You must output a JSON response containing:
+1. "matches": boolean (true if the photo matches/corresponds to the reported issue, false if it is unrelated, spam, or different).
+2. "confidence": number (0-100 indicating your confidence in the decision).
+3. "reason": string (a concise explanation in English of your analysis).
+
+Return ONLY raw JSON conforming to this schema. Do not output markdown blocks.`;
+
+    const prompt = `Original Report:
+- Title: ${reportTitle}
+- Category: ${reportCat}
+- Description: ${reportDesc}
+
+Verification details provided by citizen:
+- Comment/Context: ${verificationComment || "No comment provided."}
+
+Analyze the attached photo and determine if it represents a valid verification photo for the original report.`;
+
+    // Guess the mimeType of the photo (usually image/jpeg or image/png)
+    let mimeType = "image/jpeg";
+    if (verificationPhotoUrl.toLowerCase().endsWith(".png")) {
+      mimeType = "image/png";
+    } else if (verificationPhotoUrl.toLowerCase().endsWith(".webp")) {
+      mimeType = "image/webp";
+    }
+
+    // Call GeminiService.generateJson
+    const { GeminiService } = await import("@/ai/services/gemini.service");
+    const result = await GeminiService.generateJson<{
+      matches: boolean;
+      confidence: number;
+      reason: string;
+    }>(
+      systemInstruction,
+      prompt,
+      [{ url: verificationPhotoUrl, mimeType }],
+      ["matches", "confidence", "reason"],
+      AI_MODELS.VERIFICATION,
+      0.1
+    );
+
+    return {
+      success: true,
+      matches: result.matches,
+      confidence: result.confidence,
+      reason: result.reason,
+    };
+  } catch (error) {
+    console.error("[verifyVerificationPhoto] Failed to verify verification photo:", error);
+    return {
+      success: false,
+      matches: false,
+      confidence: 0,
+      reason: error instanceof Error ? error.message : "Failed to run AI verification on the photo.",
+    };
+  }
+}
+

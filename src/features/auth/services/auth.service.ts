@@ -105,6 +105,8 @@ export class AuthService {
       await UserRepository.updateUserProfile(uid, {
         displayName: input.displayName,
         phoneNumber: input.phoneNumber,
+        preferredLanguage: input.preferredLanguage,
+        homeLocation: input.homeLocation,
         isProfileComplete: true,
       });
     } catch (error) {

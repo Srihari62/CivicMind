@@ -16,10 +16,12 @@ import { reportFormSchema, ReportFormInput } from "../schemas/report.schema";
 import { ReportService } from "../services/report.service";
 import { MediaService } from "@/features/media/services/media.service";
 import { analyzeReportEvidence, startReportVerification } from "@/app/actions/ai.actions";
-import { MediaAsset } from "@/types";
+import { MediaAsset, ReportLocation, CivicReport } from "@/types";
 import { EvidenceAnalysisResult } from "@/ai/types/ai.types";
 import { calculateInitialPriority } from "@/ai/utils/priority";
 import { AI_MODELS } from "@/config/ai-models";
+import { ReportRepository } from "../repositories/report.repository";
+import { ReportVerificationService } from "../services/verification.service";
 import {
   ISSUE_CATEGORIES,
   MAX_MEDIA_COUNT,
@@ -42,7 +44,20 @@ const MapPicker = dynamic(() => import("@/components/maps/MapPicker"), {
     </div>
   ),
 });
-import { ReportLocation } from "@/types";
+
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth radius in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
 export function ReportForm() {
   const router = useRouter();
@@ -63,6 +78,10 @@ export function ReportForm() {
   const [aiAnalysisResult, setAiAnalysisResult] = useState<EvidenceAnalysisResult | null>(null);
   const [resolvedLocation, setResolvedLocation] = useState<ReportLocation | null>(null);
   const [showUnrelatedModal, setShowUnrelatedModal] = useState<boolean>(false);
+  const [showMultipleIssuesModal, setShowMultipleIssuesModal] = useState<boolean>(false);
+  const [showMixedWarning, setShowMixedWarning] = useState<boolean>(false);
+  const [duplicateMatchedReport, setDuplicateMatchedReport] = useState<CivicReport | null>(null);
+  const [showDuplicateModal, setShowDuplicateModal] = useState<boolean>(false);
 
   const {
     register,
@@ -163,7 +182,7 @@ export function ReportForm() {
 
       const aiData = response.data;
 
-      // Civic issue validation check
+      // 1. If every uploaded image is non-civic
       if (aiData.isCivicIssue === false) {
         setMediaFiles([]);
         setUploadedAssets([]);
@@ -171,8 +190,29 @@ export function ReportForm() {
         setAiSuggested(false);
         setAiMessage(null);
         setAiAnalysisResult(null);
+        setShowMixedWarning(false);
         setIsAnalyzing(false);
         return;
+      }
+
+      // 2. If uploaded images belong to DIFFERENT categories
+      if (aiData.multipleIssuesDetected === true) {
+        setMediaFiles([]);
+        setUploadedAssets([]);
+        setShowMultipleIssuesModal(true);
+        setAiSuggested(false);
+        setAiMessage(null);
+        setAiAnalysisResult(null);
+        setShowMixedWarning(false);
+        setIsAnalyzing(false);
+        return;
+      }
+
+      // 3. If non-civic images are mixed with civic images
+      if (aiData.nonCivicMixed === true) {
+        setShowMixedWarning(true);
+      } else {
+        setShowMixedWarning(false);
       }
 
       setAiConfidence(aiData.confidence);
@@ -209,6 +249,7 @@ export function ReportForm() {
       setAiSuggested(false);
       setAiMessage(null);
       setAiAnalysisResult(null);
+      setShowMixedWarning(false);
     }
   };
 
@@ -280,6 +321,37 @@ export function ReportForm() {
         aiAssistant: aiAssistantPayload,
       };
 
+      // Check for active duplicates within 100 meters of the same category
+      const activeStatuses = [
+        "submitted",
+        "processing",
+        "verified",
+        "waiting_assignment",
+        "assigned",
+        "accepted",
+        "travelling",
+        "investigating",
+        "repair_in_progress",
+        "awaiting_verification",
+        "reopened"
+      ];
+      const allReports = await ReportRepository.getAllReports();
+      const matchedDuplicate = allReports.find((r) => {
+        if (!activeStatuses.includes(r.status)) return false;
+        const reportCategory = r.ai?.assistant?.category || r.metadata.category;
+        if (reportCategory !== data.category) return false;
+        if (!r.location?.latitude || !r.location?.longitude) return false;
+        const dist = calculateDistance(data.latitude, data.longitude, r.location.latitude, r.location.longitude);
+        return dist <= 0.1; // 100 meters
+      });
+
+      if (matchedDuplicate) {
+        setDuplicateMatchedReport(matchedDuplicate);
+        setShowDuplicateModal(true);
+        setIsSubmitting(false);
+        return;
+      }
+
       // Pass pre-uploaded Cloudinary assets directly to createReport
       const reportId = await ReportService.createReport(payload, uploadedAssets, profile.uid);
 
@@ -295,6 +367,47 @@ export function ReportForm() {
       setGlobalError(msg);
       setIsSubmitting(false);
     }
+  };
+
+  const handleSupportDuplicate = async () => {
+    if (!duplicateMatchedReport || !profile?.uid) return;
+    setIsSubmitting(true);
+    setGlobalError(null);
+    try {
+      await ReportVerificationService.submitVerification(
+        duplicateMatchedReport.id,
+        profile.uid,
+        "support",
+        "Citizen verified this matches their reported issue."
+      );
+      try {
+        const { CitizenStatsService } = await import("@/features/reports/services/stats.service");
+        await CitizenStatsService.awardPoints(duplicateMatchedReport.metadata.createdBy, 10, "duplicate");
+      } catch (err) {
+        console.error("Failed to award duplicate points:", err);
+      }
+      router.push(`/reports/${duplicateMatchedReport.id}?success=true`);
+    } catch (err) {
+      console.error(err);
+      setGlobalError("Failed to support existing report.");
+    } finally {
+      setIsSubmitting(false);
+      setShowDuplicateModal(false);
+      setDuplicateMatchedReport(null);
+    }
+  };
+
+  const handleViewDuplicateDetails = () => {
+    if (!duplicateMatchedReport) return;
+    const rId = duplicateMatchedReport.id;
+    setShowDuplicateModal(false);
+    setDuplicateMatchedReport(null);
+    router.push(`/reports/${rId}`);
+  };
+
+  const handleCancelDuplicate = () => {
+    setShowDuplicateModal(false);
+    setDuplicateMatchedReport(null);
   };
 
   const allowedExtensions = [...SUPPORTED_IMAGE_TYPES, ...SUPPORTED_VIDEO_TYPES].join(",");
@@ -441,6 +554,16 @@ export function ReportForm() {
         </div>
       )}
 
+      {showMixedWarning && (
+        <div className="p-4 border border-amber-500/20 bg-amber-500/5 rounded-md text-xs text-amber-400 font-medium flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+          <div>
+            <span className="font-bold text-white block mb-0.5">Warning: Unrelated Media Ignored</span>
+            <span>Non-civic or unrelated media was detected and ignored. We've pre-filled details using only the valid civic issue evidence.</span>
+          </div>
+        </div>
+      )}
+
       {aiMessage && (
         <div className="p-4 border border-yellow-500/20 bg-yellow-500/5 rounded-md text-xs text-yellow-600 font-medium">
           ⚠️ {aiMessage}
@@ -567,7 +690,7 @@ export function ReportForm() {
           </div>
           <h3 className="font-extrabold text-lg text-white">Invalid Media Uploaded</h3>
           <p className="text-xs text-zinc-400 leading-relaxed">
-            This image does not appear to contain a civic or municipal issue. Please upload a valid photo of public damage, trash, or safety hazards.
+            We couldn't detect a civic issue in the uploaded images. Please upload a valid photo of public damage, trash, or safety hazards.
           </p>
           <Button
             onClick={() => setShowUnrelatedModal(false)}
@@ -575,6 +698,62 @@ export function ReportForm() {
           >
             Retry
           </Button>
+        </div>
+      </div>
+    )}
+
+    {showMultipleIssuesModal && (
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+        <div className="bg-zinc-900 border border-white/10 rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl relative">
+          <div className="mx-auto w-12 h-12 bg-amber-500/10 border border-amber-500/20 text-amber-550 rounded-full flex items-center justify-center">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <h3 className="font-extrabold text-lg text-white">Multiple Issues Detected</h3>
+          <p className="text-xs text-zinc-400 leading-relaxed">
+            Multiple unrelated civic issues were detected. Please create separate reports for each issue.
+          </p>
+          <Button
+            onClick={() => setShowMultipleIssuesModal(false)}
+            className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold"
+          >
+            Retry
+          </Button>
+        </div>
+      </div>
+    )}
+    {showDuplicateModal && duplicateMatchedReport && (
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+        <div className="bg-zinc-900 border border-white/10 rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl relative">
+          <div className="mx-auto w-12 h-12 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-full flex items-center justify-center">
+            <AlertCircle className="w-6 h-6 animate-pulse" />
+          </div>
+          <h3 className="font-extrabold text-lg text-white">Duplicate Issue Found</h3>
+          <p className="text-xs text-zinc-400 leading-relaxed">
+            A similar issue in the same category has already been reported within 100 meters: <span className="text-blue-400 font-semibold">"{duplicateMatchedReport.ai?.assistant?.title || duplicateMatchedReport.metadata.title}"</span>.
+          </p>
+          <div className="flex flex-col gap-2 pt-2">
+            <Button
+              onClick={handleSupportDuplicate}
+              isLoading={isSubmitting}
+              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold"
+            >
+              Support This Issue
+            </Button>
+            <Button
+              onClick={handleViewDuplicateDetails}
+              variant="outline"
+              className="w-full border-white/10 hover:bg-zinc-800 text-zinc-300 font-semibold"
+            >
+              View Existing Details
+            </Button>
+            <Button
+              onClick={handleCancelDuplicate}
+              variant="ghost"
+              className="w-full hover:bg-transparent text-zinc-500 hover:text-zinc-400 text-xs"
+            >
+              Cancel & Go Back
+            </Button>
+          </div>
         </div>
       </div>
     )}

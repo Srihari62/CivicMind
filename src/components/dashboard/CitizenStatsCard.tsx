@@ -6,9 +6,9 @@
 
 "use client";
 
-import React from "react";
-import { motion } from "framer-motion";
-import { FileText, CheckCircle, Clock, Award, Flame, Zap } from "lucide-react";
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { FileText, CheckCircle, Clock, Award, Flame, Zap, Sparkles, X, History } from "lucide-react";
 import { CivicReport } from "@/types";
 
 interface CitizenStatsCardProps {
@@ -16,6 +16,7 @@ interface CitizenStatsCardProps {
 }
 
 export default function CitizenStatsCard({ reports }: CitizenStatsCardProps) {
+  const [showScoreModal, setShowScoreModal] = useState(false);
   const totalSubmitted = reports.length;
   
   const totalVerified = reports.filter(
@@ -137,15 +138,20 @@ export default function CitizenStatsCard({ reports }: CitizenStatsCardProps) {
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="rounded-2xl border border-white/10 bg-gradient-to-br from-blue-900/35 via-zinc-950/40 to-zinc-950/45 p-6 backdrop-blur-md shadow-xl flex flex-col justify-between gap-6"
+        onClick={() => setShowScoreModal(true)}
+        className="rounded-2xl border border-white/10 bg-gradient-to-br from-blue-900/35 via-zinc-950/40 to-zinc-950/45 p-6 backdrop-blur-md shadow-xl flex flex-col justify-between gap-6 cursor-pointer hover:from-blue-900/40 hover:to-zinc-950/50 hover:border-white/20 transition-all select-none group"
+        title="View Contribution Score Breakdown"
       >
         <div className="flex justify-between items-start">
-          <div className="space-y-1">
-            <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">
-              Contribution Score
-            </span>
-            <span className="text-3xl font-black text-white font-mono flex items-center gap-2">
-              <Zap className="w-6 h-6 text-yellow-400 fill-yellow-400/20" />
+          <div className="space-y-1 flex-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block group-hover:text-yellow-400 transition-colors">
+                Contribution Score
+              </span>
+              <History className="w-3.5 h-3.5 text-zinc-500 group-hover:text-yellow-400 group-hover:rotate-12 transition-all mr-2" />
+            </div>
+            <span className="text-3xl font-black text-white font-mono flex items-center gap-2 mt-1">
+              <Zap className="w-6 h-6 text-yellow-400 fill-yellow-400/20 group-hover:scale-110 transition-transform" />
               {contributionScore}
             </span>
           </div>
@@ -168,6 +174,97 @@ export default function CitizenStatsCard({ reports }: CitizenStatsCardProps) {
           </span>
         </div>
       </motion.div>
+
+      {/* Contribution Score History Modal */}
+      <AnimatePresence>
+        {showScoreModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-lg border border-white/10 rounded-3xl p-6 bg-zinc-900 shadow-2xl flex flex-col gap-4 max-h-[80vh] overflow-hidden text-left"
+            >
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-yellow-400 fill-yellow-400/20" />
+                  <h2 className="text-lg font-bold text-white">Contribution Score History</h2>
+                </div>
+                <button
+                  onClick={() => setShowScoreModal(false)}
+                  className="text-zinc-400 hover:text-white transition text-xs font-semibold px-3 py-1.5 rounded-xl bg-zinc-800"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="text-xs text-zinc-400 bg-zinc-950/40 p-3 rounded-2xl border border-white/5 flex flex-col gap-1">
+                <div className="flex justify-between">
+                  <span>Report Submission Base:</span>
+                  <span className="font-mono text-zinc-300 font-bold">+10 PTS / report</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Report Verification Reward:</span>
+                  <span className="font-mono text-zinc-300 font-bold">+20 PTS / report</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Issue Resolution Bonus:</span>
+                  <span className="font-mono text-zinc-300 font-bold">+50 PTS / report</span>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-3 pr-1 py-1">
+                {reports.length === 0 ? (
+                  <div className="text-center py-12 text-zinc-500 text-xs">
+                    No reports filed yet. Submit a report to begin earning contribution points.
+                  </div>
+                ) : (
+                  reports.map((report) => {
+                    const isVerified = report.ai?.verification?.status === "verified" || !["submitted", "processing", "rejected", "failed"].includes(report.status);
+                    const isResolved = report.status === "resolved";
+                    const totalReportScore = 10 + (isVerified ? 20 : 0) + (isResolved ? 50 : 0);
+
+                    return (
+                      <div
+                        key={report.id}
+                        className="border border-white/5 rounded-2xl p-4 bg-zinc-950/20 hover:bg-zinc-950/40 transition flex flex-col gap-2"
+                      >
+                        <div className="flex justify-between items-start gap-4">
+                          <span className="font-extrabold text-sm text-zinc-200 truncate">
+                            {report.ai?.assistant?.title || report.metadata.title}
+                          </span>
+                          <span className="text-xs font-black font-mono text-yellow-400 bg-yellow-400/10 border border-yellow-400/10 px-2 py-0.5 rounded">
+                            +{totalReportScore} PTS
+                          </span>
+                        </div>
+
+                        <div className="flex flex-col gap-1 border-t border-white/5 pt-2 text-[11px] text-zinc-400">
+                          <div className="flex justify-between">
+                            <span className="flex items-center gap-1">🟢 Report Submitted</span>
+                            <span className="font-mono text-emerald-400">+10 PTS</span>
+                          </div>
+                          {isVerified && (
+                            <div className="flex justify-between">
+                              <span className="flex items-center gap-1">🛡️ AI/Community Verified</span>
+                              <span className="font-mono text-emerald-400">+20 PTS</span>
+                            </div>
+                          )}
+                          {isResolved && (
+                            <div className="flex justify-between">
+                              <span className="flex items-center gap-1">✅ Issue Successfully Resolved</span>
+                              <span className="font-mono text-emerald-400">+50 PTS</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

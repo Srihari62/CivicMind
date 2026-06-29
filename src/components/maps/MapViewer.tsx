@@ -129,7 +129,16 @@ export function MapViewer({
       </div>
 
       {/* Map Content Box */}
-      <div className="h-[320px] w-full rounded-2xl overflow-hidden border border-slate-800 bg-slate-950/40 relative shadow-lg">
+      <div 
+        className="h-[320px] w-full rounded-2xl overflow-hidden border border-slate-800 bg-slate-950/40 relative shadow-lg"
+        onTouchStart={(e) => e.stopPropagation()}
+        onTouchMove={(e) => e.stopPropagation()}
+        onTouchEnd={(e) => e.stopPropagation()}
+        onWheel={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onMouseMove={(e) => e.stopPropagation()}
+        onMouseUp={(e) => e.stopPropagation()}
+      >
         {!apiKey ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-slate-950/60 backdrop-blur-sm gap-2">
             <AlertCircle className="h-8 w-8 text-amber-500 animate-bounce" />
