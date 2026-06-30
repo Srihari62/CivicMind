@@ -49,7 +49,9 @@ jobs:
         run: |
           ENV_VARS="^|^GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}|NEXT_PUBLIC_FIREBASE_PROJECT_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}"
           if [ -n "${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}" ]; then
-            ENV_VARS="$ENV_VARS|FIREBASE_SERVICE_ACCOUNT_KEY=${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}"
+            # Encode as base64 to avoid JSON parsing/escaping issues in bash
+            B64_KEY=$(echo -n "${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}" | base64 -w 0)
+            ENV_VARS="$ENV_VARS|FIREBASE_SERVICE_ACCOUNT_KEY_BASE64=$B64_KEY"
           fi
 
           gcloud run deploy "$SERVICE_NAME" \
