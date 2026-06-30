@@ -67,7 +67,6 @@ export class UserRepository {
     uid: string,
     profile: Omit<FirestoreUserProfile, "uid" | "createdAt" | "updatedAt">
   ): Promise<void> {
-    const docRef = doc(db, COLLECTIONS.USERS, uid);
     const now = new Date().toISOString();
     
     const data: FirestoreUserProfile = {
@@ -77,6 +76,23 @@ export class UserRepository {
       updatedAt: now,
     };
     
+    // Remove undefined fields to prevent Admin SDK errors
+    Object.keys(data).forEach((key) => {
+      if (data[key as keyof FirestoreUserProfile] === undefined) {
+        delete data[key as keyof FirestoreUserProfile];
+      }
+    });
+
+    if (typeof window === "undefined") {
+      const { safeDb, adminDb } = await import("@/services/firebase/admin");
+      const useAdmin = await safeDb.checkAdminSupport();
+      if (useAdmin && adminDb) {
+        await adminDb.collection("users").doc(uid).set(data);
+        return;
+      }
+    }
+
+    const docRef = doc(db, COLLECTIONS.USERS, uid);
     await setDoc(docRef, data);
   }
 
