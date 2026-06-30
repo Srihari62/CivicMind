@@ -21,13 +21,13 @@ interface MapPickerProps {
 }
 
 // Inner helper to synchronize map camera panning when coordinates are updated
-function MapCameraHandler({ center }: { center: { lat: number; lng: number } }) {
+function MapCameraHandler({ lat, lng }: { lat: number; lng: number }) {
   const map = useMap();
   useEffect(() => {
     if (map) {
-      map.panTo(center);
+      map.panTo({ lat, lng });
     }
-  }, [center, map]);
+  }, [lat, lng, map]);
   return null;
 }
 
@@ -195,11 +195,10 @@ export function MapPicker({
           <Map
             defaultZoom={15}
             defaultCenter={{ lat: position[0], lng: position[1] }}
-            center={{ lat: position[0], lng: position[1] }}
             mapId="DEMO_MAP_ID"
             onClick={handleMapClick}
             gestureHandling="greedy"
-            disableDefaultUI={true}
+            disableDefaultUI={false}
             style={{ width: "100%", height: "100%" }}
           >
             <AdvancedMarker
@@ -214,7 +213,7 @@ export function MapPicker({
                 </div>
               </div>
             </AdvancedMarker>
-            <MapCameraHandler center={{ lat: position[0], lng: position[1] }} />
+            <MapCameraHandler lat={position[0]} lng={position[1]} />
           </Map>
         )}
       </div>

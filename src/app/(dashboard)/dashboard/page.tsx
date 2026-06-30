@@ -15,7 +15,13 @@ import Link from "next/link";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db, COLLECTIONS } from "@/services/firebase/firestore";
 import { CivicReport } from "@/types";
-import { Clock, CheckCircle2, XCircle, AlertCircle, ArrowRight, ShieldAlert, Wrench } from "lucide-react";
+import { Clock, CheckCircle2, XCircle, AlertCircle, ArrowRight,  Sparkles,
+  Zap,
+  LayoutDashboard,
+  User,
+  LogOut,
+  MessageSquare
+} from "lucide-react";
 import { ISSUE_CATEGORIES } from "@/constants";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -167,24 +173,31 @@ export default function CitizenDashboardPage() {
         {/* Floating Glassmorphic Navigation Bar */}
         <header className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-8 py-3.5 max-w-6xl mx-auto bg-white/80 border border-white/60 backdrop-blur-2xl rounded-full mt-6 mx-auto w-[92%] shadow-[0_8px_30px_rgb(163,177,198,0.2)] transition-transform duration-200">
           <div className="flex items-center gap-6">
-            <span className="font-extrabold text-blue-600 tracking-wider flex items-center gap-1.5 select-none text-base">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
-              CivicMind
-            </span>
-            <nav className="hidden md:flex items-center gap-6 text-xs font-black uppercase tracking-widest">
-              <Link href="/dashboard" className="text-blue-600 border-b-2 border-blue-500 pb-1">
-                Dashboard
+            <Link href="/" className="font-extrabold text-blue-600 tracking-wider flex items-center gap-1.5 select-none text-base">
+              <span className="hidden sm:flex w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
+              <span className="hidden sm:inline">CivicMind</span>
+              <span className="sm:hidden w-8 h-8 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white shadow-md text-sm font-black tracking-normal">CM</span>
+            </Link>
+            
+            {/* Desktop Navbar */}
+            <nav className="hidden md:flex bg-slate-100/80 p-1.5 rounded-full border border-slate-200/50 items-center gap-1 text-[10px] font-black uppercase tracking-widest relative">
+              <Link href="/dashboard" className="relative px-4 py-2 rounded-full transition-all text-blue-600">
+                <motion.div
+                  layoutId="nav-indicator-dashboard"
+                  className="absolute inset-0 bg-white shadow-sm border border-slate-200/50 rounded-full"
+                />
+                <span className="relative z-10">Dashboard</span>
               </Link>
-              <Link href="/community" className="text-slate-400 hover:text-slate-800 transition">
-                Community Feed
+              <Link href="/community" className="relative px-4 py-2 rounded-full transition-all text-slate-500 hover:text-slate-800">
+                <span className="relative z-10">Community Feed</span>
               </Link>
             </nav>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             {/* Notification Center component integrated */}
             <NotificationCenter />
             
-            <Link href="/reports/new">
+            <Link href="/reports/new" className="hidden sm:block">
               <Button size="sm" variant="primary">Report Issue</Button>
             </Link>
             
@@ -198,14 +211,14 @@ export default function CitizenDashboardPage() {
               )}
             </Link>
 
-            <Button variant="outline" size="sm" onClick={() => logout()}>
-              Sign Out
+            <Button variant="ghost" size="icon" onClick={() => logout()} className="text-slate-500 hover:bg-slate-100 rounded-full">
+              <LogOut className="w-4 h-4" />
             </Button>
           </div>
         </header>
 
         {/* Dashboard Area */}
-        <main className="flex-1 max-w-4xl w-full mx-auto px-6 pt-36 pb-24 flex flex-col gap-8 relative z-10">
+        <main className="flex-1 max-w-6xl w-[92%] mx-auto pt-36 pb-24 flex flex-col gap-8 relative z-10">
           {/* Welcome Title */}
           <div className="flex flex-col gap-2 pb-2">
             <h1 className="text-4xl font-black tracking-tight text-slate-800">
@@ -354,6 +367,34 @@ export default function CitizenDashboardPage() {
             )}
           </div>
         </main>
+        
+        {/* Mobile Bottom Navigation */}
+        <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden border-t border-slate-200/80 bg-white/90 backdrop-blur-2xl py-2 px-6 flex justify-around items-center shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+          <Link href="/dashboard" className="flex flex-col items-center gap-1 p-2 text-blue-600">
+            <div className="relative">
+              <LayoutDashboard className="w-5 h-5" />
+              <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+              </span>
+            </div>
+            <span className="text-[9px] font-black uppercase tracking-wider">Dashboard</span>
+          </Link>
+          <Link href="/community" className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-slate-600 transition-colors">
+            <MessageSquare className="w-5 h-5" />
+            <span className="text-[9px] font-black uppercase tracking-wider">Feed</span>
+          </Link>
+          <Link href="/reports/new" className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-slate-600 transition-colors relative -top-3">
+            <div className="bg-blue-600 text-white p-3 rounded-full shadow-lg shadow-blue-500/30">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <span className="text-[9px] font-black uppercase tracking-wider mt-1 text-slate-500">Report</span>
+          </Link>
+          <Link href="/profile" className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-slate-600 transition-colors">
+            <User className="w-5 h-5" />
+            <span className="text-[9px] font-black uppercase tracking-wider">Profile</span>
+          </Link>
+        </div>
       </div>
     </RouteGuard>
   );

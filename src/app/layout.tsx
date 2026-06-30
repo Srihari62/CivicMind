@@ -11,6 +11,7 @@ import "@/styles/globals.css";
 import { QueryProvider } from "@/providers/query-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { AuthProvider } from "@/providers/auth-provider";
+import NextTopLoader from "nextjs-toploader";
 
 // Load Geist Sans Font (modern clean typography)
 const geistSans = Geist({
@@ -62,6 +63,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           <ThemeProvider defaultTheme="system" storageKey="civicmind-theme">
             <AuthProvider>
               <GoogleMapsProvider>
+                <NextTopLoader color="#3b82f6" height={3} showSpinner={false} />
                 {children}
               </GoogleMapsProvider>
             </AuthProvider>

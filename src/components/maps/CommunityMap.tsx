@@ -103,20 +103,13 @@ export default function CommunityMap({ center, reports, radiusKm }: CommunityMap
   return (
     <div 
       className="h-full w-full relative z-0"
-      onTouchStart={(e) => e.stopPropagation()}
-      onTouchMove={(e) => e.stopPropagation()}
-      onTouchEnd={(e) => e.stopPropagation()}
-      onWheel={(e) => e.stopPropagation()}
-      onMouseDown={(e) => e.stopPropagation()}
-      onMouseMove={(e) => e.stopPropagation()}
-      onMouseUp={(e) => e.stopPropagation()}
     >
       <Map
         defaultZoom={14}
         defaultCenter={centerObj}
         mapId="DEMO_MAP_ID"
         gestureHandling="greedy"
-        disableDefaultUI={true}
+        disableDefaultUI={false}
         style={{ width: "100%", height: "100%" }}
       >
         {/* User Location Pulsar Marker */}

@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 export default function RegisterPage() {
   return (
     <RouteGuard requireAuth={false}>
-      <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-slate-50 text-slate-800 selection:bg-indigo-500/20 selection:text-slate-900 relative overflow-x-hidden">
+      <div className="flex flex-col min-h-screen bg-slate-50 text-slate-800 selection:bg-indigo-500/20 selection:text-slate-900 relative overflow-x-hidden">
         {/* Ambient Background Data Stream Effects */}
         <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none opacity-65">
           <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-blue-200/30 blur-[120px] animate-blob" />
@@ -44,7 +44,8 @@ export default function RegisterPage() {
           </div>
         </header>
 
-        <div className="w-full max-w-md flex flex-col gap-6 clay-card p-8 sm:p-10 relative z-10">
+        <main className="flex-1 flex flex-col items-center justify-center w-full max-w-7xl mx-auto p-6 pt-32 pb-12 z-10">
+          <div className="w-full max-w-md flex flex-col gap-6 clay-card p-8 sm:p-10 relative z-10 w-full">
           {/* Branding header */}
           <div className="flex flex-col gap-2 text-center">
             <Link href="/" className="text-3xl font-black tracking-tight text-blue-600 hover:opacity-90 transition-opacity">
@@ -66,7 +67,8 @@ export default function RegisterPage() {
               Sign in
             </Link>
           </div>
-        </div>
+          </div>
+        </main>
       </div>
     </RouteGuard>
   );

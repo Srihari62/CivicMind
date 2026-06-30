@@ -339,9 +339,9 @@ export default function AnalyticsCharts({ reports }: AnalyticsChartsProps) {
  </defs>
 
  {/* Grid Lines */}
- <line x1="0" y1={sparkHeight / 2} x2={sparkWidth} y2={sparkHeight / 2} stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
- <line x1="0" y1="10" x2={sparkWidth} y2="10" stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
- <line x1="0" y1={sparkHeight - 10} x2={sparkWidth} y2={sparkHeight - 10} stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
+ <line x1="0" y1={sparkHeight / 2} x2={sparkWidth} y2={sparkHeight / 2} stroke="rgba(0,0,0,0.1)" strokeDasharray="3 3" />
+ <line x1="0" y1="10" x2={sparkWidth} y2="10" stroke="rgba(0,0,0,0.1)" strokeDasharray="3 3" />
+ <line x1="0" y1={sparkHeight - 10} x2={sparkWidth} y2={sparkHeight - 10} stroke="rgba(0,0,0,0.1)" strokeDasharray="3 3" />
 
  {/* Shaded Area */}
  {points.length > 0 && (

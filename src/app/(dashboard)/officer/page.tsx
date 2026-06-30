@@ -196,7 +196,7 @@ export default function OfficerDashboardPage() {
  });
 
  return (
- <div className="max-w-6xl w-full mx-auto px-6 py-6 flex flex-col gap-8 relative z-10">
+ <div className="max-w-6xl w-[92%] mx-auto px-0 py-6 flex flex-col gap-8 relative z-10">
 
  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
  <div className="flex flex-col gap-1">

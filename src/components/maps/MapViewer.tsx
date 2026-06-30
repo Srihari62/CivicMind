@@ -21,13 +21,13 @@ interface MapViewerProps {
 }
 
 // Inner helper to synchronize map camera panning when coordinates are updated
-function MapCameraHandler({ center }: { center: { lat: number; lng: number } }) {
+function MapCameraHandler({ lat, lng }: { lat: number; lng: number }) {
   const map = useMap();
   useEffect(() => {
     if (map) {
-      map.panTo(center);
+      map.panTo({ lat, lng });
     }
-  }, [center, map]);
+  }, [lat, lng, map]);
   return null;
 }
 
@@ -41,7 +41,7 @@ export function MapViewer({
 }: MapViewerProps) {
   const [mapType, setMapType] = useState<"roadmap" | "satellite">("roadmap");
   const [copied, setCopied] = useState(false);
-  const [infoWindowOpen, setInfoWindowOpen] = useState(true);
+  const [infoWindowOpen, setInfoWindowOpen] = useState(false);
 
   const position: [number, number] = [latitude, longitude];
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -131,13 +131,6 @@ export function MapViewer({
       {/* Map Content Box */}
       <div 
         className="h-[320px] w-full rounded-2xl overflow-hidden border border-slate-800 bg-slate-950/40 relative shadow-lg"
-        onTouchStart={(e) => e.stopPropagation()}
-        onTouchMove={(e) => e.stopPropagation()}
-        onTouchEnd={(e) => e.stopPropagation()}
-        onWheel={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-        onMouseMove={(e) => e.stopPropagation()}
-        onMouseUp={(e) => e.stopPropagation()}
       >
         {!apiKey ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-slate-950/60 backdrop-blur-sm gap-2">
@@ -151,11 +144,10 @@ export function MapViewer({
           <Map
             defaultZoom={16}
             defaultCenter={{ lat: position[0], lng: position[1] }}
-            center={{ lat: position[0], lng: position[1] }}
             mapId="DEMO_MAP_ID"
             mapTypeId={mapType}
             gestureHandling="greedy"
-            disableDefaultUI={true}
+            disableDefaultUI={false}
             style={{ width: "100%", height: "100%" }}
           >
             <AdvancedMarker
@@ -177,7 +169,7 @@ export function MapViewer({
                 />
               </InfoWindow>
             )}
-            <MapCameraHandler center={{ lat: position[0], lng: position[1] }} />
+            <MapCameraHandler lat={position[0]} lng={position[1]} />
           </Map>
         )}
       </div>

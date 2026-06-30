@@ -81,7 +81,7 @@ export default function OfficerPerformance({ officers, reports }: OfficerPerform
  <th className="px-4 py-3 text-right">Efficiency Score</th>
  </tr>
  </thead>
- <tbody className="divide-y divide-white/5">
+ <tbody className="divide-y divide-slate-100">
  {sortedOfficers.length === 0 ? (
  <tr>
  <td colSpan={7} className="px-4 py-8 text-center text-slate-500 italic">
@@ -96,7 +96,7 @@ export default function OfficerPerformance({ officers, reports }: OfficerPerform
  return (
  <tr 
  key={stat.profile.uid} 
- className={`hover:bg-white/[0.02] transition-colors ${
+ className={`hover:bg-slate-50 transition-colors ${
  isTopPerformer ?"bg-yellow-500/[0.03] border-l-2 border-l-yellow-500" :""
  }`}
  >
@@ -111,8 +111,8 @@ export default function OfficerPerformance({ officers, reports }: OfficerPerform
 )}
  </div>
  {isTopPerformer && (
- <div className="absolute -top-1.5 -right-1.5 p-0.5 rounded-full bg-yellow-500 border border-zinc-950">
- <Award className="w-3 h-3 text-zinc-950" />
+ <div className="absolute -top-1.5 -right-1.5 p-0.5 rounded-full bg-yellow-500 border border-white">
+ <Award className="w-3 h-3 text-white" />
  </div>
 )}
  </div>

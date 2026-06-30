@@ -12,7 +12,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { updateOfficerAvailabilityAction } from "@/app/actions/officer.actions";
-import { User, LogOut, CheckCircle2, AlertCircle, LayoutDashboard, Shield } from "lucide-react";
+import { LayoutDashboard, AlertCircle, CheckCircle2, User, LogOut } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function OfficerLayout({ children }: { children: React.ReactNode }) {
   const { profile, logout } = useAuth();
@@ -55,37 +56,47 @@ export default function OfficerLayout({ children }: { children: React.ReactNode 
         {/* Floating Glassmorphic Header */}
         <header className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-8 py-3.5 max-w-6xl mx-auto bg-white/80 border border-white/60 backdrop-blur-2xl rounded-full mt-6 mx-auto w-[92%] shadow-[0_8px_30px_rgb(163,177,198,0.2)] transition-transform duration-200">
           <div className="flex items-center gap-6">
-            <span className="font-extrabold text-blue-600 tracking-wider flex items-center gap-1.5 select-none text-base">
-              <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse" />
-              CivicMind
-            </span>
+            <Link href="/" className="font-extrabold text-blue-600 tracking-wider flex items-center gap-1.5 select-none text-base">
+              <span className="hidden sm:flex w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse" />
+              <span className="hidden sm:inline">CivicMind</span>
+              <span className="sm:hidden w-8 h-8 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white shadow-md text-sm font-black tracking-normal">CM</span>
+            </Link>
             <span className="hidden sm:inline-block text-[9px] bg-orange-100 text-orange-650 font-bold uppercase tracking-widest px-2.5 py-1 rounded-full border border-orange-200/50">
               Staff Console
             </span>
-            <nav className="hidden md:flex items-center gap-6 text-xs font-black uppercase tracking-widest">
+            {/* Desktop Navbar */}
+            <nav className="hidden md:flex bg-slate-100/80 p-1.5 rounded-full border border-slate-200/50 items-center gap-1 text-[10px] font-black uppercase tracking-widest relative">
               {navLinks.map((link) => {
                 const isActive = pathname === link.href;
                 return (
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`transition-all flex items-center gap-1.5 ${
+                    className={`relative px-4 py-2 rounded-full transition-all flex items-center gap-1.5 ${
                       isActive
-                        ? "text-orange-650 border-b-2 border-orange-500 pb-0.5"
-                        : "text-slate-400 hover:text-slate-800"
+                        ? "text-orange-600"
+                        : "text-slate-500 hover:text-slate-800"
                     }`}
                   >
-                    <link.icon className="h-3.5 w-3.5" />
-                    {link.label}
+                    {isActive && (
+                      <motion.div
+                        layoutId="nav-indicator-officer"
+                        className="absolute inset-0 bg-white shadow-sm border border-slate-200/50 rounded-full z-0"
+                      />
+                    )}
+                    <span className="relative z-10 flex items-center gap-1.5">
+                      <link.icon className="h-3.5 w-3.5" />
+                      {link.label}
+                    </span>
                   </Link>
                 );
               })}
             </nav>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             {/* Duty Status Select */}
-            <div className="flex items-center gap-1.5 bg-slate-100 border border-slate-200 rounded-full px-3.5 py-1.5 text-xs shadow-inner">
+            <div className="flex items-center gap-1.5 bg-slate-100 border border-slate-200 rounded-full px-2 sm:px-3.5 py-1.5 text-[10px] sm:text-xs shadow-inner">
               <span className="text-slate-400 font-bold">Duty:</span>
               <select
                 value={availability}
@@ -115,12 +126,8 @@ export default function OfficerLayout({ children }: { children: React.ReactNode 
             </Link>
 
             {/* Logout Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => logout()}
-            >
-              Sign Out
+            <Button variant="ghost" size="icon" onClick={() => logout()} className="text-slate-500 hover:bg-slate-100 rounded-full">
+              <LogOut className="w-4 h-4" />
             </Button>
           </div>
         </header>

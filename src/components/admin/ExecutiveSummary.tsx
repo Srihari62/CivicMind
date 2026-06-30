@@ -169,7 +169,7 @@ export default function ExecutiveSummary({ reports, avgResolutionTime }: Executi
  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-sm">
  {/* Daily summary & Emerging Issues */}
  <div className="space-y-5">
- <div className="space-y-2 p-4 rounded-xl bg-white/5 border border-slate-200">
+ <div className="space-y-2 p-4 rounded-xl bg-slate-50 border border-slate-200">
  <span className="text-xs font-bold text-blue-400 uppercase tracking-widest block flex items-center gap-1.5">
  <Layers className="w-3.5 h-3.5" />
  Operational Status Brief
@@ -179,7 +179,7 @@ export default function ExecutiveSummary({ reports, avgResolutionTime }: Executi
  </p>
  </div>
 
- <div className="space-y-2 p-4 rounded-xl bg-white/5 border border-slate-200">
+ <div className="space-y-2 p-4 rounded-xl bg-slate-50 border border-slate-200">
  <span className="text-xs font-bold text-amber-400 uppercase tracking-widest block flex items-center gap-1.5">
  <ListTodo className="w-3.5 h-3.5" />
  Emerging Hotspots & Issues
@@ -193,7 +193,7 @@ export default function ExecutiveSummary({ reports, avgResolutionTime }: Executi
  {/* Department Loads & Strategic Planning */}
  <div className="space-y-5">
  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
- <div className="p-4 rounded-xl bg-white/5 border border-slate-200 space-y-1.5">
+ <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
  <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest block flex items-center gap-1">
  <Route className="w-3 h-3" /> Peak Division
  </span>
@@ -202,7 +202,7 @@ export default function ExecutiveSummary({ reports, avgResolutionTime }: Executi
  </span>
  </div>
 
- <div className="p-4 rounded-xl bg-white/5 border border-slate-200 space-y-1.5">
+ <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
  <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest block flex items-center gap-1">
  <Lightbulb className="w-3 h-3" /> Budget Allocation
  </span>
@@ -212,7 +212,7 @@ export default function ExecutiveSummary({ reports, avgResolutionTime }: Executi
  </div>
  </div>
 
- <div className="p-4 rounded-xl bg-gradient-to-r from-blue-950/20 to-indigo-950/25 border border-blue-500/10 space-y-2">
+ <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-500/10 space-y-2">
  <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest block">
  Executive Action Recommendations
  </span>
