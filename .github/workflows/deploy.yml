@@ -46,11 +46,15 @@ jobs:
           _NEXT_PUBLIC_APP_URL="${{ secrets.NEXT_PUBLIC_APP_URL }}"
 
       - name: Deploy to Cloud Run
+        env:
+          FIREBASE_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+          GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PROJECT_ID_SECRET: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
         run: |
-          ENV_VARS="^|^GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}|NEXT_PUBLIC_FIREBASE_PROJECT_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}"
-          if [ -n "${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}" ]; then
+          ENV_VARS="^|^GEMINI_API_KEY=$GEMINI_KEY|NEXT_PUBLIC_FIREBASE_PROJECT_ID=$PROJECT_ID_SECRET"
+          if [ -n "$FIREBASE_KEY" ]; then
             # Encode as base64 to avoid JSON parsing/escaping issues in bash
-            B64_KEY=$(echo -n "${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}" | base64 -w 0)
+            B64_KEY=$(echo -n "$FIREBASE_KEY" | base64 -w 0)
             ENV_VARS="$ENV_VARS|FIREBASE_SERVICE_ACCOUNT_KEY_BASE64=$B64_KEY"
           fi
 
