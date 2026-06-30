@@ -125,6 +125,9 @@ export interface CivicReport {
   id: string;
   status: ReportStatus;
   reportedCount?: number;
+  supportCount?: number;
+  notFoundCount?: number;
+  commentsCount?: number;
 
   metadata: {
     title: string;
@@ -135,6 +138,9 @@ export interface CivicReport {
   };
 
   location: ReportLocation;
+  state?: string;
+  city?: string;
+  locality?: string;
 
   evidence: {
     media: MediaAsset[];

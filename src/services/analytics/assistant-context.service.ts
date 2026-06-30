@@ -16,12 +16,7 @@ interface ContextCache {
 }
 
 export class AssistantContextService {
-  private static cache: ContextCache = {
-    lastFetched: 0,
-    analytics: null,
-    rawReports: [],
-    rawUsers: [],
-  };
+  private static caches: Record<string, ContextCache> = {};
 
   private static CACHE_TTL_MS = 45 * 1000; // 45 seconds cache TTL
 
@@ -29,44 +24,64 @@ export class AssistantContextService {
    * Fetches latest data, computes analytics, and caches the result.
    * Can force refresh if needed (e.g., when the user clicks 'Sync Command Center').
    */
-  public static async getMunicipalContext(forceRefresh = false): Promise<MunicipalAnalyticsSummary> {
-    const now = Date.now();
-    const isCacheExpired = now - this.cache.lastFetched > this.CACHE_TTL_MS;
+  public static async getMunicipalContext(forceRefresh = false, callerUid?: string): Promise<MunicipalAnalyticsSummary> {
+    let stateKey = "global";
+    let adminState = "";
+    if (callerUid) {
+      const userProfile = await UserRepository.getUserProfile(callerUid);
+      if (userProfile && userProfile.state) {
+        adminState = userProfile.state;
+        stateKey = `state_${adminState}`;
+      }
+    }
 
-    if (!this.cache.analytics || isCacheExpired || forceRefresh) {
-      console.info(`[AssistantContextService] Fetching fresh datasets from Firestore (forceRefresh=${forceRefresh})`);
+    const now = Date.now();
+    const cache = this.caches[stateKey] || {
+      lastFetched: 0,
+      analytics: null,
+      rawReports: [],
+      rawUsers: [],
+    };
+    const isCacheExpired = now - cache.lastFetched > this.CACHE_TTL_MS;
+
+    if (!cache.analytics || isCacheExpired || forceRefresh) {
+      console.info(`[AssistantContextService] Fetching fresh datasets from Firestore for ${stateKey} (forceRefresh=${forceRefresh})`);
       
-      // Fetch both reports and users from repositories (safe for server-side environments)
-      const [reports, users] = await Promise.all([
-        ReportRepository.getAllReports(),
-        UserRepository.getAllUsers()
-      ]);
+      let reports: CivicReport[] = [];
+      let users: FirestoreUserProfile[] = [];
+
+      if (adminState) {
+        [reports, users] = await Promise.all([
+          ReportRepository.getReportsByState(adminState),
+          UserRepository.getAllUsers()
+        ]);
+      } else {
+        [reports, users] = await Promise.all([
+          ReportRepository.getAllReports(),
+          UserRepository.getAllUsers()
+        ]);
+      }
 
       const analytics = AnalyticsService.calculateAnalytics(reports, users);
 
-      this.cache = {
+      this.caches[stateKey] = {
         lastFetched: now,
         analytics,
         rawReports: reports,
         rawUsers: users,
       };
     } else {
-      console.info("[AssistantContextService] Serving cached municipal context (TTL remaining)");
+      console.info(`[AssistantContextService] Serving cached municipal context for ${stateKey} (TTL remaining)`);
     }
 
-    return this.cache.analytics!;
+    return this.caches[stateKey].analytics!;
   }
 
   /**
    * Clear the cache.
    */
   public static clearCache(): void {
-    this.cache = {
-      lastFetched: 0,
-      analytics: null,
-      rawReports: [],
-      rawUsers: [],
-    };
+    this.caches = {};
   }
 
   /**

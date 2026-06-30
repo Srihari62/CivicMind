@@ -12,8 +12,11 @@ import { CivicReport, MediaAsset } from "@/types";
 import { EvidenceAnalysisResult } from "@/ai/types/ai.types";
 import { getGeminiModel } from "@/services/gemini/config";
 import { AssistantContextService } from "@/services/analytics/assistant-context.service";
+import { AI_MODELS } from "@/config/ai-models";
+import { TranscriptPolisherAgent } from "@/ai/agents/transcript-polisher.agent";
 
 import { authorizeAction } from "./auth-guard";
+import { UserRepository } from "@/features/auth/repositories/user.repository";
 
 export interface AIAnalysisPayload {
   media: MediaAsset[];
@@ -158,6 +161,9 @@ export interface ExecutiveSummaryResponse {
 export async function getAIExecutiveSummary(callerUid: string, stats: ExecutiveSummaryStats): Promise<ExecutiveSummaryResponse> {
   try {
     await authorizeAction(callerUid, ["admin"]);
+    const userProfile = await UserRepository.getUserProfile(callerUid);
+    const preferredLanguage = userProfile?.preferredLanguage || "English";
+    
     const model = getGeminiModel();
     const prompt = `You are a Smart City Executive AI Assistant for the CivicMind Command Center. Analyze the following municipal metrics for today:
 - Total reports in system: ${stats.totalCount}
@@ -172,6 +178,7 @@ export async function getAIExecutiveSummary(callerUid: string, stats: ExecutiveS
 - Department breakdown: ${JSON.stringify(stats.deptBreakdown)}
 
 Provide an executive operational report of exactly 150-200 words. Format your response strictly as a single JSON object.
+Your report values must be written/translated into the preferred language of the administrator: ${preferredLanguage}.
 Return ONLY raw JSON with these exact keys:
 {
   "dailySummary": "Brief overview of city operations today",
@@ -223,12 +230,16 @@ export async function getAIPredictiveInsights(
 ): Promise<PredictiveInsight[]> {
   try {
     await authorizeAction(callerUid, ["admin"]);
+    const userProfile = await UserRepository.getUserProfile(callerUid);
+    const preferredLanguage = userProfile?.preferredLanguage || "English";
+
     const model = getGeminiModel();
     const prompt = `You are a Smart City Predictive Urban Planning AI. Analyze the following list of recent municipal reports:
 ${reportsData.slice(0, 45).map(r => `- ID: ${r.id}, Category: ${r.category}, Dept: ${r.dept}, Lat: ${r.lat.toFixed(4)}, Lng: ${r.lng.toFixed(4)}, Created: ${r.created}`).join("\n")}
 
 Identify potential geographic clusters, recurring category hotspots, temporal spikes, and operational bottlenecks.
 Return exactly 3 predictive insights. Format your response strictly as a single JSON array of objects.
+Your predictive insight values (title, description, recommendedAction) must be written/translated into the preferred language of the administrator: ${preferredLanguage}.
 Return ONLY raw JSON in this format:
 [
   {
@@ -305,14 +316,18 @@ export async function askMunicipalAssistant(
 ): Promise<AskAssistantResponse> {
   try {
     await authorizeAction(callerUid, ["admin"]);
+    const userProfile = await UserRepository.getUserProfile(callerUid);
+    const preferredLanguage = userProfile?.preferredLanguage || "English";
+
     // 1. Retrieve the cached or fresh municipal context
-    const analytics = await AssistantContextService.getMunicipalContext(forceRefresh);
+    const analytics = await AssistantContextService.getMunicipalContext(forceRefresh, callerUid);
     const compactContext = AssistantContextService.buildCompactContext(analytics);
 
     const model = getGeminiModel();
 
     if (mode === "executive_brief") {
       const prompt = `You are an experienced Smart City Municipal Operations Analyst. Analyze the city's operational context and generate a structured Executive Brief of approximately 250 words total.
+Your output JSON values must be written/translated into the preferred language of the administrator: ${preferredLanguage}.
 Your output must be a valid JSON object. Do not include any markdown, backticks, or other text outside of the JSON object.
 Ensure the JSON is strictly parsable.
 
@@ -367,6 +382,7 @@ ${compactContext}`;
           text: `System Instruction: You are an experienced municipal operations analyst for the CivicMind Command Center.
 You help city administrators make strategic operational decisions based on real data.
 Your responses must be concise, actionable, evidence-based, professional, and decision-oriented.
+All responses must be written/translated into the preferred language of the administrator: ${preferredLanguage}.
 
 Strict Guidelines:
 1. Ground every statistic and number in the provided context. If a metric is not present in the context, do not make it up.
@@ -412,6 +428,127 @@ ${compactContext}`
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error occurred.",
+    };
+  }
+}
+
+/**
+ * Server Action to verify a community verification photo against the original report description/context.
+ */
+export async function verifyVerificationPhoto(
+  callerUid: string,
+  reportId: string,
+  verificationPhotoUrl: string,
+  verificationComment?: string
+): Promise<{ success: boolean; matches: boolean; confidence: number; reason: string }> {
+  try {
+    await authorizeAction(callerUid, ["citizen", "officer", "admin"]);
+    
+    // 1. Retrieve original report details
+    const { safeDb } = await import("@/services/firebase/admin");
+    const report = await safeDb.getReport(reportId);
+    if (!report) {
+      throw new Error("Original report not found.");
+    }
+
+    const reportTitle = report.ai?.assistant?.title || report.metadata.title;
+    const reportDesc = report.ai?.assistant?.description || report.metadata.description;
+    const reportCat = report.ai?.assistant?.category || report.metadata.category;
+
+    // 2. Build system instructions and prompt
+    const systemInstruction = `You are a Smart City Civic Verification AI agent.
+Your task is to analyze a new photo uploaded by a citizen attempting to verify/confirm an existing civic issue report.
+You must compare the uploaded image against the original report details (title, description, and category) to verify if the photo indeed displays the same issue or a highly related situation at the same site.
+You must output a JSON response containing:
+1. "matches": boolean (true if the photo matches/corresponds to the reported issue, false if it is unrelated, spam, or different).
+2. "confidence": number (0-100 indicating your confidence in the decision).
+3. "reason": string (a concise explanation in English of your analysis).
+
+Return ONLY raw JSON conforming to this schema. Do not output markdown blocks.`;
+
+    const prompt = `Original Report:
+- Title: ${reportTitle}
+- Category: ${reportCat}
+- Description: ${reportDesc}
+
+Verification details provided by citizen:
+- Comment/Context: ${verificationComment || "No comment provided."}
+
+Analyze the attached photo and determine if it represents a valid verification photo for the original report.`;
+
+    // Guess the mimeType of the photo (usually image/jpeg or image/png)
+    let mimeType = "image/jpeg";
+    if (verificationPhotoUrl.toLowerCase().endsWith(".png")) {
+      mimeType = "image/png";
+    } else if (verificationPhotoUrl.toLowerCase().endsWith(".webp")) {
+      mimeType = "image/webp";
+    }
+
+    // Call GeminiService.generateJson
+    const { GeminiService } = await import("@/ai/services/gemini.service");
+    const result = await GeminiService.generateJson<{
+      matches: boolean;
+      confidence: number;
+      reason: string;
+    }>(
+      systemInstruction,
+      prompt,
+      [{ url: verificationPhotoUrl, mimeType }],
+      ["matches", "confidence", "reason"],
+      AI_MODELS.VERIFICATION,
+      0.1
+    );
+
+    return {
+      success: true,
+      matches: result.matches,
+      confidence: result.confidence,
+      reason: result.reason,
+    };
+  } catch (error) {
+    console.error("[verifyVerificationPhoto] Failed to verify verification photo:", error);
+    return {
+      success: false,
+      matches: false,
+      confidence: 0,
+      reason: error instanceof Error ? error.message : "Failed to run AI verification on the photo.",
+    };
+  }
+}
+
+// ─── Transcript Polishing ─────────────────────────────────────────────────────
+
+export interface PolishTranscriptResponse {
+  success: boolean;
+  polished?: string;
+  error?: string;
+}
+
+/**
+ * Polishes and moderates a completed speech-to-text transcript using Gemini.
+ * Runs ONLY after recording is complete. Never streams live audio.
+ * Preserves original language. Sanitizes offensive language while keeping civic intent.
+ *
+ * @param rawTranscript - The completed transcript from the browser's Web Speech API
+ * @param languageCode  - BCP-47 language tag (e.g. "te-IN", "hi-IN", "en-IN")
+ */
+export async function polishTranscriptAction(
+  rawTranscript: string,
+  languageCode = "en-IN"
+): Promise<PolishTranscriptResponse> {
+  if (!rawTranscript || rawTranscript.trim().length < 15) {
+    return { success: true, polished: rawTranscript };
+  }
+
+  try {
+    const agent = new TranscriptPolisherAgent();
+    const polished = await agent.polish(rawTranscript.trim(), languageCode);
+    return { success: true, polished };
+  } catch (err) {
+    console.error("[polishTranscriptAction] Error:", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Transcript polishing failed.",
     };
   }
 }

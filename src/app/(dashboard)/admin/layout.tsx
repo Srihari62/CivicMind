@@ -5,11 +5,14 @@
 
 "use client";
 
+import React, { useState } from "react";
 import { useAuth } from "@/providers/auth-provider";
 import { RouteGuard } from "@/features/auth/components/route-guard";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { motion } from "framer-motion";
+import { LogOut } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { profile, logout } = useAuth();
@@ -24,59 +27,71 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <RouteGuard allowedRoles={["admin"]}>
-      <div className="flex min-h-screen flex-col bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-950 via-slate-900 to-black text-slate-100 pb-16">
-        {/* Navigation Bar */}
-        <header className="border-b border-white/5 bg-black/60 backdrop-blur-md sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Link href="/admin" className="font-extrabold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-red-400 to-rose-500 text-lg">
-                CIVICMIND
-              </Link>
-              <span className="text-[10px] bg-red-500/10 text-red-400 font-mono px-2 py-0.5 rounded border border-red-500/20 font-black uppercase tracking-widest">
-                Municipal Command Center
-              </span>
-            </div>
-            
-            <nav className="hidden md:flex items-center gap-6">
+      <div className="flex min-h-screen flex-col bg-slate-50 text-slate-800 pb-16 relative overflow-x-hidden selection:bg-purple-500/20 selection:text-slate-900">
+        {/* Ambient background data stream effects */}
+        <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none opacity-65">
+          <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-blue-200/30 blur-[120px] animate-blob" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-purple-200/20 blur-[150px] animate-blob animation-delay-2000" />
+        </div>
+
+        {/* Floating Glassmorphic Header */}
+        <header className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-8 py-3.5 max-w-6xl mx-auto bg-white/80 border border-white/60 backdrop-blur-2xl rounded-full mt-6 mx-auto w-[92%] shadow-[0_8px_30px_rgb(163,177,198,0.2)] transition-transform duration-200">
+          <div className="flex items-center gap-6">
+            <Link href="/" className="font-extrabold text-blue-600 tracking-wider flex items-center gap-1.5 select-none text-base">
+              <span className="hidden sm:flex w-2.5 h-2.5 rounded-full bg-purple-500 animate-pulse" />
+              <span className="hidden sm:inline">CivicMind</span>
+              <span className="sm:hidden w-8 h-8 rounded-xl bg-gradient-to-br from-purple-400 to-purple-650 flex items-center justify-center text-white shadow-md text-sm font-black tracking-normal">CM</span>
+            </Link>
+            <span className="hidden sm:inline-block text-[9px] bg-purple-100 text-purple-650 font-bold uppercase tracking-widest px-2.5 py-1 rounded-full border border-purple-200/50">
+              Admin Console
+            </span>
+            {/* Desktop Navbar */}
+            <nav className="hidden md:flex bg-slate-100/80 p-1.5 rounded-full border border-slate-200/50 items-center gap-1 text-[10px] font-black uppercase tracking-widest relative">
               {navLinks.map((link) => {
                 const isActive = pathname === link.href || (link.href !== "/admin" && pathname.startsWith(link.href));
                 return (
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`text-xs font-black uppercase tracking-widest transition-all ${
+                    className={`relative px-4 py-2 rounded-full transition-all ${
                       isActive
-                        ? "text-red-400"
-                        : "text-zinc-400 hover:text-zinc-200"
+                        ? "text-purple-700"
+                        : "text-slate-500 hover:text-slate-800"
                     }`}
                   >
-                    {link.label}
+                    {isActive && (
+                      <motion.div
+                        layoutId="nav-indicator-admin"
+                        className="absolute inset-0 bg-white shadow-sm border border-slate-200/50 rounded-full z-0"
+                      />
+                    )}
+                    <span className="relative z-10">{link.label}</span>
                   </Link>
                 );
               })}
             </nav>
+          </div>
 
-            <div className="flex items-center gap-4">
-              <span className="text-xs text-zinc-400 font-semibold hidden lg:inline">
-                {profile?.email} ({profile?.role})
-              </span>
-              <Button variant="outline" size="sm" onClick={() => logout()} className="border-white/10 hover:bg-zinc-900 text-zinc-300">
-                Sign Out
-              </Button>
-            </div>
+          <div className="flex items-center gap-4">
+            <span className="text-xs text-slate-400 font-semibold hidden lg:inline">
+              {profile?.email}
+            </span>
+            <Button variant="ghost" size="icon" onClick={() => logout()} className="text-slate-500 hover:bg-slate-100 rounded-full">
+              <LogOut className="w-4 h-4" />
+            </Button>
           </div>
         </header>
 
         {/* Mobile Navigation */}
-        <div className="md:hidden border-b border-white/5 bg-black/40 backdrop-blur-md px-6 py-2 flex justify-around sticky top-16 z-40">
+        <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden border-t border-slate-200/80 bg-white/80 backdrop-blur-2xl py-3 px-6 flex justify-around shadow-2xl">
           {navLinks.map((link) => {
             const isActive = pathname === link.href || (link.href !== "/admin" && pathname.startsWith(link.href));
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`text-[10px] font-bold uppercase tracking-wider ${
-                  isActive ? "text-red-400" : "text-zinc-400"
+                className={`text-[10px] font-black uppercase tracking-wider ${
+                  isActive ? "text-purple-650" : "text-slate-400"
                 }`}
               >
                 {link.label.split(" ")[0]}
@@ -85,7 +100,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })}
         </div>
 
-        <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-8 flex flex-col gap-8">
+        {/* Main Content Area */}
+        <main className="flex-1 max-w-6xl w-[92%] mx-auto pt-36 pb-24 flex flex-col gap-8 relative z-10">
           {children}
         </main>
       </div>

@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CivicMind - Citizen Dashboard</title>
+<!-- Fonts & Icons -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config Injection -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-highest": "#e0e3e5",
+                    "on-secondary": "#ffffff",
+                    "surface-container-high": "#e6e8ea",
+                    "surface-variant": "#e0e3e5",
+                    "inverse-surface": "#2d3133",
+                    "error-container": "#ffdad6",
+                    "surface-dim": "#d8dadc",
+                    "on-background": "#191c1e",
+                    "on-surface": "#191c1e",
+                    "on-secondary-container": "#006e6e",
+                    "primary-fixed": "#dce1ff",
+                    "background": "#f7f9fb",
+                    "tertiary-fixed": "#f3daff",
+                    "inverse-on-surface": "#eff1f3",
+                    "secondary": "#006a6a",
+                    "primary-fixed-dim": "#b6c4ff",
+                    "tertiary-fixed-dim": "#e3b5ff",
+                    "on-tertiary-container": "#fff5fe",
+                    "tertiary": "#8900d3",
+                    "outline-variant": "#c4c5d6",
+                    "on-primary": "#ffffff",
+                    "secondary-fixed": "#93f2f2",
+                    "primary": "#214fc7",
+                    "secondary-container": "#90efef",
+                    "on-secondary-fixed": "#002020",
+                    "on-tertiary-fixed": "#2f004c",
+                    "inverse-primary": "#b6c4ff",
+                    "on-tertiary-fixed-variant": "#6e00ab",
+                    "tertiary-container": "#a72cf7",
+                    "on-primary-fixed": "#00164e",
+                    "outline": "#747685",
+                    "secondary-fixed-dim": "#76d6d5",
+                    "primary-container": "#4169e1",
+                    "surface-container-low": "#f2f4f6",
+                    "on-surface-variant": "#434654",
+                    "on-primary-fixed-variant": "#003baf",
+                    "surface-container": "#eceef0",
+                    "surface-bright": "#f7f9fb",
+                    "on-error": "#ffffff",
+                    "on-primary-container": "#f8f7ff",
+                    "surface-tint": "#2854cc",
+                    "on-secondary-fixed-variant": "#004f4f",
+                    "on-tertiary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "surface": "#f7f9fb",
+                    "on-error-container": "#93000a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-mobile": "24px",
+                    "stack-lg": "64px",
+                    "stack-md": "32px",
+                    "margin-desktop": "64px",
+                    "container-max": "1440px",
+                    "gutter": "32px",
+                    "unit": "8px",
+                    "stack-sm": "16px"
+            },
+            "fontFamily": {
+                    "headline-xl": [
+                            "Inter"
+                    ],
+                    "button": [
+                            "Inter"
+                    ],
+                    "display-lg": [
+                            "Inter"
+                    ],
+                    "display-lg-mobile": [
+                            "Inter"
+                    ],
+                    "body-lg": [
+                            "Inter"
+                    ],
+                    "body-md": [
+                            "Inter"
+                    ],
+                    "label-lg": [
+                            "Inter"
+                    ],
+                    "headline-lg": [
+                            "Inter"
+                    ]
+            },
+            "fontSize": {
+                    "headline-xl": [
+                            "40px",
+                            {
+                                    "lineHeight": "1.2",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "button": [
+                            "18px",
+                            {
+                                    "lineHeight": "1",
+                                    "letterSpacing": "0.02em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "display-lg": [
+                            "64px",
+                            {
+                                    "lineHeight": "1.1",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "800"
+                            }
+                    ],
+                    "display-lg-mobile": [
+                            "40px",
+                            {
+                                    "lineHeight": "1.2",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "800"
+                            }
+                    ],
+                    "body-lg": [
+                            "20px",
+                            {
+                                    "lineHeight": "1.6",
+                                    "letterSpacing": "0.01em",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "body-md": [
+                            "16px",
+                            {
+                                    "lineHeight": "1.6",
+                                    "letterSpacing": "0.01em",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "label-lg": [
+                            "16px",
+                            {
+                                    "lineHeight": "1.4",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "1.3",
+                                    "letterSpacing": "0em",
+                                    "fontWeight": "700"
+                            }
+                    ]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Custom Utilities for Clay/Glass styling not easily done with standard Tailwind config inline */
+        .clay-card {
+            background: theme('colors.surface-container-lowest');
+            box-shadow: 
+                8px 8px 24px rgba(0, 0, 0, 0.08), 
+                -8px -8px 24px rgba(255, 255, 255, 0.9),
+                inset 1px 1px 2px rgba(255, 255, 255, 0.5);
+        }
+        
+        .squishy-btn {
+            box-shadow: 
+                inset 0 2px 4px rgba(255,255,255,0.4),
+                0 8px 20px rgba(33,79,199,0.3);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        .squishy-btn:hover {
+            box-shadow: 
+                inset 0 4px 8px rgba(255,255,255,0.5),
+                0 12px 28px rgba(33,79,199,0.4);
+            transform: scale(1.02);
+        }
+        
+        .squishy-btn:active {
+            box-shadow: 
+                inset 0 -2px 4px rgba(0,0,0,0.2),
+                0 2px 8px rgba(33,79,199,0.2);
+            transform: scale(0.98);
+        }
+
+        @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob {
+            animation: blob 15s infinite alternate ease-in-out;
+        }
+        .animation-delay-2000 {
+            animation-delay: 2s;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen relative overflow-x-hidden selection:bg-primary-container selection:text-on-primary-container">
+<!-- Ambient Background Data Stream Effects -->
+<div class="fixed inset-0 z-[-1] overflow-hidden pointer-events-none opacity-60">
+<div class="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-primary-fixed-dim/30 blur-[120px] animate-blob"></div>
+<div class="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-secondary-container/30 blur-[150px] animate-blob animation-delay-2000"></div>
+</div>
+<!-- JSON Anchor: TopNavBar -->
+<nav class="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-8 py-4 max-w-container-max mx-auto bg-surface-container-low/60 backdrop-blur-3xl rounded-full mt-6 mx-auto w-[92%] border border-white/20 shadow-xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] transition-transform duration-200">
+<div class="flex items-center gap-4">
+<span class="font-headline-lg text-headline-lg font-black text-primary tracking-tight">CivicMind</span>
+</div>
+<!-- Search omitted based on shell layout generic guidance, focusing on trailing icons -->
+<div class="flex items-center gap-4">
+<button aria-label="notifications" class="w-12 h-12 flex items-center justify-center rounded-full bg-surface-container-lowest text-on-surface-variant hover:scale-105 hover:bg-surface-container-high/80 transition-all duration-300 shadow-sm border border-white/50">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button aria-label="account_circle" class="w-12 h-12 flex items-center justify-center rounded-full bg-surface-container-lowest text-on-surface-variant hover:scale-105 hover:bg-surface-container-high/80 transition-all duration-300 shadow-sm border border-white/50 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A macro photography style close-up of a diverse young professional standing in a brightly lit modern civic center. The lighting is soft, natural, and flattering, casting gentle shadows that emphasize a friendly and optimistic expression. The color palette incorporates subtle cool tones of royal blue and mint green in the background environment. 8k resolution, photorealistic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCB0aE2pCGUQOHIZ6vycyldJ8cONrsXWF4a6vNeRBTeSSssv-PZPsEqhVOXlJlUca33MuobgmST6t-_rrVs2gzpcMzKtxi3oFRebzy1QATKUEIM8PVWcD4zs2l5rj0hgu-kIQU0YuD2uhYJ4vFPe6t9HgkaPg_aVuW0NYc191ex5rHUC7ksTBkzB_eLd-jkMSO0SV4d3Zs6_XZKrn0CBMfGPzXRgMETytcs8-cW5kAG4hnxHsVUuOvE111lSwfOrY_mQDJlTc7hkoM"/>
+</button>
+</div>
+</nav>
+<!-- JSON Anchor: SideNavBar -->
+<aside class="fixed left-0 top-0 bottom-0 w-72 z-40 hidden lg:flex flex-col p-6 bg-surface-container-low/40 backdrop-blur-2xl rounded-lg m-6 h-[calc(100vh-48px)] border-r border-white/10 shadow-2xl shadow-[20px_0_40px_rgba(0,0,0,0.05)]">
+<div class="pt-24 pb-8 px-4 flex flex-col items-center text-center">
+<div class="w-24 h-24 rounded-full p-1 bg-gradient-to-tr from-primary to-secondary shadow-lg mb-4">
+<img alt="User Profile Avatar" class="w-full h-full rounded-full border-4 border-surface-container-lowest object-cover" data-alt="A perfectly circular profile avatar showing a smiling community member. The background of the avatar is a soft, glowing mint green and royal blue gradient. The person is dressed casually but neatly. The overall aesthetic is approachable, high-tech, and optimistic, matching a modern digital infrastructure interface. Rendered in a clean, soft 3D style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3yj5MEidzbbHpTlGwOxiGW0uRzmprR-96XhwxiYCUDmlXDDQKaSGUXJOdHytUf6sFHoF8F8nIvaq7i92EFFyKWoetS8MhYXI17upTHeIyOklKAohDsQxNV_5fcK48YQuJjdDRA5ZGz7GvcsyIBug2JHdCYaK3Kb2wZw3yvvYxq87Sb6d4eixG1UtVR1SRkVg7rQLg8sQ1bmQ4xkjArKOBXbmPw73lUT-XnZ16hdN7Oqa1g4Cvi7wIrMcV57Uyat_5DxvT1nIrFA4"/>
+</div>
+<h2 class="font-headline-lg text-headline-lg font-extrabold text-primary tracking-tight">CivicMind</h2>
+<p class="font-label-lg text-label-lg text-on-surface-variant mt-1">Citizen Portal</p>
+</div>
+<nav class="flex-1 space-y-2 mt-4 overflow-y-auto pr-2 custom-scrollbar">
+<!-- Active Tab: Dashboard -->
+<a class="flex items-center gap-4 px-4 py-3 bg-primary-container text-on-primary-container rounded-xl shadow-inner font-label-lg text-label-lg group" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl font-label-lg text-label-lg hover:translate-x-1 transition-transform duration-300 group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors" data-icon="flag">flag</span>
+<span>Reports</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl font-label-lg text-label-lg hover:translate-x-1 transition-transform duration-300 group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors" data-icon="groups">groups</span>
+<span>Community</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl font-label-lg text-label-lg hover:translate-x-1 transition-transform duration-300 group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors" data-icon="library_books">library_books</span>
+<span>Resources</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl font-label-lg text-label-lg hover:translate-x-1 transition-transform duration-300 group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors" data-icon="analytics">analytics</span>
+<span>Analytics</span>
+</a>
+</nav>
+<div class="mt-auto pt-6">
+<button class="w-full py-4 bg-primary text-on-primary font-button text-button rounded-xl squishy-btn flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+                Create Report
+            </button>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<!-- Offset by sidebar width (72 = 18rem = 288px) plus margins -->
+<main class="pt-[140px] px-margin-mobile md:px-margin-desktop lg:pl-[360px] pb-32 max-w-container-max mx-auto flex flex-col gap-stack-lg">
+<!-- Hero Section -->
+<section class="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 relative z-10">
+<div>
+<h1 class="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-primary tracking-tight mb-2 drop-shadow-sm">
+                    Welcome back, Alex
+                </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
+                    Your community is active today. You have 2 updates on your recent reports and 1 new neighborhood initiative.
+                </p>
+</div>
+<button class="shrink-0 bg-primary text-on-primary font-button text-button rounded-full px-8 py-5 squishy-btn flex items-center gap-3">
+<span class="material-symbols-outlined" data-icon="campaign" style="font-variation-settings: 'FILL' 1;">campaign</span>
+                Report an Issue
+            </button>
+</section>
+<!-- Bento Grid: Stats & Map -->
+<section class="grid grid-cols-1 xl:grid-cols-12 gap-gutter relative z-10">
+<!-- Left Column: KPI Cards -->
+<div class="xl:col-span-4 flex flex-col gap-gutter">
+<div class="clay-card rounded-xl p-6 flex items-center justify-between group cursor-pointer hover:-translate-y-1 transition-transform duration-300">
+<div>
+<p class="font-label-lg text-label-lg text-on-surface-variant mb-1">Reports Filed</p>
+<p class="font-headline-xl text-headline-xl text-primary font-black">12</p>
+</div>
+<div class="w-14 h-14 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-3xl" data-icon="folder_open">folder_open</span>
+</div>
+</div>
+<div class="clay-card rounded-xl p-6 flex items-center justify-between group cursor-pointer hover:-translate-y-1 transition-transform duration-300">
+<div>
+<p class="font-label-lg text-label-lg text-on-surface-variant mb-1">Impact Score</p>
+<p class="font-headline-xl text-headline-xl text-secondary font-black">845</p>
+</div>
+<div class="w-14 h-14 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-3xl" data-icon="volunteer_activism">volunteer_activism</span>
+</div>
+</div>
+<div class="clay-card rounded-xl p-6 flex items-center justify-between group cursor-pointer hover:-translate-y-1 transition-transform duration-300">
+<div>
+<p class="font-label-lg text-label-lg text-on-surface-variant mb-1">Community Rank</p>
+<p class="font-headline-xl text-headline-xl text-tertiary font-black">Top 5%</p>
+</div>
+<div class="w-14 h-14 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-3xl" data-icon="social_leaderboard">social_leaderboard</span>
+</div>
+</div>
+</div>
+<!-- Right Column: Interactive Map Widget -->
+<div class="xl:col-span-8 clay-card rounded-xl overflow-hidden relative min-h-[400px] flex flex-col">
+<div class="px-6 py-4 border-b border-surface-container-highest flex justify-between items-center bg-white/50 backdrop-blur-md relative z-10">
+<h3 class="font-headline-lg text-headline-lg text-on-surface">Neighborhood Activity</h3>
+<div class="flex gap-2">
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant"><span class="material-symbols-outlined" data-icon="filter_list">filter_list</span></button>
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant"><span class="material-symbols-outlined" data-icon="more_vert">more_vert</span></button>
+</div>
+</div>
+<div class="relative flex-1 bg-surface-container-low" data-location="Seattle" style="">
+<img class="absolute inset-0 w-full h-full object-cover" data-alt="A stylized, soft 3D topographic map of a modern city neighborhood. The map should look like a physical clay model with smooth, rounded buildings and roads. The color palette relies heavily on soft mint greens for parks, light greys for roads, and white for buildings. Glowing blue and cyan pins hover slightly above specific locations. High key lighting, very clean and approachable aesthetic, emphasizing digital infrastructure." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZWr3Up5_Wz_TmBSXyQnhjPDcB9GnODqyBvwO4K666IbaJ3KJh_jhiRgamJuqqC4wHZShf6ocuvb1s1SEMh7wP5jIs7jrpJ62Vybp06_aCdmHGQ0HeElbKH6nECmEQpWAlSkiK5-U-uN-MeYBdoJ2rqSqSrqS1LOlgX6IYq4ohUmpJDFLA5YkRFCDDPo4Xhgh3p05_saEXO5U6b5ynlEKxvEI0i-Uf8ydzrSfU_MzZbBXRV0JPnM8Nv18xLxALr-noKmZ6y65ukRM"/>
+<!-- Floating Map Overlay Controls -->
+<div class="absolute bottom-6 right-6 flex flex-col gap-2">
+<button class="w-12 h-12 bg-surface-container-lowest/80 backdrop-blur-xl rounded-full shadow-lg flex items-center justify-center text-on-surface hover:bg-surface-container-lowest transition-colors border border-white/50">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+<button class="w-12 h-12 bg-surface-container-lowest/80 backdrop-blur-xl rounded-full shadow-lg flex items-center justify-center text-on-surface hover:bg-surface-container-lowest transition-colors border border-white/50">
+<span class="material-symbols-outlined" data-icon="remove">remove</span>
+</button>
+</div>
+<!-- Example Map Pin -->
+<div class="absolute top-[40%] left-[30%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center animate-bounce" style="animation-duration: 3s;">
+<div class="bg-primary text-on-primary px-3 py-1 rounded-full text-xs font-bold shadow-md mb-1 whitespace-nowrap">Pothole Repaired</div>
+<div class="w-4 h-4 bg-primary rounded-full shadow-[0_0_15px_rgba(33,79,199,0.8)] border-2 border-white"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Recent Activity Feed -->
+<section class="relative z-10">
+<h3 class="font-headline-lg text-headline-lg text-primary mb-stack-sm flex items-center gap-3">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+                Recent Activity
+            </h3>
+<div class="flex flex-col gap-4">
+<!-- Activity Item 1 -->
+<div class="clay-card rounded-xl p-6 flex flex-col sm:flex-row gap-6 items-start sm:items-center hover:bg-surface-container-lowest/80 transition-colors">
+<div class="w-16 h-16 shrink-0 rounded-2xl overflow-hidden shadow-inner bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="A small, soft-focus thumbnail image showing a newly painted green bicycle lane on a bright, sunny day. The image has a slightly rounded, 3D clay aesthetic, fitting seamlessly into a high-tech UI dashboard. Colors are vibrant, mainly consisting of bright white asphalt, vivid green paint, and subtle blue shadows." src="https://lh3.googleusercontent.com/aida-public/AB6AXuANdhbgeNj85nVWPg_LPtkup-9AywVAQQKlwoho2RRlONW-w0nQuJPCXZzzTMcVlWsGXsZgTOyTrfXJ4Sjgs_gQqbLjalgdzJeyuXr8YhM3iz8NUI4SHSEdajqu26s9gkyrCpEvyUVSI_8qptndxD40S0AtdWlpHiHwH8esyMpJqUHCSu9vIkYAO5YVz6cD-upSFzte1fdmfhymV10Sa5lXUjW_UBYvl84Du7SxOabalfsIqHHfgfQ6oofctQ5nMHCEVfCzEx6NBT0"/>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1">
+<span class="px-2 py-0.5 bg-secondary-container text-on-secondary-container rounded text-xs font-bold uppercase tracking-wider">Resolved</span>
+<span class="text-sm text-on-surface-variant">2 hours ago</span>
+</div>
+<h4 class="font-label-lg text-label-lg text-on-surface mb-1">New Bike Lane Striping - 4th Ave</h4>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2">The city public works team has completed the repainting of the protected bike lanes along 4th Avenue, improving visibility and safety.</p>
+</div>
+<button class="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-primary hover:bg-primary-container/50 transition-colors">
+<span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+<!-- Activity Item 2 -->
+<div class="clay-card rounded-xl p-6 flex flex-col sm:flex-row gap-6 items-start sm:items-center hover:bg-surface-container-lowest/80 transition-colors">
+<div class="w-16 h-16 shrink-0 rounded-2xl overflow-hidden shadow-inner bg-surface-container flex items-center justify-center bg-tertiary-container text-on-tertiary-container">
+<span class="material-symbols-outlined text-3xl" data-icon="forum">forum</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1">
+<span class="px-2 py-0.5 bg-surface-container-highest text-on-surface rounded text-xs font-bold uppercase tracking-wider">Discussion</span>
+<span class="text-sm text-on-surface-variant">Yesterday</span>
+</div>
+<h4 class="font-label-lg text-label-lg text-on-surface mb-1">Town Hall: Community Park Expansion</h4>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2">Join the virtual town hall this Thursday to discuss the proposed expansion of the central park facilities and new playground equipment.</p>
+</div>
+<button class="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-primary hover:bg-primary-container/50 transition-colors">
+<span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</section>
+</main>
+<!-- JSON Anchor: Footer -->
+<footer class="max-w-container-max mx-auto px-margin-mobile lg:px-margin-desktop lg:pl-[360px] flex flex-col md:flex-row justify-between items-center bg-transparent w-full py-12 mt-stack-lg border-t border-surface-container-highest relative z-10">
+<div class="mb-6 md:mb-0 text-center md:text-left">
+<span class="font-label-lg text-label-lg font-bold text-primary block mb-2">CivicMind</span>
+<p class="font-body-md text-body-md text-on-surface-variant">© 2024 CivicMind Digital Infrastructure. Built for Transparency.</p>
+</div>
+<div class="flex flex-wrap justify-center gap-6">
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary hover:underline transition-colors duration-200" href="#">Privacy Policy</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary hover:underline transition-colors duration-200" href="#">Terms of Service</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary hover:underline transition-colors duration-200" href="#">Accessibility</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary hover:underline transition-colors duration-200" href="#">Contact Support</a>
+</div>
+</footer>
+</body></html>

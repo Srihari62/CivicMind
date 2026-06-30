@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Officer Dashboard - CivicMind</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-highest": "#e0e3e5",
+                        "on-secondary": "#ffffff",
+                        "surface-container-high": "#e6e8ea",
+                        "surface-variant": "#e0e3e5",
+                        "inverse-surface": "#2d3133",
+                        "error-container": "#ffdad6",
+                        "surface-dim": "#d8dadc",
+                        "on-background": "#191c1e",
+                        "on-surface": "#191c1e",
+                        "on-secondary-container": "#006e6e",
+                        "primary-fixed": "#dce1ff",
+                        "background": "#f7f9fb",
+                        "tertiary-fixed": "#f3daff",
+                        "inverse-on-surface": "#eff1f3",
+                        "secondary": "#006a6a",
+                        "primary-fixed-dim": "#b6c4ff",
+                        "tertiary-fixed-dim": "#e3b5ff",
+                        "on-tertiary-container": "#fff5fe",
+                        "tertiary": "#8900d3",
+                        "outline-variant": "#c4c5d6",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed": "#93f2f2",
+                        "primary": "#214fc7",
+                        "secondary-container": "#90efef",
+                        "on-secondary-fixed": "#002020",
+                        "on-tertiary-fixed": "#2f004c",
+                        "inverse-primary": "#b6c4ff",
+                        "on-tertiary-fixed-variant": "#6e00ab",
+                        "tertiary-container": "#a72cf7",
+                        "on-primary-fixed": "#00164e",
+                        "outline": "#747685",
+                        "secondary-fixed-dim": "#76d6d5",
+                        "primary-container": "#4169e1",
+                        "surface-container-low": "#f2f4f6",
+                        "on-surface-variant": "#434654",
+                        "on-primary-fixed-variant": "#003baf",
+                        "surface-container": "#eceef0",
+                        "surface-bright": "#f7f9fb",
+                        "on-error": "#ffffff",
+                        "on-primary-container": "#f8f7ff",
+                        "surface-tint": "#2854cc",
+                        "on-secondary-fixed-variant": "#004f4f",
+                        "on-tertiary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "surface": "#f7f9fb",
+                        "on-error-container": "#93000a"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "margin-mobile": "24px",
+                        "stack-lg": "64px",
+                        "stack-md": "32px",
+                        "margin-desktop": "64px",
+                        "container-max": "1440px",
+                        "gutter": "32px",
+                        "unit": "8px",
+                        "stack-sm": "16px"
+                    },
+                    fontFamily: {
+                        "headline-xl": ["Inter"],
+                        "button": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "display-lg-mobile": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    fontSize: {
+                        "headline-xl": ["40px", { lineHeight: "1.2", letterSpacing: "-0.01em", fontWeight: "700" }],
+                        "button": ["18px", { lineHeight: "1", letterSpacing: "0.02em", fontWeight: "600" }],
+                        "display-lg": ["64px", { lineHeight: "1.1", letterSpacing: "-0.02em", fontWeight: "800" }],
+                        "display-lg-mobile": ["40px", { lineHeight: "1.2", letterSpacing: "-0.01em", fontWeight: "800" }],
+                        "body-lg": ["20px", { lineHeight: "1.6", letterSpacing: "0.01em", fontWeight: "400" }],
+                        "body-md": ["16px", { lineHeight: "1.6", letterSpacing: "0.01em", fontWeight: "400" }],
+                        "label-lg": ["16px", { lineHeight: "1.4", letterSpacing: "0.05em", fontWeight: "600" }],
+                        "headline-lg": ["32px", { lineHeight: "1.3", letterSpacing: "0em", fontWeight: "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #f7f9fb;
+            color: #191c1e;
+        }
+        .clay-card {
+            background: #ffffff;
+            border-radius: 2rem;
+            box-shadow: 
+                -8px -8px 16px rgba(255, 255, 255, 0.8),
+                8px 8px 24px rgba(0, 0, 0, 0.05),
+                inset 1px 1px 2px rgba(125, 249, 255, 0.1);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .clay-btn {
+            box-shadow: 
+                -4px -4px 8px rgba(255, 255, 255, 0.8),
+                4px 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .clay-btn:active {
+            box-shadow: 
+                inset 4px 4px 8px rgba(0, 0, 0, 0.1),
+                inset -4px -4px 8px rgba(255, 255, 255, 0.8);
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex font-body-md overflow-x-hidden">
+<!-- Ambient Background -->
+<div class="fixed inset-0 z-[-1] pointer-events-none opacity-40">
+<div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-100 blur-[100px] animate-pulse"></div>
+<div class="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-orange-50 blur-[120px] animate-pulse" style="animation-delay: 2s;"></div>
+</div>
+<!-- SideNavBar (Shared Component) -->
+<nav class="fixed left-0 top-0 bottom-0 w-72 z-40 hidden lg:flex flex-col p-6 bg-surface-container-low/40 backdrop-blur-2xl border-r border-white/10 shadow-[20px_0_40px_rgba(0,0,0,0.05)] rounded-lg m-6 h-[calc(100vh-48px)]">
+<div class="mb-10 flex items-center gap-3">
+<span class="font-headline-lg text-headline-lg font-extrabold text-primary">CivicMind</span>
+</div>
+<div class="mb-6 px-4">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full overflow-hidden clay-card">
+<img class="w-full h-full object-cover" data-alt="A highly detailed close-up portrait of a professional civil officer in a modern, well-lit digital command center. The lighting is soft and bright, emphasizing a high-tech, optimistic light-mode aesthetic with royal blue and subtle coral accents in the background. The mood is focused and operational." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAmWFGGbsQQLfY1EUWAuXY0FwDEEGMRv7IkT53mo82E16UeDEXJ4GTlmuoUo8rTw1NeLX5XNSWBvflwsRsu0YsmXo8vKWRweBJl3waKkg43Z10TUCQWnPzxS2R-vJ0Ry_cNlo_Em7ZrrxOG9HjpqwvZwW3oumTLxQ8ycXArksgsLAwc0usTjFOOojynhCvyr2ad0V8JCEla-UmZ7etoIa97C5trIK7GY_MWy6nC6JjMQ9pB7VggjSP1pzsfpdyb2r4dEJPXzU1YgCU"/>
+</div>
+<div>
+<h3 class="font-label-lg text-label-lg text-on-surface">Officer JD</h3>
+<p class="text-sm text-on-surface-variant">Citizen Portal</p>
+</div>
+</div>
+</div>
+<button class="w-full py-3 mb-8 bg-primary text-on-primary rounded-xl font-button clay-btn hover:scale-105 transition-transform duration-300">
+            Create Report
+        </button>
+<ul class="flex-1 space-y-2">
+<li>
+<a class="flex items-center gap-4 px-4 py-3 bg-primary-container text-on-primary-container rounded-xl shadow-inner font-label-lg text-label-lg Active: scale-95 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+                    Dashboard
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-4 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl font-label-lg text-label-lg hover:translate-x-1 transition-transform duration-300" href="#">
+<span class="material-symbols-outlined">flag</span>
+                    Reports
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-4 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl font-label-lg text-label-lg hover:translate-x-1 transition-transform duration-300" href="#">
+<span class="material-symbols-outlined">groups</span>
+                    Community
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-4 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl font-label-lg text-label-lg hover:translate-x-1 transition-transform duration-300" href="#">
+<span class="material-symbols-outlined">library_books</span>
+                    Resources
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-4 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl font-label-lg text-label-lg hover:translate-x-1 transition-transform duration-300" href="#">
+<span class="material-symbols-outlined">analytics</span>
+                    Analytics
+                </a>
+</li>
+</ul>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-1 ml-0 lg:ml-80 p-margin-mobile lg:p-margin-desktop min-h-screen">
+<!-- Header / Mobile Nav Area -->
+<header class="flex justify-between items-center mb-stack-md lg:mb-stack-lg">
+<div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface mb-2">Investigation Workspace</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Welcome back, Officer. You have 3 urgent alerts.</p>
+</div>
+<div class="flex gap-4">
+<button class="w-12 h-12 flex items-center justify-center clay-card text-primary hover:scale-105 transition-transform">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="lg:hidden w-12 h-12 flex items-center justify-center clay-card">
+<span class="material-symbols-outlined">menu</span>
+</div>
+</div>
+</header>
+<!-- Grid Layout -->
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-gutter">
+<!-- Center/Left Column: Active Cases & Timeline -->
+<div class="xl:col-span-2 space-y-stack-md">
+<!-- Urgent Alerts Strip -->
+<div class="clay-card p-6 border-l-4 border-error">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">warning</span>
+<h2 class="font-label-lg text-label-lg text-error">Urgent Operations</h2>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between items-center p-3 bg-error-container/30 rounded-xl">
+<div>
+<span class="block font-bold text-on-surface">Water Main Break - District 4</span>
+<span class="text-sm text-on-surface-variant">Reported 15 mins ago</span>
+</div>
+<button class="px-4 py-2 bg-error text-on-error rounded-full text-sm font-bold clay-btn">Dispatch</button>
+</div>
+</div>
+</div>
+<!-- Assigned Reports List (Bento-style list) -->
+<div>
+<div class="flex justify-between items-center mb-6">
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Assigned Cases</h2>
+<button class="text-primary font-label-lg text-label-lg hover:underline">View All</button>
+</div>
+<div class="space-y-4">
+<!-- Case Card 1 -->
+<div class="clay-card p-6 flex flex-col md:flex-row gap-6 items-center hover:scale-[1.01] transition-transform">
+<div class="w-24 h-24 rounded-2xl bg-surface-container-highest overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A highly detailed close-up shot of urban infrastructure damage, specifically a large pothole on a city street. The scene is brightly lit, showcasing a clean, modern civic environment. The image uses a light-mode aesthetic with soft shadows, emphasizing the need for repair in a professional, operational context." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBdw9MkFf9FwsxnveYiV12trAJHi2oTEt418ODFdmOrx1V6xksxv3g8v3kKfUFR6J5V5AaQWOXzos8bXelcW-v_ZhBbsP8XrLALhXoYKu79joahseOmOiyV5SXavPHaq8aDeh8a9zOJucHe3IIqQbsaKpdD_18ktdKN3u1uAj7s8uWe6lL_4NRhH3IBaIO3yY_4cjLwqdHBxYThgE7BI9_jaTaVjgmdWnEaBN-hzvDYRwEft7xSzxs8vEFEPn18OgP2sZ9NsiNRhrQ"/>
+</div>
+<div class="flex-1 w-full">
+<div class="flex justify-between items-start mb-2">
+<span class="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full text-xs font-bold uppercase tracking-wider">Infrastructure</span>
+<span class="text-sm text-on-surface-variant">ID: #892-A</span>
+</div>
+<h3 class="font-label-lg text-label-lg text-on-surface mb-1">Severe Pothole Cluster</h3>
+<p class="text-sm text-on-surface-variant mb-4">Main St &amp; 4th Ave. Multiple reports filed.</p>
+<!-- Progress Timeline Micro -->
+<div class="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[40%] rounded-full"></div>
+</div>
+<div class="flex justify-between text-xs text-on-surface-variant mt-2">
+<span>Assessed</span>
+<span>Crew Dispatched</span>
+<span>Resolved</span>
+</div>
+</div>
+</div>
+<!-- Case Card 2 -->
+<div class="clay-card p-6 flex flex-col md:flex-row gap-6 items-center hover:scale-[1.01] transition-transform">
+<div class="w-24 h-24 rounded-2xl bg-surface-container-highest overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A highly detailed image of a local community park with overgrown vegetation and some minor litter. The lighting is bright and sunny, representing a light-mode, optimistic aesthetic. The focus is on civic duty and operational management of public spaces." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBWZC6SXCYDg4PqT1IlVLsqcFfN1T6N8VnSjhKaRUY3xc01JB2eG5SHOqWP2C8ywZ0GaMFoecC3pSYjzeFhoacuzk9PeL6LkAwPO4zCytx0m4VdSDWUQcu4_ZwfmqaHnEceuIM7NbsWtkP8j-YhyFitIbc_qhH4ZjNIk_uhHTtCNivCLhJPUxJgrkMo6W4_zYDS-EdiE1pDXmNiMPInmyFTWm7yPW5x3A6i2QAmCtp7YPpjAbfD3KRdj7SbCifKQJI8iDVtiEykjBg"/>
+</div>
+<div class="flex-1 w-full">
+<div class="flex justify-between items-start mb-2">
+<span class="px-3 py-1 bg-tertiary-container text-on-tertiary-container rounded-full text-xs font-bold uppercase tracking-wider">Maintenance</span>
+<span class="text-sm text-on-surface-variant">ID: #441-B</span>
+</div>
+<h3 class="font-label-lg text-label-lg text-on-surface mb-1">Park Overgrowth</h3>
+<p class="text-sm text-on-surface-variant mb-4">Centennial Park North end requires clearing.</p>
+<!-- Progress Timeline Micro -->
+<div class="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[80%] rounded-full"></div>
+</div>
+<div class="flex justify-between text-xs text-on-surface-variant mt-2">
+<span>Assessed</span>
+<span>Crew Active</span>
+<span>Pending Review</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: AI Wizard & Stats -->
+<div class="space-y-stack-md">
+<!-- AI Resolution Wizard -->
+<div class="clay-card p-6 bg-gradient-to-br from-surface-container-lowest to-primary-fixed/20">
+<div class="flex items-center gap-3 mb-6">
+<div class="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined">auto_awesome</span>
+</div>
+<h2 class="font-label-lg text-label-lg text-on-surface">Resolution Wizard</h2>
+</div>
+<p class="text-sm text-on-surface-variant mb-4">AI suggests grouping 3 nearby infrastructure reports in District 4 to optimize crew routing.</p>
+<div class="bg-white/50 backdrop-blur-md rounded-xl p-4 border border-white/40 mb-4">
+<ul class="space-y-2 text-sm text-on-surface">
+<li class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-primary"></span> Report #892 (Pothole)</li>
+<li class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-primary"></span> Report #894 (Signage)</li>
+<li class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-primary"></span> Report #901 (Lighting)</li>
+</ul>
+</div>
+<button class="w-full py-3 bg-secondary text-on-secondary rounded-xl font-button clay-btn hover:scale-105 transition-transform">
+                        Generate Route Plan
+                    </button>
+</div>
+<!-- Stats / Chart Placeholder -->
+<div class="clay-card p-6">
+<h2 class="font-label-lg text-label-lg text-on-surface mb-6">Resolution Rates</h2>
+<div class="relative h-48 w-full flex items-end justify-between gap-2">
+<!-- Pseudo Bar Chart -->
+<div class="w-1/6 bg-surface-container-highest rounded-t-lg h-[40%] hover:bg-primary transition-colors relative group">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">40%</div>
+</div>
+<div class="w-1/6 bg-surface-container-highest rounded-t-lg h-[60%] hover:bg-primary transition-colors relative group">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">60%</div>
+</div>
+<div class="w-1/6 bg-surface-container-highest rounded-t-lg h-[30%] hover:bg-primary transition-colors relative group">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">30%</div>
+</div>
+<div class="w-1/6 bg-primary rounded-t-lg h-[85%] relative group shadow-[0_0_15px_rgba(33,79,199,0.4)]">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">85%</div>
+</div>
+<div class="w-1/6 bg-surface-container-highest rounded-t-lg h-[70%] hover:bg-primary transition-colors relative group">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">70%</div>
+</div>
+</div>
+<div class="flex justify-between text-xs text-on-surface-variant mt-4">
+<span>Mon</span>
+<span>Tue</span>
+<span>Wed</span>
+<span class="text-primary font-bold">Thu</span>
+<span>Fri</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

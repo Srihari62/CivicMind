@@ -56,8 +56,18 @@ Circle.displayName = "Circle";
 // Helper component to control zoom and center dynamically when search parameters change
 function MapController({ center, radiusKm }: { center: { lat: number; lng: number }; radiusKm: number }) {
   const map = useMap();
+  const lastCenterRef = useRef<{ lat: number; lng: number } | null>(null);
+
   useEffect(() => {
     if (!map) return;
+
+    const isSame =
+      lastCenterRef.current &&
+      lastCenterRef.current.lat === center.lat &&
+      lastCenterRef.current.lng === center.lng;
+
+    if (isSame) return;
+    lastCenterRef.current = center;
 
     let zoom = 14;
     if (radiusKm <= 1) zoom = 15;
@@ -68,7 +78,7 @@ function MapController({ center, radiusKm }: { center: { lat: number; lng: numbe
 
     map.setZoom(zoom);
     map.panTo(center);
-  }, [center, radiusKm, map]);
+  }, [center.lat, center.lng, radiusKm, map]);
   return null;
 }
 
@@ -91,14 +101,15 @@ export default function CommunityMap({ center, reports, radiusKm }: CommunityMap
   }
 
   return (
-    <div className="h-full w-full relative z-0">
+    <div 
+      className="h-full w-full relative z-0"
+    >
       <Map
         defaultZoom={14}
         defaultCenter={centerObj}
-        center={centerObj}
         mapId="DEMO_MAP_ID"
         gestureHandling="greedy"
-        disableDefaultUI={true}
+        disableDefaultUI={false}
         style={{ width: "100%", height: "100%" }}
       >
         {/* User Location Pulsar Marker */}

@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<title>CivicMind - Community Feed</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary-container": "#4169e1",
+                      "primary": "#214fc7",
+                      "error-container": "#ffdad6",
+                      "surface-container-lowest": "#ffffff",
+                      "surface": "#f7f9fb",
+                      "on-tertiary": "#ffffff",
+                      "primary-fixed-dim": "#b6c4ff",
+                      "tertiary-fixed": "#f3daff",
+                      "background": "#f7f9fb",
+                      "tertiary-fixed-dim": "#e3b5ff",
+                      "on-error-container": "#93000a",
+                      "on-secondary-fixed": "#002020",
+                      "surface-container-high": "#e6e8ea",
+                      "surface-container": "#eceef0",
+                      "on-primary-fixed": "#00164e",
+                      "on-secondary": "#ffffff",
+                      "on-background": "#191c1e",
+                      "on-surface-variant": "#434654",
+                      "on-surface": "#191c1e",
+                      "surface-tint": "#2854cc",
+                      "inverse-primary": "#b6c4ff",
+                      "secondary-fixed": "#93f2f2",
+                      "surface-bright": "#f7f9fb",
+                      "on-primary-fixed-variant": "#003baf",
+                      "on-error": "#ffffff",
+                      "secondary-fixed-dim": "#76d6d5",
+                      "on-tertiary-fixed": "#2f004c",
+                      "tertiary-container": "#a72cf7",
+                      "surface-dim": "#d8dadc",
+                      "secondary-container": "#90efef",
+                      "outline-variant": "#c4c5d6",
+                      "tertiary": "#8900d3",
+                      "on-primary-container": "#f8f7ff",
+                      "on-tertiary-fixed-variant": "#6e00ab",
+                      "surface-variant": "#e0e3e5",
+                      "on-tertiary-container": "#fff5fe",
+                      "inverse-surface": "#2d3133",
+                      "error": "#ba1a1a",
+                      "outline": "#747685",
+                      "on-primary": "#ffffff",
+                      "surface-container-low": "#f2f4f6",
+                      "inverse-on-surface": "#eff1f3",
+                      "secondary": "#006a6a",
+                      "surface-container-highest": "#e0e3e5",
+                      "primary-fixed": "#dce1ff",
+                      "on-secondary-fixed-variant": "#004f4f",
+                      "on-secondary-container": "#006e6e"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "stack-sm": "16px",
+                      "gutter": "32px",
+                      "stack-lg": "64px",
+                      "container-max": "1440px",
+                      "stack-md": "32px",
+                      "margin-desktop": "64px",
+                      "unit": "8px",
+                      "margin-mobile": "24px"
+              },
+              "fontFamily": {
+                      "label-lg": [
+                              "Inter"
+                      ],
+                      "headline-xl": [
+                              "Inter"
+                      ],
+                      "display-lg-mobile": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "button": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "label-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.4",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-xl": [
+                              "40px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "display-lg-mobile": [
+                              "40px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "body-lg": [
+                              "20px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-lg": [
+                              "64px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.3",
+                                      "letterSpacing": "0em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "button": [
+                              "18px",
+                              {
+                                      "lineHeight": "1",
+                                      "letterSpacing": "0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            background-color: theme('colors.background');
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none;
+        }
+
+        .clay-card {
+            background: #ffffff;
+            border-radius: theme('borderRadius.lg');
+            box-shadow: 
+                inset 2px 2px 4px rgba(125, 249, 255, 0.1),
+                12px 12px 24px rgba(33, 79, 199, 0.08),
+                -8px -8px 16px rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .clay-card:active {
+            transform: scale(0.98);
+        }
+
+        .clay-btn {
+            background: #ffffff;
+            border-radius: theme('borderRadius.full');
+            box-shadow: 
+                inset 1px 1px 3px rgba(125, 249, 255, 0.2),
+                6px 6px 12px rgba(33, 79, 199, 0.1),
+                -4px -4px 8px rgba(255, 255, 255, 0.9);
+            transition: all 0.2s ease;
+        }
+        
+        .clay-btn:active {
+            box-shadow: 
+                inset 4px 4px 8px rgba(33, 79, 199, 0.1),
+                inset -4px -4px 8px rgba(255, 255, 255, 0.9);
+            transform: scale(0.95);
+        }
+
+        .clay-fab {
+            background: theme('colors.primary');
+            border-radius: theme('borderRadius.full');
+            box-shadow: 
+                inset 2px 2px 4px rgba(255, 255, 255, 0.3),
+                8px 8px 16px rgba(33, 79, 199, 0.3),
+                -4px -4px 12px rgba(255, 255, 255, 0.5);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .clay-fab:active {
+            transform: scale(0.9) translateY(2px);
+            box-shadow: inset 4px 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .glass-pill {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        
+        .glass-pill.active {
+            background: theme('colors.primary-container');
+            color: theme('colors.on-primary-container');
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: inset 2px 2px 4px rgba(255,255,255,0.2), 0 4px 12px rgba(65, 105, 225, 0.2);
+        }
+
+        .ambient-bg {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: -1;
+            overflow: hidden;
+            background: theme('colors.surface-container-lowest');
+        }
+
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.4;
+            animation: float 20s infinite ease-in-out;
+        }
+
+        .blob-1 {
+            top: -10%; left: -10%; width: 50vw; height: 50vw;
+            background: theme('colors.secondary-container');
+            animation-delay: 0s;
+        }
+
+        .blob-2 {
+            bottom: -20%; right: -10%; width: 60vw; height: 60vw;
+            background: theme('colors.primary-fixed-dim');
+            animation-delay: -5s;
+        }
+        
+        .blob-3 {
+            top: 40%; left: 60%; width: 40vw; height: 40vw;
+            background: theme('colors.tertiary-fixed');
+            animation-delay: -10s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(5%, 10%) scale(1.1); }
+            66% { transform: translate(-5%, 5%) scale(0.9); }
+        }
+        
+        /* Hide scrollbar for clean UI */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+        * {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="font-body-md text-on-surface antialiased pt-28 pb-32">
+<!-- Ambient Animated Background -->
+<div class="ambient-bg">
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="blob blob-3"></div>
+</div>
+<!-- TopAppBar -->
+<header class="bg-surface/80 dark:bg-inverse-surface/80 backdrop-blur-xl font-headline-lg-mobile text-headline-lg-mobile fixed top-4 left-4 right-4 rounded-lg shadow-[0_8px_32px_rgba(33,79,199,0.15)] dark:shadow-none border border-white/20 dark:border-white/10 hover:scale-105 active:scale-95 transition-transform duration-200 flex justify-between items-center px-margin-mobile w-[calc(100%-48px)] mx-auto z-50 py-3">
+<div class="flex items-center gap-3">
+<img alt="CivicMind Logo" class="w-10 h-10 rounded-full object-cover shadow-sm" src="https://lh3.googleusercontent.com/aida/AP1WRLu91fjzoimFkIkXYzdZLlKF9UJjuALsT1wkv228FjG2hs_zYFuSDO-JIviNDuozDpLFYJoP9qQ_CCuCRaL-5Row9mWXFzNE2VW5qTUQ0jRBCReV6Uk1Z0P13ahdob6EwgeAvyUGf_gqFeuWX1vgvLi20eb9qoVwjfc07hM4PxfnY9ZpweobQbIg8uLoL127y7m4qj61oxb3YbqiQcwI-NjotyERdgTxUZOmpBadsv6jN-fZiZZhBZg8iR8"/>
+</div>
+<div class="font-display-lg-mobile text-display-lg-mobile font-extrabold text-primary dark:text-primary-fixed-dim tracking-tighter text-2xl flex-1 text-center">
+            CivicMind
+        </div>
+<button class="clay-btn w-10 h-10 flex items-center justify-center text-primary dark:text-primary-fixed-dim relative">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+</header>
+<!-- Filters / Tabs -->
+<div class="fixed top-24 left-0 right-0 z-40 px-6 py-2 overflow-x-auto whitespace-nowrap scroll-smooth flex gap-3">
+<button class="glass-pill active px-5 py-2 rounded-full font-label-lg text-label-lg">
+            All Feed
+        </button>
+<button class="glass-pill px-5 py-2 rounded-full font-label-lg text-label-lg text-on-surface-variant">
+            Infrastructure
+        </button>
+<button class="glass-pill px-5 py-2 rounded-full font-label-lg text-label-lg text-on-surface-variant">
+            Safety
+        </button>
+<button class="glass-pill px-5 py-2 rounded-full font-label-lg text-label-lg text-on-surface-variant">
+            Events
+        </button>
+</div>
+<!-- Main Content Canvas -->
+<main class="px-6 flex flex-col gap-6 mt-8">
+<!-- Feed Card 1: Infrastructure -->
+<article class="clay-card p-5 flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<img class="w-12 h-12 rounded-full object-cover shadow-sm border border-white/50" data-alt="A portrait photo of a young community member with a bright, optimistic smile, wearing a casual jacket. Soft, diffused lighting typical of a high-end UI avatar. Background is slightly blurred to focus on the face." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCIEiLILXPq2N93cCzGlFuDoLq3Zj3EIpV5pRz_tEpY67UrPXrON5fhx4u39uKUHFmyx9Jk7xReIfV3jgaDRyNtRXxmgC1aYcrxVfdT6w0Dnqap2dVIs13mRaE8nfKmrnDZLM9a5rJo3iGSlDmTtvI9Y6Ft1mpS3COQtm8h7FwmVUY00mluBz9ThUVpHfM27q7ibCukvvEKKMab-9ZxuE-dq5aL1CEPuFGfcBIsSBcTMnf6grFcZN8InAc7O420Yt-xMp147OZrjFk"/>
+<div>
+<h3 class="font-label-lg text-label-lg text-on-surface m-0 leading-tight">Sarah Jenkins</h3>
+<p class="font-body-md text-sm text-outline m-0">2 hours ago • Verified Resident</p>
+</div>
+</div>
+<div class="bg-surface-container-low px-3 py-1 rounded-full flex items-center gap-1 border border-white">
+<span class="material-symbols-outlined text-[16px] text-secondary">construction</span>
+<span class="font-label-lg text-xs text-secondary">Infrastructure</span>
+</div>
+</div>
+<h2 class="font-headline-lg-mobile text-xl font-bold text-on-surface m-0">Major Pothole on 5th &amp; Main</h2>
+<p class="font-body-md text-on-surface-variant m-0">The recent storm washed out a huge section of the right lane near the intersection. It's causing major traffic backups during rush hour and looks dangerous for cyclists.</p>
+<!-- Image Gallery Bento Grid -->
+<div class="grid grid-cols-3 gap-2 h-48 rounded-xl overflow-hidden shadow-inner">
+<div class="col-span-2 row-span-2">
+<img class="w-full h-full object-cover" data-alt="A close-up, high-quality photo of a large, deep pothole on an urban asphalt street. The lighting is overcast daylight. Water is pooled inside the pothole. The aesthetic is documentary but clean, fitting a modern civic application. High resolution." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAV8DM5C4eZOeAC0qC5yg6-Xqc70fct0aOXhT7NWaWPNsHS1P8STzULtK5ihVJnyty1ZuVx4fwDflqicT-BYShhkntdOBmHlJj5umVTfuhUI4kCPW0Xy5R2KJNhq5PoPan1feS5DOnAOvZTnLcT8nntPwQFhLK4pQYPA4-DDipZrLhJDyfXQRWByyBjiLpwumwopmNXybHcLcHeqUPj3SJdeEXmjHZDGIpxbh5gpOJFnk-p7zwlDOdYQvLCKL68RnJLXNa5nQYYRn4"/>
+</div>
+<div class="col-span-1 row-span-1">
+<img class="w-full h-full object-cover" data-alt="A wide angle shot showing traffic backed up on a city street due to road damage. Cars are slowly navigating around an obstacle. Bright daylight, clear visibility. Clean, professional civic tech aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCYXPrO0dZS8Th71M209a4KIgt7F0k5_BulDTuKUNZuehuCpz2cwqNsRswIFxiY5bJbOO6W6XfzzGgrTP1HgwtY6FzAaBEwC06ZUQHNC4JB008HCmQdIi_4bkYA7DDMa2h_YcKiRVTEQPu-pchMHJXtTd2ZK9Cx9QcmC4dd9pFKgWA8QHgfPEn_uaPGV-iLtg3SHS43EX2Eo257BscV4_W4AIvmgBeJPqm6-uUHYMa7kzGLF_4J2vbiS3bqY6cqmCVoEp_ivzkQfm0"/>
+</div>
+<div class="col-span-1 row-span-1 relative">
+<img class="w-full h-full object-cover" data-alt="A detail shot of a bicycle tire near a damaged road edge. Focus on the hazard aspect. Soft lighting, high contrast. Clean aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCPkvWZ70PTPIBtI6vcdaMXWTY8sVVXJCJx3X7zxbiLrcbbvPryK9k_7K0xz7z3qfZ5cYoMweathYhEJRExjW1Skw43uLMb-_fQfng6b-kEgirGXyQSVNWhW_OlgsztkV3GBFEL04KxbqAc-eaN3zwjzV3YUyD1ppbavA3H8CgLt2Sam6cLNXNM-rkXUngMf4FXfX3TSBGXBDz6-IdGJUYEAs2XV6cVCVj_IvwLI7X0OFou0hsJPXTRB8_sxn2yvXDAHTLqM0nrots"/>
+<div class="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-sm">
+<span class="font-label-lg text-white">+2</span>
+</div>
+</div>
+</div>
+<!-- Interaction Bar -->
+<div class="flex items-center justify-between pt-2 border-t border-outline-variant/30">
+<div class="flex gap-4">
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1; color: var(--color-primary);">thumb_up</span>
+<span class="font-label-lg text-sm">124</span>
+</button>
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">chat_bubble</span>
+<span class="font-label-lg text-sm">32</span>
+</button>
+</div>
+<div class="flex items-center gap-2">
+<div class="h-2 w-24 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-secondary w-3/4 rounded-full"></div>
+</div>
+<span class="font-label-lg text-xs text-secondary">In Progress</span>
+</div>
+</div>
+</article>
+</main>
+<!-- Floating Action Button -->
+<button class="clay-fab fixed bottom-28 right-6 w-14 h-14 flex items-center justify-center z-50 text-white">
+<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">add</span>
+</button>
+<!-- BottomNavBar -->
+<nav class="bg-surface-container-low/90 dark:bg-inverse-surface/90 backdrop-blur-2xl text-primary-container dark:text-primary-fixed font-label-lg text-label-lg font-display-lg-mobile text-display-lg-mobile text-primary fixed bottom-6 left-6 right-6 rounded-full border border-white/30 dark:border-white/10 shadow-[inset_0_2px_4px_rgba(255,255,255,0.4),0_12px_24px_rgba(0,0,0,0.1)] hover:opacity-100 transition-all duration-300 fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] z-50 flex justify-around items-center py-2 px-2">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-4 py-2 opacity-70" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-[10px] mt-1 font-semibold">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-4 py-2 opacity-70" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="text-[10px] mt-1 font-semibold">Reports</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-5 py-2 shadow-[4px_4px_10px_rgba(65,105,225,0.3)] scale-110" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="text-[10px] mt-1 font-semibold">Community</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-4 py-2 opacity-70" href="#">
+<span class="material-symbols-outlined">library_books</span>
+<span class="text-[10px] mt-1 font-semibold">Resources</span>
+</a>
+</nav>
+<script>
+        // Simple JS for tab interaction demonstration
+        document.querySelectorAll('.glass-pill').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.glass-pill').forEach(b => {
+                    b.classList.remove('active', 'text-on-primary-container');
+                    b.classList.add('text-on-surface-variant');
+                });
+                btn.classList.add('active', 'text-on-primary-container');
+                btn.classList.remove('text-on-surface-variant');
+            });
+        });
+    </script>
+</body></html>

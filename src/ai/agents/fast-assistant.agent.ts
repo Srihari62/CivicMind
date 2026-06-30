@@ -165,6 +165,8 @@ export class FastAssistantAgent extends BaseAgent<CivicReport, EvidenceAnalysisR
         detectedObjects: Array.isArray(parsed.detectedObjects) ? parsed.detectedObjects : [],
         analyzedAt: new Date().toISOString(),
         isCivicIssue: parsed.isCivicIssue ?? true,
+        multipleIssuesDetected: parsed.multipleIssuesDetected ?? false,
+        nonCivicMixed: parsed.nonCivicMixed ?? false,
       };
     } catch (error) {
       throw new AppError({

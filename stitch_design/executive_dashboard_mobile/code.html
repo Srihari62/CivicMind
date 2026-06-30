@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>CivicMind - Executive Command</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS (configured for CivicMind design system) -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary-container": "#4169e1",
+                      "primary": "#214fc7",
+                      "error-container": "#ffdad6",
+                      "surface-container-lowest": "#ffffff",
+                      "surface": "#f7f9fb",
+                      "on-tertiary": "#ffffff",
+                      "primary-fixed-dim": "#b6c4ff",
+                      "tertiary-fixed": "#f3daff",
+                      "background": "#f7f9fb",
+                      "tertiary-fixed-dim": "#e3b5ff",
+                      "on-error-container": "#93000a",
+                      "on-secondary-fixed": "#002020",
+                      "surface-container-high": "#e6e8ea",
+                      "surface-container": "#eceef0",
+                      "on-primary-fixed": "#00164e",
+                      "on-secondary": "#ffffff",
+                      "on-background": "#191c1e",
+                      "on-surface-variant": "#434654",
+                      "on-surface": "#191c1e",
+                      "surface-tint": "#2854cc",
+                      "inverse-primary": "#b6c4ff",
+                      "secondary-fixed": "#93f2f2",
+                      "surface-bright": "#f7f9fb",
+                      "on-primary-fixed-variant": "#003baf",
+                      "on-error": "#ffffff",
+                      "secondary-fixed-dim": "#76d6d5",
+                      "on-tertiary-fixed": "#2f004c",
+                      "tertiary-container": "#a72cf7",
+                      "surface-dim": "#d8dadc",
+                      "secondary-container": "#90efef",
+                      "outline-variant": "#c4c5d6",
+                      "tertiary": "#8900d3",
+                      "on-primary-container": "#f8f7ff",
+                      "on-tertiary-fixed-variant": "#6e00ab",
+                      "surface-variant": "#e0e3e5",
+                      "on-tertiary-container": "#fff5fe",
+                      "inverse-surface": "#2d3133",
+                      "error": "#ba1a1a",
+                      "outline": "#747685",
+                      "on-primary": "#ffffff",
+                      "surface-container-low": "#f2f4f6",
+                      "inverse-on-surface": "#eff1f3",
+                      "secondary": "#006a6a",
+                      "surface-container-highest": "#e0e3e5",
+                      "primary-fixed": "#dce1ff",
+                      "on-secondary-fixed-variant": "#004f4f",
+                      "on-secondary-container": "#006e6e"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "stack-sm": "16px",
+                      "gutter": "32px",
+                      "stack-lg": "64px",
+                      "container-max": "1440px",
+                      "stack-md": "32px",
+                      "margin-desktop": "64px",
+                      "unit": "8px",
+                      "margin-mobile": "24px"
+              },
+              "fontFamily": {
+                      "label-lg": [
+                              "Inter"
+                      ],
+                      "headline-xl": [
+                              "Inter"
+                      ],
+                      "display-lg-mobile": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "button": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "label-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.4",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-xl": [
+                              "40px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "display-lg-mobile": [
+                              "40px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "body-lg": [
+                              "20px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-lg": [
+                              "64px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.3",
+                                      "letterSpacing": "0em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "button": [
+                              "18px",
+                              {
+                                      "lineHeight": "1",
+                                      "letterSpacing": "0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        /* Ambient Background Drift */
+        @keyframes drift {
+            0% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0, 0) scale(1); }
+        }
+        
+        .blob {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.4;
+            z-index: -1;
+            animation: drift 20s infinite ease-in-out alternate;
+        }
+
+        .blob-primary {
+            background-color: #4169e1; /* primary-container */
+            width: 300px;
+            height: 300px;
+            top: -100px;
+            left: -100px;
+        }
+
+        .blob-tertiary {
+            background-color: #a72cf7; /* tertiary-container */
+            width: 250px;
+            height: 250px;
+            bottom: 20%;
+            right: -50px;
+            animation-delay: -5s;
+        }
+        
+        /* Claymorphic Utility Classes */
+        .clay-card {
+            background-color: #ffffff;
+            border-radius: 2rem;
+            box-shadow: 
+                inset 2px 2px 5px rgba(255, 255, 255, 0.7),
+                inset -2px -2px 5px rgba(0, 0, 0, 0.05),
+                8px 12px 32px rgba(65, 105, 225, 0.15); /* Royal Blue tinted shadow */
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.8);
+        }
+        
+        /* Subtle top-left glow for clay cards */
+        .clay-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(125,249,255,0.1) 0%, transparent 40%);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 2rem;
+        }
+        
+        /* Interactive Squish */
+        .squish-btn {
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .squish-btn:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 25px rgba(65, 105, 225, 0.2);
+        }
+        .squish-btn:active {
+            transform: scale(0.95);
+            box-shadow: inset 3px 3px 8px rgba(0,0,0,0.1);
+        }
+
+        /* Material Symbols Setup */
+        .material-symbols-outlined {
+          font-variation-settings:
+          'FILL' 0,
+          'wght' 400,
+          'GRAD' 0,
+          'opsz' 24
+        }
+        
+        /* Hide scrollbar for clean look */
+        ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen relative overflow-x-hidden pt-28 pb-32">
+<!-- Ambient Blobs -->
+<div class="blob blob-primary"></div>
+<div class="blob blob-tertiary"></div>
+<!-- JSON Component: TopAppBar -->
+<header class="bg-surface/80 dark:bg-inverse-surface/80 backdrop-blur-xl fixed top-4 left-4 right-4 rounded-lg border border-white/20 dark:border-white/10 shadow-[0_8px_32px_rgba(33,79,199,0.15)] dark:shadow-none flex justify-between items-center px-margin-mobile w-[calc(100%-48px)] mx-auto z-50 h-[72px]">
+<div class="flex items-center gap-4">
+<!-- Leading Avatar -->
+<div class="w-10 h-10 rounded-full overflow-hidden bg-surface-container-highest flex items-center justify-center shadow-inner border border-white/50">
+<img class="w-full h-full object-cover" data-alt="A close-up portrait of a professional executive woman with short dark hair, wearing a navy blazer, looking confident against a clean, bright white background. Soft studio lighting. High-end modern corporate style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDPcTrpLOCouAxpWCKyE6wqgzs80e2zHxrxB8R--HqjGFPduJjVTsVuLFRmtFv_plM04fD1fMG8BOWB3m29XDaUgpm5ObnjN3JKo00U8jFNQ_rZQj4p0I7CYY4axNHB3KyFSsAcaAuvNi2G6S3AbSsyXtMuf_9_P8GUHFXOLZ5jVVyomphEjjwnL85uGnHM7mt3DQuma669DMGM_o0R6-MjyoveiY1MjxITrtRNsgykXeqnryR5QyphpIPVtnCog3XCEKwWeBq6L44"/>
+</div>
+<!-- Headline / Brand -->
+<div class="flex flex-col">
+<span class="font-display-lg-mobile text-[24px] leading-tight font-extrabold text-primary dark:text-primary-fixed-dim tracking-tighter">CivicMind</span>
+<span class="font-label-lg text-[12px] text-on-surface-variant uppercase tracking-widest opacity-80">Command</span>
+</div>
+</div>
+<!-- Trailing Icon -->
+<button class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors text-primary relative">
+<span class="material-symbols-outlined text-[28px]" style="font-variation-settings: 'FILL' 1;">notifications</span>
+<span class="absolute top-3 right-3 w-3 h-3 bg-error rounded-full border-2 border-surface animate-pulse"></span>
+</button>
+</header>
+<!-- Main Canvas -->
+<main class="px-margin-mobile flex flex-col gap-stack-md relative z-10 max-w-container-max mx-auto">
+<!-- Header Area -->
+<section class="mt-4">
+<h1 class="font-headline-xl text-headline-xl text-primary font-bold mb-2">Executive Command</h1>
+<p class="font-body-md text-body-md text-on-surface-variant opacity-80">Live operational overview of city systems.</p>
+</section>
+<!-- KPI: City Pulse Score -->
+<section class="clay-card p-6 flex flex-col gap-4 relative overflow-visible z-20">
+<!-- Decorative logo watermark -->
+<div class="absolute -right-8 -bottom-8 opacity-5 pointer-events-none w-48 h-48">
+<img alt="CivicMind Logo Watermark" class="w-full h-full object-contain mix-blend-multiply" src="https://lh3.googleusercontent.com/aida/AP1WRLu91fjzoimFkIkXYzdZLlKF9UJjuALsT1wkv228FjG2hs_zYFuSDO-JIviNDuozDpLFYJoP9qQ_CCuCRaL-5Row9mWXFzNE2VW5qTUQ0jRBCReV6Uk1Z0P13ahdob6EwgeAvyUGf_gqFeuWX1vgvLi20eb9qoVwjfc07hM4PxfnY9ZpweobQbIg8uLoL127y7m4qj61oxb3YbqiQcwI-NjotyERdgTxUZOmpBadsv6jN-fZiZZhBZg8iR8"/>
+</div>
+<div class="flex justify-between items-start z-10">
+<div>
+<h2 class="font-label-lg text-label-lg text-on-surface-variant uppercase tracking-wider mb-1">City Pulse Score</h2>
+<div class="flex items-baseline gap-2">
+<span class="font-display-lg text-display-lg text-primary tracking-tighter">94.2</span>
+<span class="font-label-lg text-label-lg text-secondary">+1.2</span>
+</div>
+</div>
+<div class="w-12 h-12 bg-primary-container rounded-full flex items-center justify-center shadow-lg text-on-primary-container">
+<span class="material-symbols-outlined text-[28px]" style="font-variation-settings: 'FILL' 1;">monitor_heart</span>
+</div>
+</div>
+<!-- Simplified Trend Graph Placeholder -->
+<div class="h-24 w-full mt-2 relative z-10">
+<!-- Using SVG as a structural placeholder for a chart -->
+<svg class="overflow-visible" height="100%" preserveaspectratio="none" viewbox="0 0 100 30" width="100%">
+<path class="text-primary opacity-20" d="M0,25 Q10,20 20,25 T40,15 T60,20 T80,5 T100,10" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"></path>
+<path d="M0,25 Q10,20 20,25 T40,15 T60,20 T80,5 T100,10 L100,30 L0,30 Z" fill="url(#blue-gradient)" opacity="0.1"></path>
+<defs>
+<lineargradient id="blue-gradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#4169e1" stop-opacity="1"></stop>
+<stop offset="100%" stop-color="#4169e1" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+</svg>
+</div>
+</section>
+<!-- Civic AI Insights (Bento Grid Layout) -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-stack-sm">
+<!-- Insight Panel 1 -->
+<div class="glass-panel p-6 flex flex-col gap-3 border-l-4 border-l-tertiary-container relative overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-tertiary-container opacity-10 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none"></div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary-container" style="font-variation-settings: 'FILL' 1;">psychiatry</span>
+<h3 class="font-label-lg text-label-lg text-on-surface font-semibold">Civic AI Insight</h3>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                    Anomaly detected: Unusual traffic volume on Route 9 correlated with minor infrastructure strain. Suggesting preemptive maintenance schedule adjustment.
+                </p>
+<div class="mt-2">
+<button class="squish-btn bg-surface-container text-primary font-button text-button px-4 py-2 rounded-full inline-flex items-center gap-2 shadow-sm border border-white/50">
+<span>Review Logs</span>
+<span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Quick Stat -->
+<div class="clay-card p-6 flex items-center justify-between">
+<div>
+<h3 class="font-label-lg text-label-lg text-on-surface-variant uppercase tracking-wider mb-1">Active Incidents</h3>
+<span class="font-headline-xl text-headline-xl text-on-surface font-bold">12</span>
+</div>
+<div class="w-16 h-16 rounded-full bg-error-container flex items-center justify-center text-on-error-container relative shadow-inner">
+<span class="material-symbols-outlined text-[32px]">warning</span>
+<div class="absolute inset-0 border-2 border-on-error-container opacity-20 rounded-full animate-ping"></div>
+</div>
+</div>
+</section>
+<!-- Incident Heatmap (Simplified) -->
+<section class="clay-card p-4 flex flex-col gap-4">
+<div class="px-2 pt-2 flex justify-between items-center">
+<h2 class="font-headline-lg text-[24px] text-on-surface font-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">map</span>
+                     Heatmap
+                 </h2>
+<button class="text-primary hover:bg-surface-container-low p-2 rounded-full transition-colors">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+</div>
+<!-- Map Container -->
+<div class="w-full h-48 rounded-xl overflow-hidden relative shadow-inner bg-surface-container-highest border border-white/50">
+<div class="bg-cover bg-center w-full h-full absolute inset-0 opacity-80 mix-blend-multiply" data-alt="A stylized, simplified digital map of a city showing topography and roads in a soft light mode style. The map uses a palette of pale greys, soft blues, and whites. There are three glowing semi-transparent red circular 'heatmap' spots indicating activity density. Modern, clean UI aesthetic." data-location="City Map" style="background-image: url('https://www.gstatic.com/labs-code/stitch/stitch-placeholder-300x300.svg')"></div>
+<!-- Overlay UI on Map -->
+<div class="absolute bottom-3 left-3 bg-surface/90 backdrop-blur-md px-3 py-1.5 rounded-full shadow-lg border border-white/40 flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-error animate-pulse"></span>
+<span class="font-label-lg text-[12px] text-on-surface font-semibold">Live Feed</span>
+</div>
+</div>
+</section>
+</main>
+<!-- JSON Component: BottomNavBar -->
+<nav class="bg-surface-container-low/90 dark:bg-inverse-surface/90 backdrop-blur-2xl fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] z-50 flex justify-around items-center py-2 rounded-full border border-white/30 dark:border-white/10 shadow-[inset_0_2px_4px_rgba(255,255,255,0.4),0_12px_24px_rgba(0,0,0,0.1)]">
+<!-- Active Tab: Dashboard -->
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-5 py-2 shadow-[4px_4px_10px_rgba(65,105,225,0.3)] scale-110 active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="font-label-lg text-[10px] leading-none">Dashboard</span>
+</a>
+<!-- Inactive Tab: Reports -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-4 py-2 opacity-70 hover:opacity-100 transition-all duration-300" href="#">
+<span class="material-symbols-outlined mb-1">analytics</span>
+<span class="font-label-lg text-[10px] leading-none">Reports</span>
+</a>
+<!-- Inactive Tab: Community -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-4 py-2 opacity-70 hover:opacity-100 transition-all duration-300" href="#">
+<span class="material-symbols-outlined mb-1">group</span>
+<span class="font-label-lg text-[10px] leading-none">Community</span>
+</a>
+<!-- Inactive Tab: Resources -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-4 py-2 opacity-70 hover:opacity-100 transition-all duration-300" href="#">
+<span class="material-symbols-outlined mb-1">library_books</span>
+<span class="font-label-lg text-[10px] leading-none">Resources</span>
+</a>
+</nav>
+<script>
+        // Simple micro-interaction for map spots pulsing (simulated)
+        // Additional vanilla JS can go here if needed for deeper interactivity.
+        document.querySelectorAll('.squish-btn').forEach(btn => {
+            btn.addEventListener('mousedown', function() {
+                this.style.transform = 'scale(0.95)';
+            });
+            btn.addEventListener('mouseup', function() {
+                this.style.transform = 'scale(1)';
+            });
+            btn.addEventListener('mouseleave', function() {
+                this.style.transform = 'scale(1)';
+            });
+        });
+    </script>
+</body></html>

@@ -53,9 +53,17 @@ export class AssignmentService {
     // Determine target category
     const category = report.metadata.category;
     const department = this.mapCategoryToDepartment(category);
+    const reportCity = report.city || (report as any).location?.city || "";
 
     // 1. Fetch available officers in department
-    const availableOfficers = await OfficerService.getAvailableOfficers(department);
+    let availableOfficers = await OfficerService.getAvailableOfficers(department);
+
+    // Filter by city to avoid cross-city assignments
+    if (reportCity) {
+      availableOfficers = availableOfficers.filter(
+        (officer) => officer.city && officer.city.toLowerCase() === reportCity.toLowerCase()
+      );
+    }
 
     if (availableOfficers.length === 0) {
       // No officer exists - leave assignedOfficerId null and mark status as waiting_assignment
@@ -154,6 +162,13 @@ export class AssignmentService {
       reportId,
       "accepted"
     );
+
+    try {
+      const { CitizenStatsService } = await import("./stats.service");
+      await CitizenStatsService.syncStats(report.metadata.createdBy);
+    } catch (e) {
+      console.error("Failed to sync citizen stats on assignment acceptance:", e);
+    }
   }
 
   /**
@@ -735,9 +750,40 @@ export class AssignmentService {
     // Award citizen contribution points (only after successful resolution)
     try {
       const { CitizenStatsService } = await import("./stats.service");
-      await CitizenStatsService.awardPoints(report.metadata.createdBy, 50, "resolve");
+      // Original submitter gets +100 XP
+      await CitizenStatsService.awardPoints(report.metadata.createdBy, 100, "resolve");
+
+      // Resolving officer gets +100 Solver/Performance Points
+      if (officerId) {
+        await CitizenStatsService.awardPoints(officerId, 100, "resolve");
+      }
+
+      // Award helper points to verifying citizens
+      const verificationsList: any[] = [];
+      if (typeof window === "undefined") {
+        const { adminDb } = await import("@/services/firebase/admin");
+        if (adminDb) {
+          const snapshot = await adminDb.collection("reports").doc(reportId).collection("reportVerifications").get();
+          snapshot.forEach((d) => verificationsList.push(d.data()));
+        }
+      } else {
+        const { getDocs, collection } = await import("firebase/firestore");
+        const snapshot = await getDocs(collection(db, "reports", reportId, "reportVerifications"));
+        snapshot.forEach((d) => verificationsList.push(d.data()));
+      }
+
+      for (const verification of verificationsList) {
+        const helperUid = verification.verifiedBy || verification.userId;
+        if (helperUid && helperUid !== report.metadata.createdBy) {
+          let points = 20; // +20 XP for helper
+          if (verification.verificationPhoto || verification.imageUrl) {
+            points += 30; // +30 XP if verification photo is attached
+          }
+          await CitizenStatsService.awardPoints(helperUid, points, "verify");
+        }
+      }
     } catch (e) {
-      console.error("Failed to award points to citizen:", e);
+      console.error("Failed to award points to citizen helpers:", e);
     }
 
     // Award officer performance metrics

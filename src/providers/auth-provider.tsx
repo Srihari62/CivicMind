@@ -97,26 +97,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // Listen to Firebase authentication status changes
-    const unsubscribe = onAuthStateChanged(auth, async (userState) => {
+    let unsubscribeProfile: (() => void) | null = null;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (userState) => {
       setFirebaseUser(userState);
 
-      if (userState) {
-        try {
-          const userProfile = await AuthService.getProfile(userState.uid);
-          setProfile(userProfile);
-        } catch (error) {
-          console.error("Auth Provider Error: Failed to load user profile on startup:", error);
-          setProfile(null);
-        }
-      } else {
-        setProfile(null);
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+        unsubscribeProfile = null;
       }
 
-      setLoading(false);
+      if (userState) {
+        const { doc, onSnapshot } = await import("firebase/firestore");
+        const { db, COLLECTIONS } = await import("@/services/firebase/firestore");
+
+        unsubscribeProfile = onSnapshot(
+          doc(db, COLLECTIONS.USERS, userState.uid),
+          (docSnap) => {
+            if (docSnap.exists()) {
+              setProfile(docSnap.data() as FirestoreUserProfile);
+            } else {
+              setProfile(null);
+            }
+            setLoading(false);
+          },
+          (error) => {
+            console.error("Auth Provider Error: Failed to listen to user profile:", error);
+            setLoading(false);
+          }
+        );
+      } else {
+        setProfile(null);
+        setLoading(false);
+      }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+      }
+    };
   }, []);
 
   return (

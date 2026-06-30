@@ -11,6 +11,15 @@ import { UserProfile } from "@/types";
 export interface FirestoreUserProfile extends UserProfile {
   photoURL?: string;
   isProfileComplete: boolean;
+  homeLocation?: {
+    latitude: number;
+    longitude: number;
+    formattedAddress?: string;
+  };
+  preferredLanguage?: string;
+  state?: string;
+  city?: string;
+  locality?: string;
 
   // Officer-specific profile fields
   department?: string;
