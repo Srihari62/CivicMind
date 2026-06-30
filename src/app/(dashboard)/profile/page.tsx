@@ -400,18 +400,6 @@ export default function ProfilePage() {
       ? 'bg-orange-500/10 border-orange-500/20 text-orange-600 dark:text-orange-450'
       : 'bg-purple-500/10 border-purple-500/20 text-purple-650 dark:text-purple-450';
 
-  const themeGlow1 = isCitizen
-    ? 'bg-indigo-500/10 dark:bg-indigo-500/5'
-    : isOfficer
-      ? 'bg-orange-500/10 dark:bg-orange-500/5'
-      : 'bg-purple-500/10 dark:bg-purple-500/5';
-
-  const themeGlow2 = isCitizen
-    ? 'bg-teal-500/10 dark:bg-teal-500/5'
-    : isOfficer
-      ? 'bg-amber-500/10 dark:bg-amber-500/5'
-      : 'bg-indigo-500/10 dark:bg-indigo-500/5';
-
   return (
     <RouteGuard allowedRoles={['citizen', 'officer', 'admin']}>
       <div className="flex min-h-screen flex-col bg-slate-50 text-slate-800 selection:bg-indigo-500/20 selection:text-slate-900 relative overflow-x-hidden font-sans">

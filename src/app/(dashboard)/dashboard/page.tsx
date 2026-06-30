@@ -15,7 +15,7 @@ import Link from "next/link";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db, COLLECTIONS } from "@/services/firebase/firestore";
 import { CivicReport } from "@/types";
-import { Clock, CheckCircle2, XCircle, AlertCircle, ArrowRight,  Sparkles,
+import { Clock, CheckCircle2, XCircle, AlertCircle, ArrowRight, Sparkles, ShieldAlert, Wrench,
   Zap,
   LayoutDashboard,
   User,

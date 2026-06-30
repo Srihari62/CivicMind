@@ -9,7 +9,7 @@ import { useAuth } from "@/providers/auth-provider";
 import { RouteGuard } from "@/features/auth/components/route-guard";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { updateOfficerAvailabilityAction } from "@/app/actions/officer.actions";
 import { LayoutDashboard, AlertCircle, CheckCircle2, User, LogOut } from "lucide-react";
@@ -18,7 +18,6 @@ import { motion } from "framer-motion";
 export default function OfficerLayout({ children }: { children: React.ReactNode }) {
   const { profile, logout } = useAuth();
   const pathname = usePathname();
-  const router = useRouter();
   const [availability, setAvailability] = useState<"available" | "busy" | "offline">("available");
 
   useEffect(() => {

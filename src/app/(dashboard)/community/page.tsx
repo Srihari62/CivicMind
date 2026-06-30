@@ -29,6 +29,7 @@ import {
   AlertCircle,
   ArrowRight,
   ShieldAlert,
+  ShieldCheck,
   Wrench,
   MapPin,
   Eye,
