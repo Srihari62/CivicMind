@@ -17,9 +17,13 @@ let hasAdminCredentials = false;
 
 if (!admin.apps.length) {
   const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  if (serviceAccountKey) {
+  const serviceAccountKeyB64 = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64;
+  if (serviceAccountKey || serviceAccountKeyB64) {
     try {
-      const serviceAccount = JSON.parse(serviceAccountKey);
+      const jsonString = serviceAccountKeyB64 
+        ? Buffer.from(serviceAccountKeyB64, 'base64').toString('utf-8') 
+        : serviceAccountKey;
+      const serviceAccount = JSON.parse(jsonString!);
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
       });
