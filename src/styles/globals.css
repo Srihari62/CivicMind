@@ -1,10 +1,10 @@
 /**
  * @file src/styles/globals.css
  * @description Core global styling stylesheet for CivicMind.
- * Defines the design token system using Tailwind CSS v4 and standard CSS Custom Properties
- * compatible with shadcn/ui components, including support for system-wide light/dark themes.
+ * Implements a premium, visionary 3D Claymorphism and Glassmorphism light theme.
  */
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 /* -------------------------------------------------------------------------
@@ -40,82 +40,53 @@
   --color-ring: var(--ring);
 
   --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-sm: calc(var(--radius) - 4px);
-
-  --animate-accordion-down: accordion-down 0.2s ease-out;
-  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-sm: calc(var(--radius) - 8px);
 }
 
 /* -------------------------------------------------------------------------
-   Theme Tokens (Light Mode as Default)
+   Claymorphism Theme Tokens (Forced Light Theme System-wide)
    ------------------------------------------------------------------------- */
-:root {
-  /* Slate neutral background with bright indigo accents */
-  --background: hsl(220 14% 96%);
-  --foreground: hsl(224 71.4% 4.1%);
+:root, .dark {
+  /* Premium colors from DESIGN.md */
+  --background: #f7f9fb;
+  --foreground: #191c1e;
 
-  --card: hsl(0 0% 100%);
-  --card-foreground: hsl(224 71.4% 4.1%);
+  --card: #ffffff;
+  --card-foreground: #191c1e;
 
-  --popover: hsl(0 0% 100%);
-  --popover-foreground: hsl(224 71.4% 4.1%);
+  --popover: #ffffff;
+  --popover-foreground: #191c1e;
 
-  /* Premium Violet/Indigo theme */
-  --primary: hsl(263.4 70% 50.4%);
-  --primary-foreground: hsl(210 20% 98%);
+  /* Primary, secondary, tertiary */
+  --primary: #214fc7;
+  --primary-foreground: #ffffff;
+  --primary-container: #4169e1;
+  --on-primary-container: #f8f7ff;
 
-  --secondary: hsl(220 14.3% 95.9%);
-  --secondary-foreground: hsl(220.9 39.3% 11%);
+  --secondary: #006a6a;
+  --secondary-foreground: #ffffff;
+  --secondary-container: #90efef;
+  --on-secondary-container: #006e6e;
 
-  --muted: hsl(220 14.3% 95.9%);
-  --muted-foreground: hsl(220 8.9% 46.1%);
+  --tertiary: #8900d3;
+  --tertiary-container: #a72cf7;
+  --on-tertiary-container: #fff5fe;
 
-  --accent: hsl(220 14.3% 95.9%);
-  --accent-foreground: hsl(220.9 39.3% 11%);
+  --muted: #eceef0;
+  --muted-foreground: #434654;
 
-  --destructive: hsl(0 84.2% 60.2%);
-  --destructive-foreground: hsl(210 20% 98%);
+  --accent: #f2f4f6;
+  --accent-foreground: #191c1e;
 
-  --border: hsl(220 13% 91%);
-  --input: hsl(220 13% 91%);
-  --ring: hsl(262.1 83.3% 57.8%);
+  --destructive: #ba1a1a;
+  --destructive-foreground: #ffffff;
 
-  --radius: 0.5rem;
-}
+  --border: rgba(116, 118, 133, 0.15);
+  --input: #f2f4f6;
+  --ring: #214fc7;
 
-/* -------------------------------------------------------------------------
-   Theme Tokens (Dark Mode)
-   ------------------------------------------------------------------------- */
-.dark {
-  /* Dark slate neutral and primary violet */
-  --background: hsl(224 71.4% 4.1%);
-  --foreground: hsl(210 20% 98%);
-
-  --card: hsl(224 71.4% 4.1%);
-  --card-foreground: hsl(210 20% 98%);
-
-  --popover: hsl(224 71.4% 4.1%);
-  --popover-foreground: hsl(210 20% 98%);
-
-  --primary: hsl(263.4 70% 50.4%);
-  --primary-foreground: hsl(210 20% 98%);
-
-  --secondary: hsl(215 27.9% 16.9%);
-  --secondary-foreground: hsl(210 20% 98%);
-
-  --muted: hsl(215 27.9% 16.9%);
-  --muted-foreground: hsl(217.9 10.6% 64.9%);
-
-  --accent: hsl(215 27.9% 16.9%);
-  --accent-foreground: hsl(210 20% 98%);
-
-  --destructive: hsl(0 62.8% 30.6%);
-  --destructive-foreground: hsl(210 20% 98%);
-
-  --border: hsl(215 27.9% 16.9%);
-  --input: hsl(215 27.9% 16.9%);
-  --ring: hsl(263.4 70% 50.4%);
+  --radius: 24px;
 }
 
 /* -------------------------------------------------------------------------
@@ -123,52 +94,219 @@
    ------------------------------------------------------------------------- */
 @layer base {
   * {
-    border-color: var(--border);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    border-color: rgba(116, 118, 133, 0.15);
     outline-color: var(--ring);
   }
   
   body {
     background-color: var(--background);
     color: var(--foreground);
+    background-image: 
+      radial-gradient(circle at 10% 20%, rgba(33, 79, 199, 0.04) 0%, transparent 40%),
+      radial-gradient(circle at 90% 80%, rgba(0, 106, 106, 0.03) 0%, transparent 40%);
+    background-attachment: fixed;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
-  /* Smooth transition animations for theme toggling */
   html {
     scroll-behavior: smooth;
   }
 }
 
 /* -------------------------------------------------------------------------
-   Premium Helper Classes & Utilities
+   3D Claymorphism Classes & Utilities
    ------------------------------------------------------------------------- */
 @layer utilities {
-  /* Glassmorphism panel styling */
-  .glass-panel {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+  /* Soft 3D Claymorphism Card Container */
+  .clay-card {
+    background: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.8) !important;
+    border-radius: 32px !important;
+    box-shadow: 
+      8px 8px 24px rgba(163, 177, 198, 0.35),
+      -8px -8px 24px rgba(255, 255, 255, 0.95),
+      inset 2px 2px 4px rgba(255, 255, 255, 0.9),
+      inset -4px -4px 10px rgba(163, 177, 198, 0.1) !important;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
   }
 
-  .dark .glass-panel {
-    background: rgba(15, 23, 42, 0.65);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+  .clay-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 
+      12px 20px 32px rgba(163, 177, 198, 0.4),
+      -12px -12px 32px rgba(255, 255, 255, 0.98),
+      inset 2px 2px 4px rgba(255, 255, 255, 0.9),
+      inset -4px -4px 10px rgba(163, 177, 198, 0.1) !important;
   }
 
-  /* Shimmer animation utility for skeleton screens */
-  .shimmer {
-    background: linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, 0.2) 20%,
-      rgba(255, 255, 255, 0.5) 60%,
-      rgba(255, 255, 255, 0) 100%
-    );
-    background-size: 200% 100%;
-    animation: shimmer-anim 1.5s infinite;
+  /* 3D Claymorphic Pill Buttons */
+  .clay-btn {
+    border-radius: 9999px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.02em;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+
+  .clay-btn:hover {
+    transform: translateY(-2px) scale(1.04);
+  }
+
+  .clay-btn:active {
+    transform: translateY(1px) scale(0.96);
+  }
+
+  /* Colors for squishy buttons */
+  .clay-btn-blue {
+    background: linear-gradient(135deg, #4169e1 0%, #214fc7 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 
+      inset 0 2px 4px rgba(255, 255, 255, 0.4),
+      0 8px 20px rgba(33, 79, 199, 0.3) !important;
+  }
+  .clay-btn-blue:hover {
+    box-shadow: 
+      inset 0 4px 8px rgba(255, 255, 255, 0.5),
+      0 12px 28px rgba(33, 79, 199, 0.4) !important;
+  }
+  .clay-btn-blue:active {
+    box-shadow: 
+      inset 0 -2px 4px rgba(0, 0, 0, 0.2),
+      0 2px 8px rgba(33, 79, 199, 0.2) !important;
+  }
+
+  .clay-btn-green {
+    background: linear-gradient(135deg, #90efef 0%, #006a6a 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 
+      inset 0 2px 4px rgba(255, 255, 255, 0.4),
+      0 8px 20px rgba(0, 106, 106, 0.25) !important;
+  }
+  .clay-btn-green:hover {
+    box-shadow: 
+      inset 0 4px 8px rgba(255, 255, 255, 0.5),
+      0 12px 28px rgba(0, 106, 106, 0.35) !important;
+  }
+  .clay-btn-green:active {
+    box-shadow: 
+      inset 0 -2px 4px rgba(0, 0, 0, 0.2),
+      0 2px 8px rgba(0, 106, 106, 0.15) !important;
+  }
+
+  .clay-btn-purple {
+    background: linear-gradient(135deg, #a72cf7 0%, #8900d3 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 
+      inset 0 2px 4px rgba(255, 255, 255, 0.4),
+      0 8px 20px rgba(137, 0, 211, 0.25) !important;
+  }
+  .clay-btn-purple:hover {
+    box-shadow: 
+      inset 0 4px 8px rgba(255, 255, 255, 0.5),
+      0 12px 28px rgba(137, 0, 211, 0.35) !important;
+  }
+  .clay-btn-purple:active {
+    box-shadow: 
+      inset 0 -2px 4px rgba(0, 0, 0, 0.2),
+      0 2px 8px rgba(137, 0, 211, 0.15) !important;
+  }
+
+  .clay-btn-white {
+    background: #ffffff !important;
+    color: #434654 !important;
+    border: 1px solid rgba(116, 118, 133, 0.2) !important;
+    box-shadow: 
+      inset 0 2px 4px rgba(255, 255, 255, 0.9),
+      0 6px 15px rgba(163, 177, 198, 0.15) !important;
+  }
+  .clay-btn-white:hover {
+    box-shadow: 
+      inset 0 3px 6px rgba(255, 255, 255, 0.95),
+      0 10px 22px rgba(163, 177, 198, 0.25) !important;
+  }
+  .clay-btn-white:active {
+    box-shadow: 
+      inset 0 -2px 4px rgba(0, 0, 0, 0.05),
+      0 2px 6px rgba(163, 177, 198, 0.1) !important;
+  }
+
+  /* Inset/Concave Input Field Styling */
+  .clay-input {
+    background: #eceef0 !important;
+    border: 1px solid rgba(163, 177, 198, 0.25) !important;
+    border-radius: 9999px !important;
+    box-shadow: 
+      inset 2px 2px 5px rgba(0, 0, 0, 0.06),
+      inset -2px -2px 5px rgba(255, 255, 255, 0.8) !important;
+    color: #191c1e !important;
+    padding: 12px 22px !important;
+    transition: all 0.25s ease !important;
+  }
+
+  .clay-input:focus {
+    background: #ffffff !important;
+    border-color: #214fc7 !important;
+    box-shadow: 
+      0 0 0 4px rgba(33, 79, 199, 0.15),
+      inset 1px 1px 3px rgba(0, 0, 0, 0.05) !important;
+    outline: none !important;
+  }
+
+  /* Claymorphic Badges & Chips */
+  .clay-chip {
+    border-radius: 9999px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.04em;
+    padding: 6px 16px !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 
+      inset 1px 1px 2px rgba(255, 255, 255, 0.6),
+      2px 4px 10px rgba(163, 177, 198, 0.15) !important;
+    font-size: 13px !important;
+  }
+
+  .clay-chip-blue {
+    background: #f8f7ff !important;
+    color: #214fc7 !important;
+    border: 1.5px solid rgba(33, 79, 199, 0.15) !important;
+  }
+
+  .clay-chip-green {
+    background: rgba(144, 239, 239, 0.15) !important;
+    color: #006a6a !important;
+    border: 1.5px solid rgba(0, 106, 106, 0.15) !important;
+  }
+
+  .clay-chip-purple {
+    background: #fff5fe !important;
+    color: #8900d3 !important;
+    border: 1.5px solid rgba(137, 0, 211, 0.15) !important;
+  }
+
+  .clay-chip-red {
+    background: #ffdad6 !important;
+    color: #ba1a1a !important;
+    border: 1.5px solid rgba(186, 26, 26, 0.15) !important;
+  }
+
+  .clay-chip-orange {
+    background: #fef3c7 !important;
+    color: #f59e0b !important;
+    border: 1.5px solid rgba(245, 158, 11, 0.15) !important;
+  }
+
+  .clay-chip-yellow {
+    background: #fffde7 !important;
+    color: #f57f17 !important;
+    border: 1.5px solid rgba(251, 192, 45, 0.15) !important;
   }
 
   /* Custom minimal scrollbar */
@@ -182,24 +320,25 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: var(--muted-foreground);
+    background: #cbd5e1;
     border-radius: 4px;
-    opacity: 0.5;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--primary);
+    background: #94a3b8;
   }
 }
 
 /* -------------------------------------------------------------------------
    Animations
    ------------------------------------------------------------------------- */
-@keyframes shimmer-anim {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
+@keyframes blob {
+  0% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.08); }
+  66% { transform: translate(-20px, 20px) scale(0.96); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+
+.animate-blob {
+  animation: blob 18s infinite alternate ease-in-out;
 }

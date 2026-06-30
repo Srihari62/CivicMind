@@ -75,7 +75,7 @@ export default function CitizenDashboardPage() {
 
     if (duplicateReportIds && duplicateReportIds.length > 0) {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500">
+        <span className="clay-chip clay-chip-orange text-[10px] gap-1 px-3 py-1">
           <AlertCircle className="w-3.5 h-3.5" />
           Linked Repost
         </span>
@@ -84,15 +84,15 @@ export default function CitizenDashboardPage() {
 
     if (lowerStatus === "processing") {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400">
-          <Clock className="w-3.5 h-3.5 animate-pulse" />
+        <span className="clay-chip clay-chip-blue text-[10px] gap-1 px-3 py-1 animate-pulse">
+          <Clock className="w-3.5 h-3.5" />
           Processing AI...
         </span>
       );
     }
     if (lowerStatus === "verified" || lowerStatus === "processed") {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+        <span className="clay-chip clay-chip-green text-[10px] gap-1 px-3 py-1">
           <CheckCircle2 className="w-3.5 h-3.5" />
           Verified
         </span>
@@ -100,7 +100,7 @@ export default function CitizenDashboardPage() {
     }
     if (lowerStatus === "accepted") {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+        <span className="clay-chip clay-chip-purple text-[10px] gap-1 px-3 py-1">
           <ShieldAlert className="w-3.5 h-3.5" />
           Accepted
         </span>
@@ -108,7 +108,7 @@ export default function CitizenDashboardPage() {
     }
     if (lowerStatus === "in_progress") {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400">
+        <span className="clay-chip clay-chip-purple text-[10px] gap-1 px-3 py-1">
           <Wrench className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: "3s" }} />
           Investigating
         </span>
@@ -116,7 +116,7 @@ export default function CitizenDashboardPage() {
     }
     if (lowerStatus === "resolved") {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+        <span className="clay-chip clay-chip-green text-[10px] gap-1 px-3 py-1 shadow-sm">
           <CheckCircle2 className="w-3.5 h-3.5" />
           Resolved
         </span>
@@ -124,7 +124,7 @@ export default function CitizenDashboardPage() {
     }
     if (lowerStatus === "rejected") {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400">
+        <span className="clay-chip clay-chip-red text-[10px] gap-1 px-3 py-1">
           <XCircle className="w-3.5 h-3.5" />
           Rejected
         </span>
@@ -132,7 +132,7 @@ export default function CitizenDashboardPage() {
     }
     if (lowerStatus === "requires_review" || lowerStatus === "requires review" || lowerStatus === "flagged") {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400">
+        <span className="clay-chip clay-chip-yellow text-[10px] gap-1 px-3 py-1">
           <AlertCircle className="w-3.5 h-3.5" />
           Review Required
         </span>
@@ -140,7 +140,7 @@ export default function CitizenDashboardPage() {
     }
     if (lowerStatus === "failed") {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400">
+        <span className="clay-chip clay-chip-red text-[10px] gap-1 px-3 py-1">
           <XCircle className="w-3.5 h-3.5" />
           Verification Failed
         </span>
@@ -148,8 +148,8 @@ export default function CitizenDashboardPage() {
     }
 
     return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400">
-        <Clock className="w-3.5 h-3.5 animate-pulse" />
+      <span className="clay-chip clay-chip-blue text-[10px] gap-1 px-3 py-1 animate-pulse">
+        <Clock className="w-3.5 h-3.5" />
         Processing AI...
       </span>
     );
@@ -157,57 +157,61 @@ export default function CitizenDashboardPage() {
 
   return (
     <RouteGuard allowedRoles={["citizen"]}>
-      <div className="flex min-h-screen flex-col bg-zinc-950 text-white selection:bg-blue-600/30 selection:text-white">
-        {/* Navigation Bar */}
-        <header className="border-b border-white/10 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-30">
-          <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <span className="font-bold text-blue-500 tracking-wider flex items-center gap-1.5 select-none">
-                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                CivicMind
-              </span>
-              <nav className="hidden md:flex items-center gap-4 text-sm font-semibold">
-                <Link href="/dashboard" className="text-white border-b-2 border-blue-500 pb-1">
-                  Dashboard
-                </Link>
-                <Link href="/community" className="text-zinc-450 hover:text-white transition">
-                  Community Feed
-                </Link>
-              </nav>
-            </div>
-            <div className="flex items-center gap-4">
-              {/* Notification Center component integrated */}
-              <NotificationCenter />
-              
-              <Link href="/reports/new">
-                <Button size="sm">Report Issue</Button>
-              </Link>
-              
-              <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition" title="View Profile">
-                {profile?.avatarUrl ? (
-                  <img src={profile.avatarUrl} alt="Avatar" className="w-7 h-7 rounded-full border border-white/20 object-cover" />
-                ) : (
-                  <div className="w-7 h-7 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 text-xs font-bold font-mono">
-                    {profile?.displayName?.[0]?.toUpperCase() || "C"}
-                  </div>
-                )}
-              </Link>
+      <div className="flex min-h-screen flex-col bg-slate-50 text-slate-800 selection:bg-indigo-500/20 selection:text-slate-900 relative overflow-x-hidden">
+        {/* Ambient Background Data Stream Effects */}
+        <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none opacity-65">
+          <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-blue-200/30 blur-[120px] animate-blob" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-purple-200/20 blur-[150px] animate-blob animation-delay-2000" />
+        </div>
 
-              <Button variant="outline" size="sm" onClick={() => logout()}>
-                Sign Out
-              </Button>
-            </div>
+        {/* Floating Glassmorphic Navigation Bar */}
+        <header className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-8 py-3.5 max-w-6xl mx-auto bg-white/80 border border-white/60 backdrop-blur-2xl rounded-full mt-6 mx-auto w-[92%] shadow-[0_8px_30px_rgb(163,177,198,0.2)] transition-transform duration-200">
+          <div className="flex items-center gap-6">
+            <span className="font-extrabold text-blue-600 tracking-wider flex items-center gap-1.5 select-none text-base">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
+              CivicMind
+            </span>
+            <nav className="hidden md:flex items-center gap-6 text-xs font-black uppercase tracking-widest">
+              <Link href="/dashboard" className="text-blue-600 border-b-2 border-blue-500 pb-1">
+                Dashboard
+              </Link>
+              <Link href="/community" className="text-slate-400 hover:text-slate-800 transition">
+                Community Feed
+              </Link>
+            </nav>
+          </div>
+          <div className="flex items-center gap-4">
+            {/* Notification Center component integrated */}
+            <NotificationCenter />
+            
+            <Link href="/reports/new">
+              <Button size="sm" variant="primary">Report Issue</Button>
+            </Link>
+            
+            <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition" title="View Profile">
+              {profile?.avatarUrl ? (
+                <img src={profile.avatarUrl} alt="Avatar" className="w-7 h-7 rounded-full border border-white/80 object-cover shadow-sm" />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600 text-xs font-bold font-mono">
+                  {profile?.displayName?.[0]?.toUpperCase() || "C"}
+                </div>
+              )}
+            </Link>
+
+            <Button variant="outline" size="sm" onClick={() => logout()}>
+              Sign Out
+            </Button>
           </div>
         </header>
 
         {/* Dashboard Area */}
-        <main className="flex-1 max-w-4xl w-full mx-auto px-6 py-10 flex flex-col gap-8">
+        <main className="flex-1 max-w-4xl w-full mx-auto px-6 pt-36 pb-24 flex flex-col gap-8 relative z-10">
           {/* Welcome Title */}
-          <div className="flex flex-col gap-2 border-b border-white/5 pb-4">
-            <h1 className="text-3xl font-extrabold tracking-tight text-white">
+          <div className="flex flex-col gap-2 pb-2">
+            <h1 className="text-4xl font-black tracking-tight text-slate-800">
               Welcome, {profile?.displayName}
             </h1>
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm font-semibold text-slate-400">
               Report local municipal issues or track active resolution processes in your neighborhood in real time.
             </p>
           </div>
@@ -216,27 +220,27 @@ export default function CitizenDashboardPage() {
           {!loading && <CitizenStatsCard reports={reports} stats={(profile as any)?.gamification} />}
 
           {/* Active Citizen Profile Card */}
-          <div className="border border-white/10 rounded-2xl p-6 bg-black/40 backdrop-blur-md flex flex-col gap-4 shadow-xl">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-blue-500" />
+          <div className="clay-card p-6 flex flex-col gap-4">
+            <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
               Citizen Registry Profile
             </h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm font-sans">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm font-sans">
               <div className="flex flex-col gap-1">
-                <span className="text-xs text-zinc-500 font-semibold uppercase tracking-wider">Display Name</span>
-                <span className="font-bold text-zinc-200">{profile?.displayName}</span>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Display Name</span>
+                <span className="font-extrabold text-slate-700">{profile?.displayName}</span>
               </div>
               <div className="flex flex-col gap-1">
-                <span className="text-xs text-zinc-500 font-semibold uppercase tracking-wider">Contact Phone</span>
-                <span className="font-bold text-zinc-200">{profile?.phoneNumber || "Not provided"}</span>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Contact Phone</span>
+                <span className="font-extrabold text-slate-700">{profile?.phoneNumber || "Not provided"}</span>
               </div>
               <div className="flex flex-col gap-1">
-                <span className="text-xs text-zinc-500 font-semibold uppercase tracking-wider">System Role</span>
-                <span className="font-bold text-blue-400 capitalize">{profile?.role}</span>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">System Role</span>
+                <span className="font-extrabold text-blue-650 capitalize">{profile?.role}</span>
               </div>
               <div className="flex flex-col gap-1">
-                <span className="text-xs text-zinc-500 font-semibold uppercase tracking-wider">Account Created</span>
-                <span className="font-bold text-zinc-200">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Account Created</span>
+                <span className="font-extrabold text-slate-700">
                   {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : "N/A"}
                 </span>
               </div>
@@ -246,10 +250,10 @@ export default function CitizenDashboardPage() {
           {/* My Reports List */}
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+              <h2 className="text-xl font-black tracking-tight text-slate-800 flex items-center gap-2">
                 My Incident Submissions
               </h2>
-              <span className="text-xs text-zinc-300 font-semibold bg-zinc-800 px-3 py-1 rounded-full border border-zinc-700">
+              <span className="text-xs text-blue-650 font-black bg-blue-100/70 border border-blue-200/50 px-4 py-1.5 rounded-full">
                 {reports.length} {reports.length === 1 ? "report" : "reports"}
               </span>
             </div>
@@ -258,24 +262,24 @@ export default function CitizenDashboardPage() {
               /* Premium Skeleton Loaders */
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="border border-white/5 rounded-2xl p-5 bg-black/20 animate-pulse flex flex-col gap-4">
+                  <div key={i} className="clay-card p-5 animate-pulse flex flex-col gap-4">
                     <div className="flex justify-between items-center">
-                      <div className="h-4 w-24 bg-zinc-800 rounded" />
-                      <div className="h-4 w-16 bg-zinc-800 rounded" />
+                      <div className="h-4 w-24 bg-slate-200 rounded" />
+                      <div className="h-4 w-16 bg-slate-200 rounded" />
                     </div>
-                    <div className="h-6 w-1/2 bg-zinc-800 rounded" />
-                    <div className="h-4 w-3/4 bg-zinc-800 rounded" />
+                    <div className="h-6 w-1/2 bg-slate-200 rounded" />
+                    <div className="h-4 w-3/4 bg-slate-200 rounded" />
                   </div>
                 ))}
               </div>
             ) : reports.length === 0 ? (
-              <div className="border border-dashed border-white/10 rounded-2xl p-12 text-center flex flex-col items-center justify-center gap-4 bg-black/20 backdrop-blur-sm">
-                <div className="w-12 h-12 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 text-lg">
+              <div className="clay-card p-12 text-center flex flex-col items-center justify-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-lg">
                   📋
                 </div>
                 <div className="flex flex-col gap-1">
-                  <span className="font-semibold text-white text-sm">No reports submitted yet</span>
-                  <span className="text-xs text-zinc-500 max-w-xs leading-relaxed">
+                  <span className="font-bold text-slate-800 text-sm">No reports submitted yet</span>
+                  <span className="text-xs text-slate-400 max-w-xs leading-relaxed font-semibold">
                     You haven&apos;t submitted any civic issue reports. Get started by clicking &quot;Report Issue&quot; above.
                   </span>
                 </div>
@@ -296,17 +300,17 @@ export default function CitizenDashboardPage() {
                     >
                       <Link
                         href={`/reports/${report.id}`}
-                        className="group border border-white/10 rounded-2xl p-5 bg-black/40 hover:bg-white/5 transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg backdrop-blur-sm relative overflow-hidden"
+                        className="group clay-card p-5 hover:bg-white/95 transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-4 relative overflow-hidden"
                       >
                         {/* Interactive glow border on hover */}
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-transparent group-hover:bg-blue-500 transition-all duration-200" />
+                        <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-transparent group-hover:bg-blue-500 transition-all duration-200" />
                         
                         <div className="flex-1 flex flex-col gap-1.5 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded">
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-650 bg-blue-100/70 border border-blue-200/50 px-2 py-0.5 rounded">
                               {getCategoryLabel(report.ai?.assistant?.category || report.metadata.category)}
                             </span>
-                            <span className="text-xs text-zinc-400 font-mono">
+                            <span className="text-xs text-slate-400 font-bold">
                               {report.timestamps?.createdAt ? new Date(report.timestamps.createdAt).toLocaleDateString(undefined, {
                                 month: "short",
                                 day: "numeric",
@@ -314,14 +318,14 @@ export default function CitizenDashboardPage() {
                               }) : "Date N/A"}
                             </span>
                           </div>
-                          <h3 className="font-bold text-white text-base group-hover:text-blue-400 transition-colors truncate">
+                          <h3 className="font-extrabold text-slate-800 text-base group-hover:text-blue-650 transition-colors truncate">
                             {report.ai?.assistant?.title || report.metadata.title || "Untitled Report"}
                           </h3>
-                          <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed">
+                          <p className="text-xs text-slate-500 font-medium line-clamp-2 leading-relaxed">
                             {report.ai?.assistant?.description || report.metadata.description || "No description provided."}
                           </p>
                           {report.ai?.verification?.duplicateReportIds && report.ai.verification.duplicateReportIds.length > 0 && (
-                            <p className="text-xs text-amber-400/90 font-semibold mt-1 flex items-center gap-1.5 bg-amber-500/5 border border-amber-500/10 px-2 py-1 rounded w-fit">
+                            <p className="text-xs text-amber-600 font-extrabold mt-1 flex items-center gap-1.5 bg-amber-50 border border-amber-100 px-2 py-1 rounded w-fit">
                               <AlertCircle className="w-3.5 h-3.5" />
                               Linked Repost of #{report.ai.verification.duplicateReportIds[0]}
                             </p>
@@ -330,7 +334,7 @@ export default function CitizenDashboardPage() {
 
                         <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
                           <div className="flex flex-col items-end gap-1">
-                            <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider font-mono">
+                            <span className="text-[9px] text-slate-400 uppercase font-black tracking-widest font-mono">
                               Verification Status
                             </span>
                             {renderStatusBadge(
@@ -338,7 +342,7 @@ export default function CitizenDashboardPage() {
                               report.ai?.verification?.duplicateReportIds
                             )}
                           </div>
-                          <div className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 group-hover:bg-blue-500/10 group-hover:border-blue-500/20 group-hover:text-blue-400 transition-all duration-200 flex items-center justify-center text-zinc-400">
+                          <div className="w-8.5 h-8.5 rounded-full bg-slate-100 border border-slate-200 group-hover:bg-blue-500 group-hover:text-white transition-all duration-200 flex items-center justify-center text-slate-400">
                             <ArrowRight className="w-4 h-4" />
                           </div>
                         </div>

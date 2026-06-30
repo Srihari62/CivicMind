@@ -33,10 +33,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           type={type}
           ref={ref}
           className={cn(
-            // Stripe/Linear-style input borders: flat, slight padding, visible focus transitions
-            "w-full px-3.5 py-2.5 bg-background border border-border text-sm rounded-md transition-all duration-200 outline-none",
-            "placeholder:text-muted-foreground/60 text-foreground",
-            "focus:border-primary focus:ring-1 focus:ring-primary focus:ring-offset-0",
+            "w-full clay-input text-sm transition-all duration-200 outline-none",
+            "placeholder:text-slate-400 text-slate-800",
             {
               "border-destructive focus:border-destructive focus:ring-destructive": error,
             },

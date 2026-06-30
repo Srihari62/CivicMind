@@ -120,10 +120,13 @@ export class CitizenStatsService {
 
     // Get all user reports
     const allReports = await ReportRepository.getAllReports();
-    const userReports = allReports.filter(r => r.metadata.createdBy === uid);
+    const isOfficer = profile.role === "officer";
+    const userReports = isOfficer
+      ? allReports.filter(r => r.ai?.assignment?.officerId === uid)
+      : allReports.filter(r => r.metadata.createdBy === uid);
     
     // Lifecycle computations
-    const reportsSubmitted = userReports.length;
+    const reportsSubmitted = isOfficer ? 0 : userReports.length;
     
     const validAssignedStatuses = [
       "accepted", "travelling", "investigating", "repair_in_progress", "awaiting_verification", "resolved"
@@ -132,17 +135,17 @@ export class CitizenStatsService {
     const reportsResolved = userReports.filter(r => r.status === "resolved").length;
 
     // Duplicate Reports
-    const reportsDuplicate = userReports.filter(
+    const reportsDuplicate = isOfficer ? 0 : userReports.filter(
       r => r.ai?.verification?.duplicateReportIds && r.ai.verification.duplicateReportIds.length > 0
     ).length;
 
     // Fake Reports
-    const reportsFake = userReports.filter(
+    const reportsFake = isOfficer ? 0 : userReports.filter(
       r => r.ai?.verification?.fakeMediaProbability && r.ai.verification.fakeMediaProbability > 0.5
     ).length;
 
     // Likes Received: Sum of supportCount of user's reports
-    const likesReceived = userReports.reduce((sum, r) => sum + (r.supportCount || 0), 0);
+    const likesReceived = isOfficer ? 0 : userReports.reduce((sum, r) => sum + (r.supportCount || 0), 0);
 
     // Query community verifications and comments count in real-time with safeguards
     let reportsVerified = currentStats.reportsVerified || 0;
@@ -243,13 +246,13 @@ export class CitizenStatsService {
     }
 
     // Contribution Score: 50 per assigned report + 15 per verification
-    const contributionScore = (reportsAssigned * 50) + (reportsVerified * 15);
+    const contributionScore = isOfficer ? 0 : (reportsAssigned * 50) + (reportsVerified * 15);
     
     // Civic Score: 100 per resolved report
     const civicScore = (reportsResolved * 100);
 
     // Total XP
-    const points = contributionScore + civicScore;
+    const points = isOfficer ? civicScore : contributionScore + civicScore;
 
     // Recalculate level based on points (unified overall level)
     let level = 1;

@@ -29,18 +29,20 @@ export async function fetchAllReports(callerUid: string): Promise<{
     let reports: CivicReport[] = [];
     if (userProfile.role === "admin") {
       const state = userProfile.state;
-      if (!state) {
-        throw new Error("Admin jurisdiction state is not set.");
+      if (state) {
+        reports = await ReportRepository.getReportsByState(state);
+      } else {
+        reports = await ReportRepository.getAllReports();
       }
-      reports = await ReportRepository.getReportsByState(state);
     } else if (userProfile.role === "officer") {
       const city = userProfile.city;
-      if (!city) {
-        throw new Error("Officer jurisdiction city is not set.");
+      if (city) {
+        reports = await ReportRepository.getReportsByCity(city);
+      } else {
+        reports = await ReportRepository.getAllReports();
       }
-      reports = await ReportRepository.getReportsByCity(city);
     } else {
-      reports = await ReportService.getAllReports();
+      reports = await ReportRepository.getAllReports();
     }
 
     return {

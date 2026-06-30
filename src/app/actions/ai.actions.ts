@@ -16,6 +16,7 @@ import { AI_MODELS } from "@/config/ai-models";
 import { TranscriptPolisherAgent } from "@/ai/agents/transcript-polisher.agent";
 
 import { authorizeAction } from "./auth-guard";
+import { UserRepository } from "@/features/auth/repositories/user.repository";
 
 export interface AIAnalysisPayload {
   media: MediaAsset[];
@@ -160,6 +161,9 @@ export interface ExecutiveSummaryResponse {
 export async function getAIExecutiveSummary(callerUid: string, stats: ExecutiveSummaryStats): Promise<ExecutiveSummaryResponse> {
   try {
     await authorizeAction(callerUid, ["admin"]);
+    const userProfile = await UserRepository.getUserProfile(callerUid);
+    const preferredLanguage = userProfile?.preferredLanguage || "English";
+    
     const model = getGeminiModel();
     const prompt = `You are a Smart City Executive AI Assistant for the CivicMind Command Center. Analyze the following municipal metrics for today:
 - Total reports in system: ${stats.totalCount}
@@ -174,6 +178,7 @@ export async function getAIExecutiveSummary(callerUid: string, stats: ExecutiveS
 - Department breakdown: ${JSON.stringify(stats.deptBreakdown)}
 
 Provide an executive operational report of exactly 150-200 words. Format your response strictly as a single JSON object.
+Your report values must be written/translated into the preferred language of the administrator: ${preferredLanguage}.
 Return ONLY raw JSON with these exact keys:
 {
   "dailySummary": "Brief overview of city operations today",
@@ -225,12 +230,16 @@ export async function getAIPredictiveInsights(
 ): Promise<PredictiveInsight[]> {
   try {
     await authorizeAction(callerUid, ["admin"]);
+    const userProfile = await UserRepository.getUserProfile(callerUid);
+    const preferredLanguage = userProfile?.preferredLanguage || "English";
+
     const model = getGeminiModel();
     const prompt = `You are a Smart City Predictive Urban Planning AI. Analyze the following list of recent municipal reports:
 ${reportsData.slice(0, 45).map(r => `- ID: ${r.id}, Category: ${r.category}, Dept: ${r.dept}, Lat: ${r.lat.toFixed(4)}, Lng: ${r.lng.toFixed(4)}, Created: ${r.created}`).join("\n")}
 
 Identify potential geographic clusters, recurring category hotspots, temporal spikes, and operational bottlenecks.
 Return exactly 3 predictive insights. Format your response strictly as a single JSON array of objects.
+Your predictive insight values (title, description, recommendedAction) must be written/translated into the preferred language of the administrator: ${preferredLanguage}.
 Return ONLY raw JSON in this format:
 [
   {
@@ -307,6 +316,9 @@ export async function askMunicipalAssistant(
 ): Promise<AskAssistantResponse> {
   try {
     await authorizeAction(callerUid, ["admin"]);
+    const userProfile = await UserRepository.getUserProfile(callerUid);
+    const preferredLanguage = userProfile?.preferredLanguage || "English";
+
     // 1. Retrieve the cached or fresh municipal context
     const analytics = await AssistantContextService.getMunicipalContext(forceRefresh, callerUid);
     const compactContext = AssistantContextService.buildCompactContext(analytics);
@@ -315,6 +327,7 @@ export async function askMunicipalAssistant(
 
     if (mode === "executive_brief") {
       const prompt = `You are an experienced Smart City Municipal Operations Analyst. Analyze the city's operational context and generate a structured Executive Brief of approximately 250 words total.
+Your output JSON values must be written/translated into the preferred language of the administrator: ${preferredLanguage}.
 Your output must be a valid JSON object. Do not include any markdown, backticks, or other text outside of the JSON object.
 Ensure the JSON is strictly parsable.
 
@@ -369,6 +382,7 @@ ${compactContext}`;
           text: `System Instruction: You are an experienced municipal operations analyst for the CivicMind Command Center.
 You help city administrators make strategic operational decisions based on real data.
 Your responses must be concise, actionable, evidence-based, professional, and decision-oriented.
+All responses must be written/translated into the preferred language of the administrator: ${preferredLanguage}.
 
 Strict Guidelines:
 1. Ground every statistic and number in the provided context. If a metric is not present in the context, do not make it up.

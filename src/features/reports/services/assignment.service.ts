@@ -753,6 +753,11 @@ export class AssignmentService {
       // Original submitter gets +100 XP
       await CitizenStatsService.awardPoints(report.metadata.createdBy, 100, "resolve");
 
+      // Resolving officer gets +100 Solver/Performance Points
+      if (officerId) {
+        await CitizenStatsService.awardPoints(officerId, 100, "resolve");
+      }
+
       // Award helper points to verifying citizens
       const verificationsList: any[] = [];
       if (typeof window === "undefined") {

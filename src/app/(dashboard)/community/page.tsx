@@ -4,37 +4,65 @@
  * Displays nearby verified reports within a configurable radius, with sorting, maps, and citizen verification controls.
  */
 
-"use client";
+'use client';
 
-import React, { useState, useEffect } from "react";
-import { useAuth } from "@/providers/auth-provider";
-import { RouteGuard } from "@/features/auth/components/route-guard";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { collection, query, where, onSnapshot, doc, updateDoc, arrayUnion, getDoc } from "firebase/firestore";
-import { db, COLLECTIONS } from "@/services/firebase/firestore";
-import { CivicReport } from "@/types";
-import { Clock, CheckCircle2, AlertCircle, ArrowRight, ShieldAlert, Wrench, MapPin, Eye, Camera, ThumbsUp, ThumbsDown, ShieldCheck, Loader2, MessageSquare, Cpu, Check } from "lucide-react";
-import { ISSUE_CATEGORIES } from "@/constants";
-import { motion, AnimatePresence } from "framer-motion";
-import dynamic from "next/dynamic";
-import { ReportVerificationService } from "@/features/reports/services/verification.service";
-import { MediaService } from "@/features/media/services/media.service";
-import { NotificationService } from "@/features/reports/services/notification.service";
-import { verifyVerificationPhoto } from "@/app/actions/ai.actions";
-import ReporterBadge from "@/components/dashboard/ReporterBadge";
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/providers/auth-provider';
+import { RouteGuard } from '@/features/auth/components/route-guard';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  doc,
+  updateDoc,
+  arrayUnion,
+  getDoc,
+} from 'firebase/firestore';
+import { db, COLLECTIONS } from '@/services/firebase/firestore';
+import { CivicReport } from '@/types';
+import {
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  ArrowRight,
+  ShieldAlert,
+  Wrench,
+  MapPin,
+  Eye,
+  Camera,
+  ThumbsUp,
+  ThumbsDown,
+  ShieldCheck,
+  Loader2,
+  MessageSquare,
+  Cpu,
+  Check,
+} from 'lucide-react';
+import { ISSUE_CATEGORIES } from '@/constants';
+import { motion, AnimatePresence } from 'framer-motion';
+import dynamic from 'next/dynamic';
+import { ReportVerificationService } from '@/features/reports/services/verification.service';
+import { MediaService } from '@/features/media/services/media.service';
+import { NotificationService } from '@/features/reports/services/notification.service';
+import { verifyVerificationPhoto } from '@/app/actions/ai.actions';
+import ReporterBadge from '@/components/dashboard/ReporterBadge';
 
 // Load Leaflet map dynamically without SSR
-const CommunityMap = dynamic(() => import("@/components/maps/CommunityMap"), {
+const CommunityMap = dynamic(() => import('@/components/maps/CommunityMap'), {
   ssr: false,
   loading: () => (
-    <div className="h-full w-full bg-zinc-900 flex items-center justify-center border border-white/5 rounded-2xl">
+    <div className="flex h-full w-full items-center justify-center rounded-2xl border border-white/5 bg-zinc-900">
       <div className="flex flex-col items-center gap-2">
-        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-        <span className="text-zinc-500 font-semibold text-xs tracking-wider uppercase">Loading Map...</span>
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        <span className="text-xs font-semibold tracking-wider text-zinc-500 uppercase">
+          Loading Map...
+        </span>
       </div>
     </div>
-  )
+  ),
 });
 
 // Haversine Distance Formula
@@ -57,17 +85,21 @@ export default function CommunityFeedPage() {
   const [reports, setReports] = useState<CivicReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [radius, setRadius] = useState<number>(3); // 3 km default
-  const [sortBy, setSortBy] = useState<"distance" | "priority" | "recency">("recency");
-  const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [sortBy, setSortBy] = useState<'distance' | 'priority' | 'recency'>('recency');
+  const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(
+    null
+  );
   const [uploadingReportId, setUploadingReportId] = useState<string | null>(null);
-  
+
   // Local storage cache for voted reports to prevent duplicate voting in same session
-  const [sessionVotes, setSessionVotes] = useState<Record<string, "verify" | "inaccurate">>({});
+  const [sessionVotes, setSessionVotes] = useState<Record<string, 'verify' | 'inaccurate'>>({});
 
   // Verification Modal States
   const [verifyingReport, setVerifyingReport] = useState<CivicReport | null>(null);
-  const [verificationDecision, setVerificationDecision] = useState<"support" | "not_found" | null>(null);
-  const [verificationComment, setVerificationComment] = useState<string>("");
+  const [verificationDecision, setVerificationDecision] = useState<'support' | 'not_found' | null>(
+    null
+  );
+  const [verificationComment, setVerificationComment] = useState<string>('');
   const [verificationPhoto, setVerificationPhoto] = useState<string | null>(null);
   const [uploadingVerificationPhoto, setUploadingVerificationPhoto] = useState<boolean>(false);
   const [submittingVerification, setSubmittingVerification] = useState<boolean>(false);
@@ -84,7 +116,7 @@ export default function CommunityFeedPage() {
       return;
     }
 
-    if (typeof window !== "undefined" && navigator.geolocation) {
+    if (typeof window !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setUserCoords({
@@ -93,7 +125,7 @@ export default function CommunityFeedPage() {
           });
         },
         (error) => {
-          console.warn("Geolocation failed or denied, using Bengaluru center coordinates.", error);
+          console.warn('Geolocation failed or denied, using Bengaluru center coordinates.', error);
           setUserCoords({ latitude: 12.9716, longitude: 77.5946 });
         }
       );
@@ -102,27 +134,24 @@ export default function CommunityFeedPage() {
 
   // 2. Real-time reports subscription
   useEffect(() => {
-    const q = query(
-      collection(db, COLLECTIONS.REPORTS),
-      where("status", "!=", "draft")
-    );
+    const q = query(collection(db, COLLECTIONS.REPORTS), where('status', '!=', 'draft'));
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
         const reportsList: CivicReport[] = [];
         const activeStatuses = [
-          "submitted",
-          "processing",
-          "verified",
-          "waiting_assignment",
-          "assigned",
-          "accepted",
-          "travelling",
-          "investigating",
-          "repair_in_progress",
-          "awaiting_verification",
-          "reopened"
+          'submitted',
+          'processing',
+          'verified',
+          'waiting_assignment',
+          'assigned',
+          'accepted',
+          'travelling',
+          'investigating',
+          'repair_in_progress',
+          'awaiting_verification',
+          'reopened',
         ];
         snapshot.forEach((docSnap) => {
           const r = { id: docSnap.id, ...docSnap.data() } as CivicReport;
@@ -134,7 +163,7 @@ export default function CommunityFeedPage() {
         setLoading(false);
       },
       (error) => {
-        console.error("Error subscribing to reports:", error);
+        console.error('Error subscribing to reports:', error);
         setLoading(false);
       }
     );
@@ -150,15 +179,21 @@ export default function CommunityFeedPage() {
   // Helper to prioritize sorting based on Distance, Severity, Trust, Verifications, and Resolution
   const getReportRankScore = (report: any) => {
     // 1. Resolution status: active/unresolved issues MUST appear before resolved/closed issues
-    const isResolvedOrClosed = ["resolved", "closed"].includes(report.status);
+    const isResolvedOrClosed = ['resolved', 'closed'].includes(report.status);
     const statusScore = isResolvedOrClosed ? 0 : 10000;
 
     // 2. Severity: critical = 1000, high = 500, medium = 200, low = 50, unknown = 0
-    const severityStr = (report.ai?.assistant?.severity || report.ai?.verification?.priority || "low").toLowerCase().trim();
+    const severityStr = (
+      report.ai?.assistant?.severity ||
+      report.ai?.verification?.priority ||
+      'low'
+    )
+      .toLowerCase()
+      .trim();
     let severityScore = 50;
-    if (severityStr === "critical") severityScore = 1000;
-    else if (severityStr === "high") severityScore = 500;
-    else if (severityStr === "medium") severityScore = 200;
+    if (severityStr === 'critical') severityScore = 1000;
+    else if (severityStr === 'high') severityScore = 500;
+    else if (severityStr === 'medium') severityScore = 200;
 
     // 3. Distance: closer is better (lower distance = higher rank)
     const distanceScore = Math.max(0, radius - (report.distance || 0)) * 100;
@@ -188,41 +223,47 @@ export default function CommunityFeedPage() {
 
   // Apply sorting
   const sortedReports = [...filteredReports].sort((a, b) => {
-    if (sortBy === "distance") {
+    if (sortBy === 'distance') {
       return a.distance - b.distance;
     }
-    if (sortBy === "priority") {
+    if (sortBy === 'priority') {
       const scoreA = getReportRankScore(a);
       const scoreB = getReportRankScore(b);
       if (scoreA !== scoreB) return scoreB - scoreA;
       // Secondary fallback to recency
-      return new Date(b.timestamps?.createdAt || 0).getTime() - new Date(a.timestamps?.createdAt || 0).getTime();
+      return (
+        new Date(b.timestamps?.createdAt || 0).getTime() -
+        new Date(a.timestamps?.createdAt || 0).getTime()
+      );
     }
     // Default recency
-    return new Date(b.timestamps?.createdAt || 0).getTime() - new Date(a.timestamps?.createdAt || 0).getTime();
+    return (
+      new Date(b.timestamps?.createdAt || 0).getTime() -
+      new Date(a.timestamps?.createdAt || 0).getTime()
+    );
   });
 
   // Action: Open Verification Modal and load existing verification if any
   const handleOpenVerifyModal = async (report: CivicReport) => {
     setVerifyingReport(report);
     setVerificationDecision(null);
-    setVerificationComment("");
+    setVerificationComment('');
     setVerificationPhoto(null);
     setVerificationError(null);
     if (!profile?.uid) return;
 
     setLoadingExisting(true);
     try {
-      const docRef = doc(db, COLLECTIONS.REPORTS, report.id, "reportVerifications", profile.uid);
+      const docRef = doc(db, COLLECTIONS.REPORTS, report.id, 'reportVerifications', profile.uid);
       const snap = await getDoc(docRef);
       if (snap.exists()) {
         const data = snap.data();
         setVerificationDecision(data.verificationDecision || null);
-        setVerificationComment(data.verificationComment || "");
+        setVerificationComment(data.verificationComment || '');
         setVerificationPhoto(data.verificationPhoto || null);
       }
     } catch (err) {
-      console.error("Error loading existing verification:", err);
+      console.error('Error loading existing verification:', err);
     } finally {
       setLoadingExisting(false);
     }
@@ -230,7 +271,8 @@ export default function CommunityFeedPage() {
 
   // Action: Upload verification photo to Cloudinary
   const handleVerificationPhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!profile?.uid || !verifyingReport || !event.target.files || event.target.files.length === 0) return;
+    if (!profile?.uid || !verifyingReport || !event.target.files || event.target.files.length === 0)
+      return;
     const file = event.target.files[0];
     setUploadingVerificationPhoto(true);
     try {
@@ -243,7 +285,7 @@ export default function CommunityFeedPage() {
         setVerificationPhoto(uploadedAssets[0].url);
       }
     } catch (err) {
-      console.error("Verification photo upload failed:", err);
+      console.error('Verification photo upload failed:', err);
     } finally {
       setUploadingVerificationPhoto(false);
     }
@@ -263,7 +305,10 @@ export default function CommunityFeedPage() {
           verificationComment
         );
         if (!aiCheck.success || !aiCheck.matches) {
-          setVerificationError(aiCheck.reason || "The uploaded verification photo does not seem to match the reported issue.");
+          setVerificationError(
+            aiCheck.reason ||
+              'The uploaded verification photo does not seem to match the reported issue.'
+          );
           setSubmittingVerification(false);
           return;
         }
@@ -278,8 +323,10 @@ export default function CommunityFeedPage() {
       );
       setVerifyingReport(null);
     } catch (err) {
-      console.error("Failed to submit verification:", err);
-      setVerificationError("Failed to submit verification: " + (err instanceof Error ? err.message : String(err)));
+      console.error('Failed to submit verification:', err);
+      setVerificationError(
+        'Failed to submit verification: ' + (err instanceof Error ? err.message : String(err))
+      );
     } finally {
       setSubmittingVerification(false);
     }
@@ -289,7 +336,7 @@ export default function CommunityFeedPage() {
   const handleAddImage = async (reportId: string, event: React.ChangeEvent<HTMLInputElement>) => {
     if (!profile?.uid || !event.target.files || event.target.files.length === 0) return;
     const file = event.target.files[0];
-    
+
     setUploadingReportId(reportId);
     try {
       const uploadedAssets = await MediaService.uploadFiles(
@@ -297,193 +344,237 @@ export default function CommunityFeedPage() {
         `reports/${reportId}/evidence`,
         profile.uid
       );
-      
+
       if (uploadedAssets.length > 0) {
         const newAsset = uploadedAssets[0];
-        const reportRef = doc(db, "reports", reportId);
+        const reportRef = doc(db, 'reports', reportId);
         await updateDoc(reportRef, {
-          "evidence.media": arrayUnion(newAsset),
-          "timestamps.updatedAt": new Date().toISOString()
+          'evidence.media': arrayUnion(newAsset),
+          'timestamps.updatedAt': new Date().toISOString(),
         });
 
         // Trigger Notification
         await NotificationService.notifyCitizenAddedEvidence(reportId);
       }
     } catch (e) {
-      console.error("Failed to upload supporting evidence:", e);
+      console.error('Failed to upload supporting evidence:', e);
     } finally {
       setUploadingReportId(null);
     }
   };
 
   const renderStatusBadge = (status: string) => {
-    const lowerStatus = String(status || "").toLowerCase().trim();
-    if (lowerStatus === "resolved") {
+    const lowerStatus = String(status || '')
+      .toLowerCase()
+      .trim();
+    if (lowerStatus === 'resolved') {
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald-400">
           Resolved
         </span>
       );
     }
-    if (lowerStatus === "in_progress") {
+    if (lowerStatus === 'in_progress') {
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400">
+        <span className="inline-flex items-center gap-1 rounded-full border border-purple-500/20 bg-purple-500/10 px-2.5 py-0.5 text-[10px] font-bold text-purple-400">
           Investigating
         </span>
       );
     }
-    if (lowerStatus === "verified" || lowerStatus === "accepted" || lowerStatus === "processed") {
+    if (lowerStatus === 'verified' || lowerStatus === 'accepted' || lowerStatus === 'processed') {
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400">
+        <span className="inline-flex items-center gap-1 rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-0.5 text-[10px] font-bold text-blue-400">
           Verified
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-zinc-800 border border-zinc-700 text-zinc-400">
+      <span className="inline-flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-800 px-2.5 py-0.5 text-[10px] font-bold text-zinc-400">
         Submitted
       </span>
     );
   };
 
   const renderSeverityBadge = (severity?: string) => {
-    const sev = String(severity || "low").toLowerCase().trim();
-    if (sev === "critical") {
+    const sev = String(severity || 'low')
+      .toLowerCase()
+      .trim();
+    if (sev === 'critical') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold rounded bg-red-500/10 border border-red-500/20 text-red-400 uppercase tracking-wider">
+        <span className="inline-flex items-center gap-1 rounded border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-[9px] font-bold tracking-wider text-red-400 uppercase">
           Critical
         </span>
       );
     }
-    if (sev === "high") {
+    if (sev === 'high') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold rounded bg-orange-500/10 border border-orange-500/20 text-orange-400 uppercase tracking-wider">
+        <span className="inline-flex items-center gap-1 rounded border border-orange-500/20 bg-orange-500/10 px-2 py-0.5 text-[9px] font-bold tracking-wider text-orange-400 uppercase">
           High
         </span>
       );
     }
-    if (sev === "medium") {
+    if (sev === 'medium') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 uppercase tracking-wider">
+        <span className="inline-flex items-center gap-1 rounded border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold tracking-wider text-amber-400 uppercase">
           Medium
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold rounded bg-blue-500/10 border border-blue-500/20 text-blue-400 uppercase tracking-wider">
+      <span className="inline-flex items-center gap-1 rounded border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[9px] font-bold tracking-wider text-blue-400 uppercase">
         Low
       </span>
     );
   };
 
   const renderAiBadge = (status?: string) => {
-    const st = String(status || "processing").toLowerCase().trim();
-    if (st === "verified") {
+    const st = String(status || 'processing')
+      .toLowerCase()
+      .trim();
+    if (st === 'verified') {
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[9px] font-bold rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 uppercase tracking-wider" title="Gemini Verified Integrity">
-          <Cpu className="w-2.5 h-2.5" /> AI Verified
+        <span
+          className="inline-flex items-center gap-1 rounded border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-[9px] font-bold tracking-wider text-emerald-400 uppercase"
+          title="Gemini Verified Integrity"
+        >
+          <Cpu className="h-2.5 w-2.5" /> AI Verified
         </span>
       );
     }
-    if (st === "requires_review") {
+    if (st === 'requires_review') {
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[9px] font-bold rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 uppercase tracking-wider" title="AI Flagged for Review">
-          <AlertCircle className="w-2.5 h-2.5" /> AI Review
+        <span
+          className="inline-flex items-center gap-1 rounded border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-[9px] font-bold tracking-wider text-amber-400 uppercase"
+          title="AI Flagged for Review"
+        >
+          <AlertCircle className="h-2.5 w-2.5" /> AI Review
         </span>
       );
     }
-    if (st === "rejected") {
+    if (st === 'rejected') {
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[9px] font-bold rounded bg-red-500/10 border border-red-500/20 text-red-400 uppercase tracking-wider" title="AI Flagged Fake Media">
-          <AlertCircle className="w-2.5 h-2.5" /> AI Fake
+        <span
+          className="inline-flex items-center gap-1 rounded border border-red-500/20 bg-red-500/10 px-2.5 py-0.5 text-[9px] font-bold tracking-wider text-red-400 uppercase"
+          title="AI Flagged Fake Media"
+        >
+          <AlertCircle className="h-2.5 w-2.5" /> AI Fake
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[9px] font-bold rounded bg-zinc-800 border border-zinc-700 text-zinc-400 uppercase tracking-wider" title="AI verification queue">
-        <Cpu className="w-2.5 h-2.5 animate-pulse text-blue-400" /> AI Triage
+      <span
+        className="inline-flex items-center gap-1.5 rounded border border-zinc-700 bg-zinc-800 px-2.5 py-0.5 text-[9px] font-bold tracking-wider text-zinc-400 uppercase"
+        title="AI verification queue"
+      >
+        <Cpu className="h-2.5 w-2.5 animate-pulse text-blue-400" /> AI Triage
       </span>
     );
   };
 
   return (
-    <RouteGuard allowedRoles={["citizen", "officer", "admin"]}>
-      <div className="flex min-h-screen flex-col bg-zinc-950 text-white font-sans selection:bg-blue-600/30">
-        {/* Navigation Bar */}
-        <header className="border-b border-white/10 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-30">
-          <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <span className="font-bold text-blue-500 tracking-wider flex items-center gap-1.5 select-none">
-                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                CivicMind
-              </span>
-              <nav className="hidden md:flex items-center gap-4 text-sm font-semibold">
-                <Link href={profile?.role === "officer" ? "/officer" : profile?.role === "admin" ? "/admin" : "/dashboard"} className="text-zinc-400 hover:text-white transition">
-                  Dashboard
-                </Link>
-                <Link href="/community" className="text-white border-b-2 border-blue-500 pb-1">
-                  Community Feed
-                </Link>
-              </nav>
-            </div>
-            <div className="flex items-center gap-4">
-              <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition" title="View Profile">
-                {profile?.avatarUrl ? (
-                  <img src={profile.avatarUrl} alt="Avatar" className="w-8 h-8 rounded-full border border-white/20 object-cover" />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 text-xs font-bold font-mono">
-                    {profile?.displayName?.[0]?.toUpperCase() || "C"}
-                  </div>
-                )}
-                <span className="text-xs text-zinc-300 font-semibold hidden md:inline-block">
-                  {profile?.displayName}
-                </span>
+    <RouteGuard allowedRoles={['citizen', 'officer', 'admin']}>
+      <div className="flex min-h-screen flex-col bg-slate-50 text-slate-800 selection:bg-indigo-500/20 selection:text-slate-900 relative overflow-x-hidden font-sans">
+        {/* Ambient Background Data Stream Effects */}
+        <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none opacity-65">
+          <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-blue-200/30 blur-[120px] animate-blob" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-purple-200/20 blur-[150px] animate-blob animation-delay-2000" />
+        </div>
+
+        {/* Floating Glassmorphic Navigation Bar */}
+        <header className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-8 py-3.5 max-w-6xl mx-auto bg-white/80 border border-white/60 backdrop-blur-2xl rounded-full mt-6 w-[92%] shadow-[0_8px_30px_rgb(163,177,198,0.2)] transition-transform duration-200">
+          <div className="flex items-center gap-6">
+            <span className="font-extrabold text-blue-600 tracking-wider flex items-center gap-1.5 select-none text-base">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
+              CivicMind
+            </span>
+            <nav className="hidden md:flex items-center gap-6 text-xs font-black uppercase tracking-widest">
+              <Link
+                href={
+                  profile?.role === 'officer'
+                    ? '/officer'
+                    : profile?.role === 'admin'
+                      ? '/admin'
+                      : '/dashboard'
+                }
+                className="text-slate-400 hover:text-slate-800 transition"
+              >
+                Dashboard
               </Link>
-              <Button variant="outline" size="sm" onClick={() => logout()} className="border-white/10 hover:bg-zinc-900 text-zinc-300">
-                Sign Out
-              </Button>
-            </div>
+              <Link href="/community" className="text-blue-600 border-b-2 border-blue-500 pb-1">
+                Community Feed
+              </Link>
+            </nav>
+          </div>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/profile"
+              className="flex items-center gap-2 hover:opacity-80 transition"
+              title="View Profile"
+            >
+              {profile?.avatarUrl ? (
+                <img
+                  src={profile.avatarUrl}
+                  alt="Avatar"
+                  className="w-7 h-7 rounded-full border border-white/80 object-cover shadow-sm"
+                />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600 text-xs font-bold font-mono">
+                  {profile?.displayName?.[0]?.toUpperCase() || 'C'}
+                </div>
+              )}
+            </Link>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => logout()}
+            >
+              Sign Out
+            </Button>
           </div>
         </header>
 
         {/* Dashboard Area */}
-        <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-8 flex flex-col lg:flex-row gap-8">
+        <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-6 pt-36 pb-24 lg:flex-row relative z-10">
           {/* Left panel: Filters & Feed Cards */}
-          <div className="flex-1 flex flex-col gap-6 max-h-[82vh] overflow-y-auto pr-2">
+          <div className="flex max-h-[82vh] flex-1 flex-col gap-6 overflow-y-auto pr-2">
             <div>
-              <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
+              <h1 className="text-4xl font-black tracking-tight text-slate-800">
                 Citizen Community Feed
               </h1>
-              <p className="text-sm text-zinc-400 mt-1">
+              <p className="mt-1 text-sm font-semibold text-slate-400">
                 Explore, verify, and track reports submitted in your neighborhood in real-time.
               </p>
             </div>
 
             {/* Controls Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-4 bg-zinc-900/50 border border-white/5 rounded-2xl p-4 backdrop-blur-md">
-              <div className="flex items-center gap-4 w-full md:w-auto">
-                <div className="flex flex-col gap-1 w-full md:w-48">
-                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono">Radius Limit ({radius}km)</span>
+            <div className="clay-card flex flex-wrap items-center justify-between gap-4 p-4">
+              <div className="flex w-full items-center gap-4 md:w-auto">
+                <div className="flex w-full flex-col gap-1 md:w-48">
+                  <span className="font-mono text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+                    Radius Limit ({radius}km)
+                  </span>
                   <input
                     type="range"
                     min="1"
                     max="25"
                     value={radius}
                     onChange={(e) => setRadius(parseInt(e.target.value))}
-                    className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                    className="h-1 w-full cursor-pointer appearance-none rounded-lg bg-slate-200 accent-blue-500"
                   />
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-xs text-zinc-500 font-bold uppercase tracking-wider font-mono mr-2">Sort By</span>
-                {(["recency", "distance", "priority"] as const).map((mode) => (
+                <span className="mr-2 font-mono text-xs font-bold tracking-wider text-slate-400 uppercase">
+                  Sort By
+                </span>
+                {(['recency', 'distance', 'priority'] as const).map((mode) => (
                   <Button
                     key={mode}
                     size="sm"
-                    variant={sortBy === mode ? "primary" : "outline"}
+                    variant={sortBy === mode ? 'primary' : 'outline'}
                     onClick={() => setSortBy(mode)}
-                    className={`capitalize text-xs ${sortBy === mode ? "bg-blue-600 hover:bg-blue-500 text-white" : "border-white/5 hover:bg-zinc-800 text-zinc-300"}`}
+                    className={`text-xs capitalize ${sortBy === mode ? '' : 'text-slate-600'}`}
                   >
                     {mode}
                   </Button>
@@ -493,15 +584,15 @@ export default function CommunityFeedPage() {
 
             {/* Feed Cards list */}
             {loading ? (
-              <div className="flex-1 flex items-center justify-center py-20">
-                <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+              <div className="flex flex-1 items-center justify-center py-20">
+                <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
               </div>
             ) : sortedReports.length === 0 ? (
-              <div className="border border-dashed border-white/10 rounded-2xl p-12 text-center flex flex-col items-center justify-center gap-4 bg-zinc-950/20 backdrop-blur-sm">
-                <MapPin className="w-10 h-10 text-zinc-600 animate-pulse" />
+              <div className="clay-card p-12 text-center flex flex-col items-center justify-center gap-4">
+                <MapPin className="h-10 w-10 animate-pulse text-slate-400" />
                 <div>
-                  <h3 className="font-bold text-white text-sm">No verified reports nearby</h3>
-                  <p className="text-xs text-zinc-500 max-w-xs mt-1 leading-relaxed">
+                  <h3 className="text-sm font-bold text-slate-800">No verified reports nearby</h3>
+                  <p className="mt-1 max-w-xs text-xs leading-relaxed font-semibold text-slate-500">
                     No active incident reports match your configurable radius of {radius}km.
                   </p>
                 </div>
@@ -512,78 +603,102 @@ export default function CommunityFeedPage() {
                   {sortedReports.map((report) => {
                     const firstImage = report.evidence?.media?.[0]?.url;
                     const mediaCount = report.evidence?.media?.length || 0;
-                    
+
                     return (
                       <motion.div
                         key={report.id}
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95 }}
-                        className="group border border-white/10 rounded-2xl bg-zinc-900/35 hover:bg-zinc-900/60 transition-all duration-350 overflow-hidden relative shadow-lg"
+                        className="group relative overflow-hidden clay-card transition-all duration-200 hover:bg-white/95"
                       >
                         {/* Glow indicator line */}
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-transparent group-hover:bg-blue-500 transition-all" />
+                        <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-transparent transition-all group-hover:bg-blue-500" />
 
-                        <div className="p-5 flex flex-col md:flex-row gap-5">
+                        <div className="flex flex-col gap-5 p-5 md:flex-row">
                           {/* Image Column */}
-                          <div className="w-full md:w-36 h-28 bg-zinc-950 rounded-xl overflow-hidden relative border border-white/5 shrink-0">
+                          <div className="relative h-28 w-full shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 md:w-36">
                             {firstImage ? (
                               <>
-                                <img src={firstImage} alt="Incident" className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+                                <img
+                                  src={firstImage}
+                                  alt="Incident"
+                                  className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                                />
                                 {mediaCount > 1 && (
-                                  <span className="absolute bottom-1.5 right-1.5 bg-black/75 backdrop-blur-sm px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider text-zinc-350 border border-white/10">
+                                  <span className="absolute right-1.5 bottom-1.5 rounded border border-white/10 bg-black/75 px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-white uppercase backdrop-blur-sm">
                                     +{mediaCount - 1} photos
                                   </span>
                                 )}
                               </>
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-zinc-950 text-zinc-700">
-                                <Camera className="w-8 h-8" />
+                              <div className="flex h-full w-full items-center justify-center bg-slate-100 text-slate-400">
+                                <Camera className="h-8 w-8" />
                               </div>
                             )}
                           </div>
 
                           {/* Content Column */}
-                          <div className="flex-1 flex flex-col justify-between min-w-0">
+                          <div className="flex min-w-0 flex-1 flex-col justify-between">
                             <div className="space-y-1">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/10">
-                                  {getCategoryLabel(report.ai?.assistant?.category || report.metadata.category)}
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className="rounded bg-blue-100/70 border border-blue-200/50 px-2 py-0.5 text-[10px] font-extrabold tracking-wider text-blue-650 uppercase">
+                                  {getCategoryLabel(
+                                    report.ai?.assistant?.category || report.metadata.category
+                                  )}
                                 </span>
                                 {renderStatusBadge(report.status)}
-                                {renderSeverityBadge(report.ai?.assistant?.severity || report.ai?.verification?.priority || undefined)}
+                                {renderSeverityBadge(
+                                  report.ai?.assistant?.severity ||
+                                    report.ai?.verification?.priority ||
+                                    undefined
+                                )}
                                 {renderAiBadge(report.ai?.verification?.status)}
                                 {report.metadata.createdBy && (
                                   <ReporterBadge userId={report.metadata.createdBy} />
                                 )}
-                                <span className="text-[11px] text-zinc-500 font-bold font-mono ml-auto">
+                                <span className="ml-auto font-mono text-[11px] font-bold text-slate-500">
                                   {report.distance.toFixed(1)} km away
                                 </span>
                               </div>
-                              <h3 className="font-bold text-white text-lg group-hover:text-blue-400 transition truncate mt-1">
+                              <h3 className="mt-1 truncate text-lg font-black text-slate-800 transition group-hover:text-blue-650">
                                 {report.ai?.assistant?.title || report.metadata.title}
                               </h3>
-                              <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed">
+                              <p className="line-clamp-2 text-xs leading-relaxed font-medium text-slate-500">
                                 {report.ai?.assistant?.description || report.metadata.description}
                               </p>
                             </div>
 
-                            <div className="flex items-center gap-5 mt-4 pt-3 border-t border-white/5 text-xs text-zinc-400">
+                            <div className="mt-4 flex flex-wrap items-center gap-5 border-t border-slate-100 pt-3 text-xs text-slate-500 font-semibold">
                               <span className="flex items-center gap-1.5">
-                                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                                Trust: <strong className="text-emerald-400 font-bold">{Math.round((report.ai?.verification?.trustScore ?? 0.5) * 100)}%</strong>
+                                <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-500" />
+                                Trust:{' '}
+                                <strong className="font-bold text-emerald-600">
+                                  {Math.round((report.ai?.verification?.trustScore ?? 0.5) * 100)}%
+                                </strong>
                               </span>
-                              <span className="flex items-center gap-1.5" title="Community verifications (Confirm vs Not Found)">
-                                <ThumbsUp className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                                Verifications: <strong className="text-blue-400 font-bold">{report.supportCount || 0}</strong>
-                                <span className="text-zinc-600">/</span>
-                                <strong className="text-rose-400 font-bold">{report.notFoundCount || 0}</strong>
+                              <span
+                                className="flex items-center gap-1.5"
+                                title="Community verifications (Confirm vs Not Found)"
+                              >
+                                <ThumbsUp className="h-3.5 w-3.5 shrink-0 text-blue-400" />
+                                Verifications:{' '}
+                                <strong className="font-bold text-blue-600">
+                                  {report.supportCount || 0}
+                                </strong>
+                                <span className="text-slate-300">/</span>
+                                <strong className="font-bold text-rose-500">
+                                  {report.notFoundCount || 0}
+                                </strong>
                               </span>
                               <span className="flex items-center gap-1.5">
-                                <MessageSquare className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-                                Comments: <strong className="text-zinc-300 font-bold">{report.commentsCount || 0}</strong>
+                                <MessageSquare className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                                Comments:{' '}
+                                <strong className="font-bold text-slate-600">
+                                  {report.commentsCount || 0}
+                                </strong>
                               </span>
-                              <span className="flex items-center gap-1 ml-auto font-mono text-[10px] text-zinc-500">
+                              <span className="ml-auto flex items-center gap-1 font-mono text-[10px] text-slate-400">
                                 {new Date(report.timestamps?.createdAt || 0).toLocaleDateString()}
                               </span>
                             </div>
@@ -591,24 +706,30 @@ export default function CommunityFeedPage() {
                         </div>
 
                         {/* Actions Drawer */}
-                        <div className="px-5 py-3 bg-black/35 border-t border-white/5 flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/80 px-5 py-3">
                           <div className="flex items-center gap-2">
-                            {profile?.role === "citizen" && (
+                            {profile?.role === 'citizen' && (
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleOpenVerifyModal(report)}
-                                className="text-xs h-8 border-white/10 hover:bg-blue-500/10 hover:text-blue-400 bg-zinc-900/60"
+                                className="h-8 border-slate-200 bg-white text-xs hover:bg-slate-100 text-slate-700"
                               >
-                                <ShieldAlert className="w-3.5 h-3.5 mr-1.5 text-blue-400 shrink-0" /> Verify Report
+                                <ShieldAlert className="mr-1.5 h-3.5 w-3.5 shrink-0 text-blue-500" />{' '}
+                                Verify Report
                               </Button>
                             )}
                           </div>
 
                           <div className="flex items-center gap-3">
                             <Link href={`/reports/${report.id}`}>
-                              <Button size="sm" variant="ghost" className="text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-500/5">
-                                Details & Comments ({report.commentsCount || 0}) <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-xs text-blue-600 hover:bg-blue-50"
+                              >
+                                Details & Comments ({report.commentsCount || 0}){' '}
+                                <ArrowRight className="ml-1 h-3.5 w-3.5" />
                               </Button>
                             </Link>
                           </div>
@@ -622,7 +743,7 @@ export default function CommunityFeedPage() {
           </div>
 
           {/* Right panel: Geospatial Map View */}
-          <div className="w-full lg:w-[480px] h-[300px] lg:h-[82vh] rounded-3xl overflow-hidden border border-white/10 bg-zinc-900/20 backdrop-blur-md relative shadow-2xl shrink-0">
+          <div className="clay-card relative h-[300px] w-full shrink-0 overflow-hidden lg:h-[82vh] lg:w-[480px]">
             <CommunityMap
               center={[centerLat, centerLon]}
               reports={sortedReports}
@@ -633,65 +754,65 @@ export default function CommunityFeedPage() {
       </div>
 
       {verifyingReport && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-zinc-900 border border-white/10 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl relative">
-            <div className="flex justify-between items-center pb-2 border-b border-white/5">
-              <h3 className="font-extrabold text-lg text-white">Civic Verification</h3>
+        <div className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md">
+          <div className="relative w-full max-w-md space-y-4 rounded-3xl border border-white/10 bg-zinc-900 p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/5 pb-2">
+              <h3 className="text-lg font-extrabold text-white">Civic Verification</h3>
               <button
                 onClick={() => setVerifyingReport(null)}
-                className="text-zinc-550 hover:text-zinc-350 transition text-xs font-bold"
+                className="text-zinc-550 hover:text-zinc-350 text-xs font-bold transition"
               >
                 Close
               </button>
             </div>
 
             {loadingExisting ? (
-              <div className="py-12 flex flex-col items-center justify-center gap-2">
-                <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+              <div className="flex flex-col items-center justify-center gap-2 py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
                 <span className="text-xs text-zinc-500">Checking your verification history...</span>
               </div>
             ) : (
               <div className="space-y-4">
                 <div>
-                  <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-1">
+                  <span className="mb-1 block text-[10px] font-bold tracking-widest text-zinc-500 uppercase">
                     Target Incident
                   </span>
-                  <p className="text-sm font-bold text-white truncate">
+                  <p className="truncate text-sm font-bold text-white">
                     {verifyingReport.ai?.assistant?.title || verifyingReport.metadata.title}
                   </p>
-                  <p className="text-xs text-zinc-500 truncate">
+                  <p className="truncate text-xs text-zinc-500">
                     {verifyingReport.location?.formattedAddress}
                   </p>
                 </div>
 
                 {/* Decision Choice */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block">
+                  <label className="block text-[10px] font-bold tracking-widest text-zinc-500 uppercase">
                     Your Decision *
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
-                      onClick={() => setVerificationDecision("support")}
-                      className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border transition-all text-xs font-bold ${
-                        verificationDecision === "support"
-                          ? "bg-emerald-500/15 border-emerald-500 text-emerald-400"
-                          : "bg-zinc-950/45 border-white/5 text-zinc-400 hover:bg-zinc-950 hover:border-emerald-500/20"
+                      onClick={() => setVerificationDecision('support')}
+                      className={`flex flex-col items-center gap-1.5 rounded-2xl border p-3 text-xs font-bold transition-all ${
+                        verificationDecision === 'support'
+                          ? 'border-emerald-500 bg-emerald-500/15 text-emerald-400'
+                          : 'border-white/5 bg-zinc-950/45 text-zinc-400 hover:border-emerald-500/20 hover:bg-zinc-950'
                       }`}
                     >
-                      <ThumbsUp className="w-4 h-4 shrink-0" />
+                      <ThumbsUp className="h-4 w-4 shrink-0" />
                       <span>Confirm Issue Exists</span>
                     </button>
                     <button
                       type="button"
-                      onClick={() => setVerificationDecision("not_found")}
-                      className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border transition-all text-xs font-bold ${
-                        verificationDecision === "not_found"
-                          ? "bg-rose-500/15 border-rose-500 text-rose-400"
-                          : "bg-zinc-950/45 border-white/5 text-zinc-400 hover:bg-zinc-950 hover:border-rose-500/20"
+                      onClick={() => setVerificationDecision('not_found')}
+                      className={`flex flex-col items-center gap-1.5 rounded-2xl border p-3 text-xs font-bold transition-all ${
+                        verificationDecision === 'not_found'
+                          ? 'border-rose-500 bg-rose-500/15 text-rose-400'
+                          : 'border-white/5 bg-zinc-950/45 text-zinc-400 hover:border-rose-500/20 hover:bg-zinc-950'
                       }`}
                     >
-                      <ThumbsDown className="w-4 h-4 shrink-0" />
+                      <ThumbsDown className="h-4 w-4 shrink-0" />
                       <span>Issue Not Found</span>
                     </button>
                   </div>
@@ -699,46 +820,54 @@ export default function CommunityFeedPage() {
 
                 {/* Comment Textarea */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-zinc-550 uppercase tracking-widest block">
+                  <label className="text-zinc-550 block text-[10px] font-bold tracking-widest uppercase">
                     Verification Comment (Optional)
                   </label>
                   <textarea
                     value={verificationComment}
                     onChange={(e) => setVerificationComment(e.target.value)}
                     placeholder="Describe current status, changes, or extra info..."
-                    className="w-full px-3 py-2 bg-zinc-950 border border-white/5 rounded-xl text-xs text-white placeholder-zinc-650 outline-none focus:border-blue-500/30 transition-all h-20 resize-none font-medium"
+                    className="placeholder-zinc-650 h-20 w-full resize-none rounded-xl border border-white/5 bg-zinc-950 px-3 py-2 text-xs font-medium text-white transition-all outline-none focus:border-blue-500/30"
                   />
                 </div>
 
                 {/* Required Photo Attachment */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-zinc-550 uppercase tracking-widest block">
+                  <label className="text-zinc-550 block text-[10px] font-bold tracking-widest uppercase">
                     Attach Current Photo (Required)
                   </label>
 
                   {verificationPhoto ? (
-                    <div className="relative w-full h-32 rounded-xl overflow-hidden border border-white/10 group/img bg-zinc-950">
-                      <img src={verificationPhoto} alt="Verification" className="w-full h-full object-cover" />
+                    <div className="group/img relative h-32 w-full overflow-hidden rounded-xl border border-white/10 bg-zinc-950">
+                      <img
+                        src={verificationPhoto}
+                        alt="Verification"
+                        className="h-full w-full object-cover"
+                      />
                       <button
                         type="button"
                         onClick={() => setVerificationPhoto(null)}
-                        className="absolute top-2 right-2 bg-black/80 hover:bg-black px-2.5 py-1 rounded-md text-[10px] text-zinc-400 hover:text-white transition"
+                        className="absolute top-2 right-2 rounded-md bg-black/80 px-2.5 py-1 text-[10px] text-zinc-400 transition hover:bg-black hover:text-white"
                       >
                         Delete
                       </button>
                     </div>
                   ) : (
-                    <label className="flex flex-col items-center justify-center w-full h-20 border border-dashed border-white/10 hover:border-blue-500/30 rounded-xl cursor-pointer bg-zinc-950/20 hover:bg-zinc-950/40 transition">
+                    <label className="flex h-20 w-full cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-zinc-950/20 transition hover:border-blue-500/30 hover:bg-zinc-950/40">
                       <div className="flex flex-col items-center justify-center pt-2 pb-2">
                         {uploadingVerificationPhoto ? (
                           <>
-                            <Loader2 className="w-5 h-5 text-blue-500 animate-spin mb-1" />
-                            <p className="text-[10px] text-zinc-500 font-semibold">Uploading photo...</p>
+                            <Loader2 className="mb-1 h-5 w-5 animate-spin text-blue-500" />
+                            <p className="text-[10px] font-semibold text-zinc-500">
+                              Uploading photo...
+                            </p>
                           </>
                         ) : (
                           <>
-                            <Camera className="w-5 h-5 text-zinc-500 mb-1" />
-                            <p className="text-[10px] text-zinc-500 font-semibold">Upload current scene photo</p>
+                            <Camera className="mb-1 h-5 w-5 text-zinc-500" />
+                            <p className="text-[10px] font-semibold text-zinc-500">
+                              Upload current scene photo
+                            </p>
                           </>
                         )}
                       </div>
@@ -754,8 +883,10 @@ export default function CommunityFeedPage() {
                 </div>
 
                 {verificationError && (
-                  <div className="p-3 text-[11px] bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl leading-relaxed font-sans">
-                    <span className="font-bold block mb-0.5 text-rose-300">AI Verification Check Failed</span>
+                  <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 font-sans text-[11px] leading-relaxed text-rose-400">
+                    <span className="mb-0.5 block font-bold text-rose-300">
+                      AI Verification Check Failed
+                    </span>
                     {verificationError}
                   </div>
                 )}
@@ -765,15 +896,20 @@ export default function CommunityFeedPage() {
                   <Button
                     onClick={() => setVerifyingReport(null)}
                     variant="outline"
-                    className="flex-1 border-white/10 hover:bg-zinc-800 text-zinc-350 font-semibold text-xs"
+                    className="text-zinc-350 flex-1 border-white/10 text-xs font-semibold hover:bg-zinc-800"
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={handleSubmitVerification}
-                    disabled={!verificationDecision || !verificationPhoto || submittingVerification || uploadingVerificationPhoto}
+                    disabled={
+                      !verificationDecision ||
+                      !verificationPhoto ||
+                      submittingVerification ||
+                      uploadingVerificationPhoto
+                    }
                     isLoading={submittingVerification}
-                    className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs"
+                    className="flex-1 bg-blue-600 text-xs font-bold text-white hover:bg-blue-500"
                   >
                     Submit
                   </Button>

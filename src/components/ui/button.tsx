@@ -21,21 +21,21 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || isLoading}
         className={cn(
           // Base styles inspired by Stripe/Linear: spacious, keyboard friendly, smooth transition
-          "inline-flex items-center justify-center font-medium transition-all duration-200 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer",
+          "inline-flex items-center justify-center font-bold transition-all duration-300 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer",
           // Focus ring color mapped to primary ring token
           "focus:ring-primary focus:ring-offset-background",
           // Variant mappings
           {
-            "bg-primary text-primary-foreground hover:bg-primary/95 shadow-sm": variant === "primary",
-            "bg-secondary text-secondary-foreground hover:bg-secondary/90": variant === "secondary",
-            "border border-border bg-background text-foreground hover:bg-muted": variant === "outline",
+            "clay-btn clay-btn-blue": variant === "primary",
+            "clay-btn clay-btn-green": variant === "secondary",
+            "clay-btn clay-btn-white border-slate-200": variant === "outline",
             "text-muted-foreground hover:text-foreground hover:bg-muted": variant === "ghost",
           },
           // Size mappings
           {
-            "px-3 py-1.5 text-xs": size === "sm",
-            "px-4 py-2.5 text-sm": size === "md",
-            "px-6 py-3.5 text-base": size === "lg",
+            "px-4 py-1.5 text-xs": size === "sm",
+            "px-6 py-2.5 text-sm": size === "md",
+            "px-8 py-3.5 text-base": size === "lg",
           },
           className
         )}
