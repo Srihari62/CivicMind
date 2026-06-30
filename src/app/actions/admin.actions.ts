@@ -50,7 +50,6 @@ export async function createNewUserAction(
       email: input.email,
       password: input.password || "TempPass123!",
       displayName: input.displayName,
-      phoneNumber: input.phoneNumber || undefined,
       photoURL: input.photoURL || undefined,
     });
 
